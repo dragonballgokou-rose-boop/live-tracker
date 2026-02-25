@@ -8,6 +8,88 @@ const STORAGE_KEYS = {
     ATTENDANCE: 'livetracker_attendance'
 };
 
+// ============================================
+// Cloud Sync (Google Apps Script)
+// ============================================
+// ユーザーがGAS URLを発行したらここに貼り付ける
+export const GAS_URL = 'https://script.google.com/macros/s/AKfycbzsvKE56LE0VycDxAfRM2tafOROFCcDLhKOJRl05j2QU_IqikHoqtUkqoBwGc0SKgtN/exec';
+
+let syncStatus = 'idle'; // 'idle' | 'syncing' | 'error'
+
+export async function fetchFromGAS() {
+    if (!GAS_URL) return false;
+    try {
+        syncStatus = 'syncing';
+        window.dispatchEvent(new CustomEvent('livetracker:sync-start'));
+        const response = await fetch(`${GAS_URL}?type=getAll`);
+        const result = await response.json();
+
+        if (result.success && result.data) {
+            if (result.data.lives) saveAll(STORAGE_KEYS.LIVES, result.data.lives);
+            if (result.data.members) saveAll(STORAGE_KEYS.MEMBERS, result.data.members);
+            if (result.data.attendance) saveAll(STORAGE_KEYS.ATTENDANCE, result.data.attendance);
+            syncStatus = 'idle';
+            window.dispatchEvent(new CustomEvent('livetracker:sync-success'));
+            return true;
+        }
+        syncStatus = 'error';
+        window.dispatchEvent(new CustomEvent('livetracker:sync-error'));
+        return false;
+    } catch (e) {
+        console.error('Fetch from GAS failed:', e);
+        syncStatus = 'error';
+        window.dispatchEvent(new CustomEvent('livetracker:sync-error'));
+        return false;
+    }
+}
+
+// データの変更を検知してバックグラウンドで送信するためのタイマー
+let syncTimeout = null;
+
+export function triggerSync() {
+    if (!GAS_URL) return;
+
+    // 短時間に複数回の更新があった場合、最後の1回だけ送信する（デバウンス処理）
+    if (syncTimeout) clearTimeout(syncTimeout);
+
+    // UI側のToast通知などに利用できるよう、必要であればイベントを発火可能
+    window.dispatchEvent(new CustomEvent('livetracker:sync-start'));
+
+    syncTimeout = setTimeout(async () => {
+        try {
+            const data = {
+                lives: getAll(STORAGE_KEYS.LIVES),
+                members: getAll(STORAGE_KEYS.MEMBERS),
+                attendance: getAll(STORAGE_KEYS.ATTENDANCE)
+            };
+
+            const response = await fetch(GAS_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'text/plain', // GASのCORS制約回避のため text/plain を使用
+                },
+                body: JSON.stringify({
+                    action: 'updateAllData',
+                    data: data
+                })
+            });
+            const result = await response.json();
+            if (result.success) {
+                window.dispatchEvent(new CustomEvent('livetracker:sync-success'));
+            } else {
+                throw new Error(result.message || 'Sync failed');
+            }
+        } catch (e) {
+            console.error('Push to GAS failed:', e);
+            window.dispatchEvent(new CustomEvent('livetracker:sync-error'));
+        }
+    }, 1500); // 1.5秒間操作がなければ同期を実行
+}
+
+// ============================================
+// Local Store
+// ============================================
+
 function generateId() {
     return Date.now().toString(36) + Math.random().toString(36).substring(2, 9);
 }
@@ -25,6 +107,7 @@ function getAll(key) {
 
 function saveAll(key, items) {
     localStorage.setItem(key, JSON.stringify(items));
+    triggerSync(); // ローカル保存後にクラウドへ非同期送信
 }
 
 function addItem(key, item) {

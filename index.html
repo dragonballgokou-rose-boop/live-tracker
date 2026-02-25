@@ -65,6 +65,10 @@
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
         </button>
         <h1 id="page-title" class="page-title">ダッシュボード</h1>
+        <div id="sync-indicator" class="sync-indicator hidden">
+          <svg class="sync-icon animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"></path><polyline points="21 3 21 8 16 8"></polyline></svg>
+          <span class="sync-text">同期中...</span>
+        </div>
       </header>
       <div id="page-content" class="page-content">
         <!-- ページ内容がここに動的に挿入される -->
@@ -73,6 +77,12 @@
 
     <!-- Overlay for mobile sidebar -->
     <div id="sidebar-overlay" class="sidebar-overlay"></div>
+  </div>
+
+  <!-- App Initial Loader -->
+  <div id="app-loader" class="app-loader hidden">
+    <div class="loader-spinner"></div>
+    <div class="loader-text">データを読み込んでいます...</div>
   </div>
 
   <!-- Modal Container -->

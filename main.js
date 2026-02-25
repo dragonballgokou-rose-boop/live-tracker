@@ -7,7 +7,7 @@ import { renderDashboard } from './js/views/dashboard.js';
 import { renderTally } from './js/views/tally.js';
 import { renderLives } from './js/views/lives.js';
 import { renderMembers } from './js/views/members.js';
-import { exportData, importData } from './js/store.js';
+import { exportData, importData, fetchFromGAS } from './js/store.js';
 import { showToast } from './js/utils.js';
 
 // ---------- Page Titles ----------
@@ -43,6 +43,32 @@ function closeSidebar() {
     document.getElementById('sidebar-overlay').classList.remove('visible');
 }
 
+// ---------- Sync Indicator (Header) ----------
+function showSyncIndicator(text = '同期中...') {
+    const indicator = document.getElementById('sync-indicator');
+    if (indicator) {
+        indicator.querySelector('.sync-text').textContent = text;
+        indicator.classList.remove('hidden');
+    }
+}
+
+function hideSyncIndicator() {
+    const indicator = document.getElementById('sync-indicator');
+    if (indicator) {
+        indicator.classList.add('hidden');
+    }
+}
+
+window.addEventListener('livetracker:sync-start', () => showSyncIndicator('同期中...'));
+window.addEventListener('livetracker:sync-success', () => {
+    showSyncIndicator('同期完了');
+    setTimeout(hideSyncIndicator, 2000);
+});
+window.addEventListener('livetracker:sync-error', () => {
+    showSyncIndicator('同期エラー');
+    setTimeout(hideSyncIndicator, 3000);
+});
+
 // ---------- Router ----------
 const router = new Router([
     {
@@ -76,7 +102,25 @@ const router = new Router([
 ]);
 
 // ---------- Event Listeners ----------
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    // Show App Loader initially
+    const appLoader = document.getElementById('app-loader');
+    if (appLoader) {
+        appLoader.classList.remove('hidden');
+    }
+
+    // Try fetching from GAS on load (if GAS_URL is set)
+    try {
+        await fetchFromGAS();
+    } catch (e) {
+        console.warn('Initial sync failed', e);
+    }
+
+    // Hide loader
+    if (appLoader) {
+        appLoader.classList.add('hidden');
+    }
+
     // Sidebar toggle
     document.getElementById('menu-toggle')?.addEventListener('click', openSidebar);
     document.getElementById('sidebar-close')?.addEventListener('click', closeSidebar);
