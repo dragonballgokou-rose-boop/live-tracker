@@ -568,7 +568,7 @@ textarea {
 .tally-table-container {
   overflow-x: auto;
   overflow-y: auto;
-  max-height: calc(100vh - 200px);
+  max-height: calc(100vh - 220px);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
   background: var(--bg-card);
@@ -576,9 +576,9 @@ textarea {
 }
 
 .tally-table {
-  width: 100%;
-  border-collapse: separate;
-  border-spacing: 0;
+  width: max-content;
+  min-width: 100%;
+  border-collapse: collapse;
   font-size: var(--font-size-sm);
 }
 
@@ -587,7 +587,7 @@ textarea {
   font-weight: 600;
   font-size: var(--font-size-xs);
   color: var(--text-secondary);
-  background: rgba(15, 15, 35, 0.98);
+  background: rgba(255, 255, 255, 0.03);
   border: 1px solid var(--border-color);
   white-space: nowrap;
   position: sticky;
@@ -598,8 +598,7 @@ textarea {
 .tally-table th:first-child {
   position: sticky;
   left: 0;
-  top: 0;
-  z-index: 30;
+  z-index: 20;
   background: rgba(15, 15, 35, 0.98);
   min-width: 200px;
 }

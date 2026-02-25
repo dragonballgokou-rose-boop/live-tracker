@@ -145,15 +145,18 @@ function buildTallyTable(lives, members) {
     let label;
     if (row.isMultiDay) {
       if (row.isFirstDay) {
-        // First day: show live name + day info
+        // First day: show live name + day info + venue
         label = `
                 <div style="display: flex; flex-direction: column; gap: 2px;">
                   <span style="font-weight: 600; font-size: 13px;">${escapeHtml(row.live.name)}</span>
                   <span style="font-size: 11px; color: var(--text-tertiary);">
-                    ${escapeHtml(row.live.artist || '')} · ${formatDateRange(row.live)}${row.live.venue ? ` · 📍${escapeHtml(row.live.venue)}` : ''}
+                    ${escapeHtml(row.live.artist || '')} · ${formatDateRange(row.live)}
+                  </span>
+                  <span style="font-size: 11px; color: var(--text-tertiary); display: flex; align-items: center; gap: 4px;">
+                    📍 ${escapeHtml(row.live.venue || '会場未定')}
                     ${isPast ? '<span class="badge badge-past" style="font-size: 10px;">終了</span>' : ''}
                   </span>
-                  <span class="day-label">
+                  <span class="day-label" style="margin-top: 4px;">
                     <span class="day-label-tag">Day${row.dayNum}</span>
                     ${d.getMonth() + 1}/${d.getDate()}(${dayOfWeek})
                   </span>
@@ -169,13 +172,16 @@ function buildTallyTable(lives, members) {
                 </div>`;
       }
     } else {
-      // Single-day live
+      // Single-day live -> Show date, artist, venue
       const dateStr = `${d.getMonth() + 1}/${d.getDate()}(${dayOfWeek})`;
       label = `
                 <div style="display: flex; flex-direction: column; gap: 2px;">
                   <span style="font-weight: 600; font-size: 13px;">${escapeHtml(row.live.name)}</span>
                   <span style="font-size: 11px; color: var(--text-tertiary);">
-                    ${dateStr} · ${escapeHtml(row.live.artist || '')}${row.live.venue ? ` · 📍${escapeHtml(row.live.venue)}` : ''}
+                    ${dateStr} · ${escapeHtml(row.live.artist || '')}
+                  </span>
+                  <span style="font-size: 11px; color: var(--text-tertiary); display: flex; align-items: center; gap: 4px;">
+                    📍 ${escapeHtml(row.live.venue || '会場未定')}
                     ${isPast ? '<span class="badge badge-past" style="font-size: 10px;">終了</span>' : ''}
                   </span>
                 </div>`;
