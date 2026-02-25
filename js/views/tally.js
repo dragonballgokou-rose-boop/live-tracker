@@ -1,0 +1,256 @@
+// ============================================
+// Tally View (集計表)
+// ============================================
+import { getLives, getMembers, getAttendanceStatus, setAttendance } from '../store.js';
+import { showToast } from '../utils.js';
+import { formatDateRange } from './lives.js';
+
+export function renderTally() {
+  const content = document.getElementById('page-content');
+  const lives = getLives();
+  const members = getMembers();
+
+  if (lives.length === 0 || members.length === 0) {
+    content.innerHTML = `
+      <div class="card empty-state">
+        <div class="empty-state-icon">📊</div>
+        <p class="empty-state-text">
+          ${lives.length === 0 ? 'ライブを追加してください' : 'メンバーを追加してください'}
+        </p>
+        <a href="#/${lives.length === 0 ? 'lives' : 'members'}" class="btn btn-primary">
+          ${lives.length === 0 ? 'ライブを追加' : 'メンバーを追加'}
+        </a>
+      </div>
+    `;
+    return;
+  }
+
+  content.innerHTML = `
+    <!-- Filter -->
+    <div class="filter-bar">
+      <input type="text" id="tally-filter-artist" class="form-input" placeholder="🔍 アーティストで絞り込み" />
+      <input type="month" id="tally-filter-month" class="form-input" placeholder="月で絞り込み" />
+      <button id="tally-filter-clear" class="btn btn-secondary btn-sm">クリア</button>
+    </div>
+
+    <!-- Legend -->
+    <div style="display: flex; gap: 20px; margin-bottom: 16px; font-size: 13px; color: var(--text-secondary);">
+      <span>
+        <span class="tally-cell" data-status="going" style="width: 24px; height: 24px; font-size: 12px; display: inline-flex; vertical-align: middle;">◯</span>
+        参戦
+      </span>
+      <span>
+        <span class="tally-cell" data-status="not_going" style="width: 24px; height: 24px; font-size: 12px; display: inline-flex; vertical-align: middle;">✕</span>
+        不参戦
+      </span>
+      <span>
+        <span class="tally-cell" data-status="undecided" style="width: 24px; height: 24px; font-size: 12px; display: inline-flex; vertical-align: middle;">？</span>
+        未定
+      </span>
+      <span style="margin-left: auto; font-size: 12px; color: var(--text-tertiary);">
+        ※ セルをクリックで切り替え
+      </span>
+    </div>
+
+    <!-- Table -->
+    <div class="tally-table-container" id="tally-table-container">
+      ${buildTallyTable(lives, members)}
+    </div>
+  `;
+
+  // Event listeners
+  setupTallyEvents(members);
+}
+
+function buildTallyTable(lives, members) {
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+
+  // Calculate column totals
+  const colTotals = {};
+  members.forEach(m => { colTotals[m.id] = 0; });
+  let grandTotal = 0;
+
+  lives.forEach(live => {
+    members.forEach(member => {
+      if (getAttendanceStatus(live.id, member.id) === 'going') {
+        colTotals[member.id]++;
+        grandTotal++;
+      }
+    });
+  });
+
+  return `
+    <table class="tally-table">
+      <thead>
+        <tr>
+          <th>ライブ / 日程</th>
+          ${members.map(m => `
+            <th style="text-align: center;">
+              <div style="display: flex; flex-direction: column; align-items: center; gap: 2px;">
+                <div class="member-avatar" style="background: ${m.color}; width: 28px; height: 28px; font-size: 11px; line-height: 28px;">
+                  ${m.name.charAt(0)}
+                </div>
+                <span style="font-size: 11px; max-width: 60px; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(m.nickname || m.name)}</span>
+              </div>
+            </th>
+          `).join('')}
+          <th style="text-align: center;">合計</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${lives.map(live => {
+    const liveDate = new Date(live.dateStart || live.date);
+    const lastDate = live.dateEnd ? new Date(live.dateEnd) : liveDate;
+    const dateStr = formatDateRange(live);
+    const isPast = lastDate < now;
+    let rowTotal = 0;
+
+    const cells = members.map(member => {
+      const status = getAttendanceStatus(live.id, member.id);
+      if (status === 'going') rowTotal++;
+      const display = status === 'going' ? '◯' : status === 'not_going' ? '✕' : '？';
+      return `
+              <td>
+                <span class="tally-cell" data-status="${status}" data-live="${live.id}" data-member="${member.id}" role="button" tabindex="0">
+                  ${display}
+                </span>
+              </td>
+            `;
+    }).join('');
+
+    return `
+            <tr data-artist="${escapeAttr(live.artist || '')}" data-date="${live.dateStart || live.date}" style="${isPast ? 'opacity: 0.6;' : ''}">
+              <td>
+                <div style="display: flex; flex-direction: column; gap: 2px;">
+                  <span style="font-weight: 600; font-size: 13px;">${escapeHtml(live.name)}</span>
+                  <span style="font-size: 11px; color: var(--text-tertiary);">
+                    ${dateStr} · ${escapeHtml(live.artist || '')} ${isPast ? '<span class="badge badge-past" style="font-size: 10px;">終了</span>' : ''}
+                  </span>
+                </div>
+              </td>
+              ${cells}
+              <td class="row-total">${rowTotal}</td>
+            </tr>
+          `;
+  }).join('')}
+      </tbody>
+      <tfoot>
+        <tr>
+          <td class="col-total" style="font-weight: 700;">合計</td>
+          ${members.map(m => `
+            <td class="col-total">${colTotals[m.id]}</td>
+          `).join('')}
+          <td class="col-total" style="background: rgba(139, 92, 246, 0.12);">${grandTotal}</td>
+        </tr>
+      </tfoot>
+    </table>
+  `;
+}
+
+function setupTallyEvents(members) {
+  const container = document.getElementById('tally-table-container');
+
+  // Cell click - toggle status
+  container.addEventListener('click', (e) => {
+    const cell = e.target.closest('.tally-cell');
+    if (!cell) return;
+
+    const liveId = cell.dataset.live;
+    const memberId = cell.dataset.member;
+    const currentStatus = cell.dataset.status;
+
+    // Cycle: undecided → going → not_going → undecided
+    const nextStatus = {
+      'undecided': 'going',
+      'going': 'not_going',
+      'not_going': 'undecided'
+    }[currentStatus];
+
+    const display = { 'going': '◯', 'not_going': '✕', 'undecided': '？' }[nextStatus];
+
+    setAttendance(liveId, memberId, nextStatus);
+
+    cell.dataset.status = nextStatus;
+    cell.textContent = display;
+
+    // Add animation
+    cell.style.transform = 'scale(1.3)';
+    setTimeout(() => { cell.style.transform = ''; }, 150);
+
+    // Update totals
+    updateTotals(members);
+  });
+
+  // Filter events
+  const filterArtist = document.getElementById('tally-filter-artist');
+  const filterMonth = document.getElementById('tally-filter-month');
+  const filterClear = document.getElementById('tally-filter-clear');
+
+  filterArtist.addEventListener('input', () => applyFilters());
+  filterMonth.addEventListener('change', () => applyFilters());
+  filterClear.addEventListener('click', () => {
+    filterArtist.value = '';
+    filterMonth.value = '';
+    applyFilters();
+  });
+}
+
+function applyFilters() {
+  const artistQuery = document.getElementById('tally-filter-artist').value.toLowerCase();
+  const monthQuery = document.getElementById('tally-filter-month').value;
+
+  const rows = document.querySelectorAll('.tally-table tbody tr');
+  rows.forEach(row => {
+    const artist = (row.dataset.artist || '').toLowerCase();
+    const date = row.dataset.date || '';
+
+    let visible = true;
+    if (artistQuery && !artist.includes(artistQuery)) visible = false;
+    if (monthQuery && !date.startsWith(monthQuery)) visible = false;
+
+    row.style.display = visible ? '' : 'none';
+  });
+}
+
+function updateTotals(members) {
+  const lives = getLives();
+
+  // Recalculate
+  const colTotals = {};
+  members.forEach(m => { colTotals[m.id] = 0; });
+  let grandTotal = 0;
+
+  const rows = document.querySelectorAll('.tally-table tbody tr');
+  rows.forEach((row, idx) => {
+    let rowTotal = 0;
+    const cells = row.querySelectorAll('.tally-cell');
+    cells.forEach((cell, cIdx) => {
+      if (cell.dataset.status === 'going') {
+        rowTotal++;
+        if (members[cIdx]) colTotals[members[cIdx].id]++;
+        grandTotal++;
+      }
+    });
+    const rowTotalCell = row.querySelector('.row-total');
+    if (rowTotalCell) rowTotalCell.textContent = rowTotal;
+  });
+
+  const footCells = document.querySelectorAll('.tally-table tfoot .col-total');
+  members.forEach((m, idx) => {
+    if (footCells[idx + 1]) footCells[idx + 1].textContent = colTotals[m.id];
+  });
+  if (footCells[members.length + 1]) {
+    footCells[members.length + 1].textContent = grandTotal;
+  }
+}
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+function escapeAttr(text) {
+  return text.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
