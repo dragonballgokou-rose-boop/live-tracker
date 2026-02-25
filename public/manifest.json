@@ -2,7 +2,7 @@
     "name": "LIVE TRACKER",
     "short_name": "LiveTracker",
     "description": "ライブ参戦集計表 - チームでライブの参戦状況を管理・集計",
-    "start_url": "/",
+    "start_url": ".",
     "display": "standalone",
     "background_color": "#0f0f23",
     "theme_color": "#8B5CF6",
