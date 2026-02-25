@@ -153,6 +153,39 @@ export function getAttendanceStatus(liveId, memberId) {
     return record ? record.status : 'undecided';
 }
 
+// ---------- Date-based Attendance (日付ごとの参戦管理) ----------
+
+export function getDatesForLive(live) {
+    const start = new Date(live.dateStart || live.date);
+    const end = live.dateEnd ? new Date(live.dateEnd) : new Date(start);
+    start.setHours(0, 0, 0, 0);
+    end.setHours(0, 0, 0, 0);
+
+    const dates = [];
+    const cursor = new Date(start);
+    let dayNum = 1;
+    while (cursor <= end) {
+        dates.push({
+            dateStr: cursor.toISOString().split('T')[0],
+            dayNum,
+            date: new Date(cursor)
+        });
+        cursor.setDate(cursor.getDate() + 1);
+        dayNum++;
+    }
+    return dates;
+}
+
+export function setDayAttendance(liveId, dateStr, memberId, status) {
+    const dayKey = `${liveId}_${dateStr}`;
+    setAttendance(dayKey, memberId, status);
+}
+
+export function getDayAttendanceStatus(liveId, dateStr, memberId) {
+    const dayKey = `${liveId}_${dateStr}`;
+    return getAttendanceStatus(dayKey, memberId);
+}
+
 // ---------- Statistics ----------
 
 export function getStats() {

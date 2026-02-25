@@ -1,7 +1,7 @@
 // ============================================
-// Tally View (集計表)
+// Tally View (集計表) - 日程別参戦対応
 // ============================================
-import { getLives, getMembers, getAttendanceStatus, setAttendance } from '../store.js';
+import { getLives, getMembers, getDatesForLive, setDayAttendance, getDayAttendanceStatus } from '../store.js';
 import { showToast } from '../utils.js';
 import { formatDateRange } from './lives.js';
 
@@ -66,19 +66,41 @@ function buildTallyTable(lives, members) {
   const now = new Date();
   now.setHours(0, 0, 0, 0);
 
-  // Calculate column totals
+  // Build rows: each row is a (live, date) pair
+  const rows = [];
+  lives.forEach(live => {
+    const dates = getDatesForLive(live);
+    const isMultiDay = dates.length > 1;
+
+    dates.forEach(({ dateStr, dayNum, date }) => {
+      rows.push({
+        live,
+        dateStr,
+        dayNum,
+        date,
+        isMultiDay,
+        totalDays: dates.length,
+        isFirstDay: dayNum === 1,
+        isLastDay: dayNum === dates.length
+      });
+    });
+  });
+
+  // Calculate column totals (going count per member across all date-rows)
   const colTotals = {};
   members.forEach(m => { colTotals[m.id] = 0; });
   let grandTotal = 0;
 
-  lives.forEach(live => {
+  rows.forEach(row => {
     members.forEach(member => {
-      if (getAttendanceStatus(live.id, member.id) === 'going') {
+      if (getDayAttendanceStatus(row.live.id, row.dateStr, member.id) === 'going') {
         colTotals[member.id]++;
         grandTotal++;
       }
     });
   });
+
+  const weekdays = ['日', '月', '火', '水', '木', '金', '土'];
 
   return `
     <table class="tally-table">
@@ -99,35 +121,77 @@ function buildTallyTable(lives, members) {
         </tr>
       </thead>
       <tbody>
-        ${lives.map(live => {
-    const liveDate = new Date(live.dateStart || live.date);
-    const lastDate = live.dateEnd ? new Date(live.dateEnd) : liveDate;
-    const dateStr = formatDateRange(live);
-    const isPast = lastDate < now;
+        ${rows.map(row => {
+    const d = row.date;
+    const dayOfWeek = weekdays[d.getDay()];
+    const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+    const isPast = d < now;
     let rowTotal = 0;
 
     const cells = members.map(member => {
-      const status = getAttendanceStatus(live.id, member.id);
+      const status = getDayAttendanceStatus(row.live.id, row.dateStr, member.id);
       if (status === 'going') rowTotal++;
       const display = status === 'going' ? '◯' : status === 'not_going' ? '✕' : '？';
       return `
               <td>
-                <span class="tally-cell" data-status="${status}" data-live="${live.id}" data-member="${member.id}" role="button" tabindex="0">
+                <span class="tally-cell" data-status="${status}" data-live="${row.live.id}" data-date="${row.dateStr}" data-member="${member.id}" role="button" tabindex="0">
                   ${display}
                 </span>
               </td>
             `;
     }).join('');
 
-    return `
-            <tr data-artist="${escapeAttr(live.artist || '')}" data-date="${live.dateStart || live.date}" style="${isPast ? 'opacity: 0.6;' : ''}">
-              <td>
+    // Build the row label
+    let label;
+    if (row.isMultiDay) {
+      if (row.isFirstDay) {
+        // First day: show live name + day info
+        label = `
                 <div style="display: flex; flex-direction: column; gap: 2px;">
-                  <span style="font-weight: 600; font-size: 13px;">${escapeHtml(live.name)}</span>
+                  <span style="font-weight: 600; font-size: 13px;">${escapeHtml(row.live.name)}</span>
                   <span style="font-size: 11px; color: var(--text-tertiary);">
-                    ${dateStr} · ${escapeHtml(live.artist || '')} ${isPast ? '<span class="badge badge-past" style="font-size: 10px;">終了</span>' : ''}
+                    ${escapeHtml(row.live.artist || '')} · ${formatDateRange(row.live)}${row.live.venue ? ` · 📍${escapeHtml(row.live.venue)}` : ''}
+                    ${isPast ? '<span class="badge badge-past" style="font-size: 10px;">終了</span>' : ''}
                   </span>
-                </div>
+                  <span class="day-label">
+                    <span class="day-label-tag">Day${row.dayNum}</span>
+                    ${d.getMonth() + 1}/${d.getDate()}(${dayOfWeek})
+                  </span>
+                </div>`;
+      } else {
+        // Subsequent days: show only day info (indented)
+        label = `
+                <div class="day-sub-row">
+                  <span class="day-label">
+                    <span class="day-label-tag">Day${row.dayNum}</span>
+                    ${d.getMonth() + 1}/${d.getDate()}(${dayOfWeek})
+                  </span>
+                </div>`;
+      }
+    } else {
+      // Single-day live
+      const dateStr = `${d.getMonth() + 1}/${d.getDate()}(${dayOfWeek})`;
+      label = `
+                <div style="display: flex; flex-direction: column; gap: 2px;">
+                  <span style="font-weight: 600; font-size: 13px;">${escapeHtml(row.live.name)}</span>
+                  <span style="font-size: 11px; color: var(--text-tertiary);">
+                    ${dateStr} · ${escapeHtml(row.live.artist || '')}${row.live.venue ? ` · 📍${escapeHtml(row.live.venue)}` : ''}
+                    ${isPast ? '<span class="badge badge-past" style="font-size: 10px;">終了</span>' : ''}
+                  </span>
+                </div>`;
+    }
+
+    const rowClasses = [
+      isPast ? 'tally-row-past' : '',
+      row.isMultiDay && row.isFirstDay ? 'tally-row-group-start' : '',
+      row.isMultiDay && !row.isFirstDay ? 'tally-row-day-sub' : '',
+      row.isMultiDay && row.isLastDay ? 'tally-row-group-end' : ''
+    ].filter(Boolean).join(' ');
+
+    return `
+            <tr class="${rowClasses}" data-artist="${escapeAttr(row.live.artist || '')}" data-date="${row.dateStr}">
+              <td>
+                ${label}
               </td>
               ${cells}
               <td class="row-total">${rowTotal}</td>
@@ -151,12 +215,13 @@ function buildTallyTable(lives, members) {
 function setupTallyEvents(members) {
   const container = document.getElementById('tally-table-container');
 
-  // Cell click - toggle status
+  // Cell click - toggle status (now with date key)
   container.addEventListener('click', (e) => {
     const cell = e.target.closest('.tally-cell');
     if (!cell) return;
 
     const liveId = cell.dataset.live;
+    const dateStr = cell.dataset.date;
     const memberId = cell.dataset.member;
     const currentStatus = cell.dataset.status;
 
@@ -169,7 +234,7 @@ function setupTallyEvents(members) {
 
     const display = { 'going': '◯', 'not_going': '✕', 'undecided': '？' }[nextStatus];
 
-    setAttendance(liveId, memberId, nextStatus);
+    setDayAttendance(liveId, dateStr, memberId, nextStatus);
 
     cell.dataset.status = nextStatus;
     cell.textContent = display;
@@ -214,15 +279,12 @@ function applyFilters() {
 }
 
 function updateTotals(members) {
-  const lives = getLives();
-
-  // Recalculate
   const colTotals = {};
   members.forEach(m => { colTotals[m.id] = 0; });
   let grandTotal = 0;
 
   const rows = document.querySelectorAll('.tally-table tbody tr');
-  rows.forEach((row, idx) => {
+  rows.forEach(row => {
     let rowTotal = 0;
     const cells = row.querySelectorAll('.tally-cell');
     cells.forEach((cell, cIdx) => {
