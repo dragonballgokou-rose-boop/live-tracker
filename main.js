@@ -9,6 +9,10 @@ import { renderLives } from './js/views/lives.js';
 import { renderMembers } from './js/views/members.js';
 import { exportData, importData, fetchFromGAS } from './js/store.js';
 import { showToast } from './js/utils.js';
+import { showLiveDetailsModal, showMemberDetailsModal } from './js/views/details.js';
+
+window.showLiveDetailsModal = showLiveDetailsModal;
+window.showMemberDetailsModal = showMemberDetailsModal;
 
 // ---------- Page Titles ----------
 const pageTitles = {

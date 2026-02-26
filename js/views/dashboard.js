@@ -3,6 +3,7 @@
 // ============================================
 import { getLives, getMembers, getStats, getAttendanceByMember, getDayAttendanceStatus, getDatesForLive } from '../store.js';
 import { formatDateRange } from './lives.js';
+import { showLiveDetailsModal, showMemberDetailsModal } from './details.js';
 
 export function renderDashboard() {
   const stats = getStats();
@@ -179,7 +180,7 @@ function renderDateSchedule(month, lives, members, now) {
       const undecidedMembers = members.filter(m => getDayAttendanceStatus(live.id, dateStr, m.id) === 'undecided');
       return `
                     <div class="date-event">
-                        <div class="date-event-info">
+                        <div class="date-event-info" style="cursor: pointer;" onclick="window.dispatchLiveClick('${live.id}')">
                             <span class="date-event-name">${escapeHtml(live.name)}${dayLabel ? ` <span class="date-event-day-label">${dayLabel}</span>` : ''}</span>
                             <span class="date-event-meta">${escapeHtml(live.artist || '')} · ${escapeHtml(live.venue || '')}</span>
                         </div>
@@ -233,10 +234,10 @@ function getMemberRanking(members, lives) {
           <span style="width: 24px; text-align: center; font-weight: 700; color: ${idx === 0 ? 'var(--accent-amber)' : idx === 1 ? 'var(--text-secondary)' : idx === 2 ? '#CD7F32' : 'var(--text-tertiary)'}; font-size: 14px;">
             ${idx < 3 ? ['🥇', '🥈', '🥉'][idx] : (idx + 1)}
           </span>
-          <div class="member-avatar" style="background: ${member.color}; width: 32px; height: 32px; font-size: 14px;">
+          <div class="member-avatar" style="background: ${member.color}; width: 32px; height: 32px; font-size: 14px; cursor: pointer;" onclick="showMemberDetailsModal('${member.id}')">
             ${member.name.charAt(0)}
           </div>
-          <span style="flex: 1; font-weight: 500; font-size: 14px;">${member.name}</span>
+          <span style="flex: 1; font-weight: 500; font-size: 14px; cursor: pointer; text-decoration: underline; text-decoration-color: rgba(255,255,255,0.2);" onclick="showMemberDetailsModal('${member.id}')">${escapeHtml(member.name)}</span>
           <span style="font-weight: 700; color: var(--accent-purple-light); font-size: 14px;">${member.goingCount}</span>
           <span style="color: var(--text-tertiary); font-size: 12px;">参戦</span>
         </div>
@@ -269,14 +270,14 @@ function renderLiveCard(live) {
   }
 
   return `
-    <div class="card live-card">
+    <div class="card live-card" style="cursor: pointer;" onclick="showLiveDetailsModal('${live.id}')">
       <div class="live-date-badge">
         <span class="month">${months[startDate.getMonth()]}</span>
         <span class="day">${startDate.getDate()}</span>
         ${endDate ? `<span style="font-size: 9px; color: rgba(255,255,255,0.7); margin-top: 2px;">〜${endDate.getMonth() + 1}/${endDate.getDate()}</span>` : ''}
       </div>
       <div class="live-info">
-        <div class="live-name">${escapeHtml(live.name)}</div>
+        <div class="live-name" style="text-decoration: underline; text-decoration-color: rgba(255,255,255,0.2);">${escapeHtml(live.name)}</div>
         <div class="live-meta">
           <span>🎤 ${escapeHtml(live.artist || '未設定')}</span>
           <span>📍 ${escapeHtml(live.venue || '未設定')}</span>

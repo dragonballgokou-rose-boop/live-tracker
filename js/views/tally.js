@@ -109,11 +109,11 @@ function buildTallyTable(lives, members) {
           <th>ライブ / 日程</th>
           ${members.map(m => `
             <th style="text-align: center;">
-              <div style="display: flex; flex-direction: column; align-items: center; gap: 2px;">
+              <div style="display: flex; flex-direction: column; align-items: center; gap: 2px; cursor: pointer;" onclick="showMemberDetailsModal('${m.id}')" title="メンバー詳細を見る">
                 <div class="member-avatar" style="background: ${m.color}; width: 28px; height: 28px; font-size: 11px; line-height: 28px;">
                   ${m.name.charAt(0)}
                 </div>
-                <span style="font-size: 11px; max-width: 60px; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(m.nickname || m.name)}</span>
+                <span style="font-size: 11px; max-width: 60px; overflow: hidden; text-overflow: ellipsis; text-decoration: underline; text-decoration-color: rgba(255,255,255,0.2);">${escapeHtml(m.nickname || m.name)}</span>
               </div>
             </th>
           `).join('')}
@@ -147,8 +147,8 @@ function buildTallyTable(lives, members) {
       if (row.isFirstDay) {
         // First day: show live name + day info + venue
         label = `
-                <div style="display: flex; flex-direction: column; gap: 2px;">
-                  <span style="font-weight: 600; font-size: 13px;">${escapeHtml(row.live.name)}</span>
+                <div style="display: flex; flex-direction: column; gap: 2px; cursor: pointer;" onclick="showLiveDetailsModal('${row.live.id}')" title="ライブ詳細を見る">
+                  <span style="font-weight: 600; font-size: 13px; text-decoration: underline; text-decoration-color: rgba(255,255,255,0.2);">${escapeHtml(row.live.name)}</span>
                   <span style="font-size: 11px; color: var(--text-tertiary);">
                     ${escapeHtml(row.live.artist || '')} · ${formatDateRange(row.live)}
                   </span>
@@ -175,8 +175,8 @@ function buildTallyTable(lives, members) {
       // Single-day live -> Show date, artist, venue
       const dateStr = `${d.getMonth() + 1}/${d.getDate()}(${dayOfWeek})`;
       label = `
-                <div style="display: flex; flex-direction: column; gap: 2px;">
-                  <span style="font-weight: 600; font-size: 13px;">${escapeHtml(row.live.name)}</span>
+                <div style="display: flex; flex-direction: column; gap: 2px; cursor: pointer;" onclick="showLiveDetailsModal('${row.live.id}')" title="ライブ詳細を見る">
+                  <span style="font-weight: 600; font-size: 13px; text-decoration: underline; text-decoration-color: rgba(255,255,255,0.2);">${escapeHtml(row.live.name)}</span>
                   <span style="font-size: 11px; color: var(--text-tertiary);">
                     ${dateStr} · ${escapeHtml(row.live.artist || '')}
                   </span>
