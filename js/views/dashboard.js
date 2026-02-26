@@ -129,7 +129,10 @@ function renderDateSchedule(month, lives, members, now) {
     const totalDays = Math.round((end - start) / (1000 * 60 * 60 * 24)) + 1;
     while (cursor <= end) {
       if (cursor.getFullYear() === year && cursor.getMonth() === mon) {
-        const key = cursor.toISOString().split('T')[0];
+        const y = cursor.getFullYear();
+        const m = String(cursor.getMonth() + 1).padStart(2, '0');
+        const d = String(cursor.getDate()).padStart(2, '0');
+        const key = `${y}-${m}-${d}`;
         if (!dateMap[key]) dateMap[key] = [];
         dateMap[key].push({
           live,

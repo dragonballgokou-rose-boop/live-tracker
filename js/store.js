@@ -248,8 +248,11 @@ export function getDatesForLive(live) {
     const cursor = new Date(start);
     let dayNum = 1;
     while (cursor <= end) {
+        const y = cursor.getFullYear();
+        const m = String(cursor.getMonth() + 1).padStart(2, '0');
+        const d = String(cursor.getDate()).padStart(2, '0');
         dates.push({
-            dateStr: cursor.toISOString().split('T')[0],
+            dateStr: `${y}-${m}-${d}`,
             dayNum,
             date: new Date(cursor)
         });

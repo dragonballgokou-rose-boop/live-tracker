@@ -571,6 +571,7 @@ textarea {
 .tally-table-container {
   overflow-x: auto;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   max-height: calc(100vh - 220px);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
@@ -581,7 +582,8 @@ textarea {
 .tally-table {
   width: max-content;
   min-width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
   font-size: var(--font-size-sm);
 }
 
@@ -591,7 +593,9 @@ textarea {
   font-size: var(--font-size-xs);
   color: var(--text-secondary);
   background: rgba(255, 255, 255, 0.03);
-  border: 1px solid var(--border-color);
+  border-top: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
+  border-right: 1px solid var(--border-color);
   white-space: nowrap;
   position: sticky;
   top: 0;
@@ -603,12 +607,14 @@ textarea {
   left: 0;
   z-index: 20;
   background: rgba(15, 15, 35, 0.98);
+  border-left: 1px solid var(--border-color);
   min-width: 200px;
 }
 
 .tally-table td {
   padding: var(--space-sm) var(--space-md);
-  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  border-right: 1px solid rgba(255, 255, 255, 0.04);
   text-align: center;
   vertical-align: middle;
 }
@@ -618,6 +624,7 @@ textarea {
   position: sticky;
   left: 0;
   background: rgba(15, 15, 35, 0.98);
+  border-left: 1px solid rgba(255, 255, 255, 0.04);
   z-index: 5;
   min-width: 200px;
 }

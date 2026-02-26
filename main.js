@@ -133,7 +133,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `live-tracker-backup-${new Date().toISOString().split('T')[0]}.json`;
+        const now = new Date();
+        const y = now.getFullYear();
+        const m = String(now.getMonth() + 1).padStart(2, '0');
+        const d = String(now.getDate()).padStart(2, '0');
+        a.download = `live-tracker-backup-${y}-${m}-${d}.json`;
         a.click();
         URL.revokeObjectURL(url);
         showToast('データをエクスポートしました', 'success');
