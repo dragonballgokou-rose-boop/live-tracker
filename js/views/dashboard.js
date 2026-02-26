@@ -177,7 +177,6 @@ function renderDateSchedule(month, lives, members, now) {
             <div class="date-row-events">
                 ${entries.map(({ live, dayLabel }) => {
       const goingMembers = members.filter(m => getDayAttendanceStatus(live.id, dateStr, m.id) === 'going');
-      const undecidedMembers = members.filter(m => getDayAttendanceStatus(live.id, dateStr, m.id) === 'undecided');
       return `
                     <div class="date-event">
                         <div class="date-event-info" style="cursor: pointer;" onclick="window.dispatchLiveClick('${live.id}')">
@@ -195,17 +194,7 @@ function renderDateSchedule(month, lives, members, now) {
                                     `).join('')}
                                 </div>
                             ` : ''}
-                            ${undecidedMembers.length > 0 ? `
-                                <div class="date-member-group undecided">
-                                    ${undecidedMembers.map(m => `
-                                        <span class="date-member-chip undecided" title="${escapeHtml(m.name)} (未定)">
-                                           <span class="date-member-dot" style="background: ${m.color}; opacity: 0.4;"></span>
-                                            ${escapeHtml(m.nickname || m.name)}?
-                                        </span>
-                                    `).join('')}
-                                </div>
-                            ` : ''}
-                            ${goingMembers.length === 0 && undecidedMembers.length === 0 ? `
+                            ${goingMembers.length === 0 ? `
                                 <span style="font-size: 11px; color: var(--text-tertiary);">参加者なし</span>
                             ` : ''}
                         </div>
@@ -222,8 +211,15 @@ function renderDateSchedule(month, lives, members, now) {
 
 function getMemberRanking(members, lives) {
   const ranked = members.map(member => {
-    const attendance = getAttendanceByMember(member.id);
-    const goingCount = attendance.filter(a => a.status === 'going').length;
+    let goingCount = 0;
+    lives.forEach(live => {
+      const dates = getDatesForLive(live);
+      dates.forEach(d => {
+        if (getDayAttendanceStatus(live.id, d.dateStr, member.id) === 'going') {
+          goingCount++;
+        }
+      });
+    });
     return { ...member, goingCount };
   }).sort((a, b) => b.goingCount - a.goingCount);
 

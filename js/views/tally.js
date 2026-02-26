@@ -93,7 +93,8 @@ function buildTallyTable(lives, members) {
 
   rows.forEach(row => {
     members.forEach(member => {
-      if (getDayAttendanceStatus(row.live.id, row.dateStr, member.id) === 'going') {
+      const status = getDayAttendanceStatus(row.live.id, row.dateStr, member.id);
+      if (status === 'going') {
         colTotals[member.id]++;
         grandTotal++;
       }

@@ -572,11 +572,12 @@ textarea {
   overflow-x: auto;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  max-height: calc(100vh - 220px);
+  overscroll-behavior: none;
+  max-height: calc(100vh - 280px);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
-  background: var(--bg-card);
-  backdrop-filter: blur(12px);
+  background: var(--bg-main);
+  position: relative;
 }
 
 .tally-table {
@@ -592,7 +593,7 @@ textarea {
   font-weight: 600;
   font-size: var(--font-size-xs);
   color: var(--text-secondary);
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--bg-main);
   border-top: 1px solid var(--border-color);
   border-bottom: 1px solid var(--border-color);
   border-right: 1px solid var(--border-color);
@@ -600,13 +601,15 @@ textarea {
   position: sticky;
   top: 0;
   z-index: 10;
+  outline: 1px solid var(--border-color);
+  outline-offset: -1px;
 }
 
 .tally-table th:first-child {
   position: sticky;
   left: 0;
   z-index: 20;
-  background: rgba(15, 15, 35, 0.98);
+  background: var(--bg-main);
   border-left: 1px solid var(--border-color);
   min-width: 200px;
 }
@@ -623,7 +626,7 @@ textarea {
   text-align: left;
   position: sticky;
   left: 0;
-  background: rgba(15, 15, 35, 0.98);
+  background: var(--bg-main);
   border-left: 1px solid rgba(255, 255, 255, 0.04);
   z-index: 5;
   min-width: 200px;
@@ -679,7 +682,11 @@ textarea {
 }
 
 /* Tally Day-based Row Expansion */
-.tally-row-past {
+.tally-row-past td {
+  color: var(--text-tertiary);
+}
+
+.tally-row-past td .tally-cell {
   opacity: 0.6;
 }
 

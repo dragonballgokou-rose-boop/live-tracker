@@ -233,7 +233,7 @@ export function setAttendance(liveId, memberId, status) {
 export function getAttendanceStatus(liveId, memberId) {
     const attendance = getAll(STORAGE_KEYS.ATTENDANCE);
     const record = attendance.find(a => a.liveId === liveId && a.memberId === memberId);
-    return record ? record.status : 'undecided';
+    return record ? record.status : null;
 }
 
 // ---------- Date-based Attendance (日付ごとの参戦管理) ----------
@@ -269,7 +269,11 @@ export function setDayAttendance(liveId, dateStr, memberId, status) {
 
 export function getDayAttendanceStatus(liveId, dateStr, memberId) {
     const dayKey = `${liveId}_${dateStr}`;
-    return getAttendanceStatus(dayKey, memberId);
+    let status = getAttendanceStatus(dayKey, memberId);
+    if (status === null) {
+        status = getAttendanceStatus(liveId, memberId);
+    }
+    return status || 'undecided';
 }
 
 // ---------- Statistics ----------
@@ -283,7 +287,22 @@ export function getStats() {
 
     const upcomingLives = lives.filter(l => new Date(l.dateEnd || l.dateStart || l.date) >= now);
     const pastLives = lives.filter(l => new Date(l.dateEnd || l.dateStart || l.date) < now);
-    const goingCount = attendance.filter(a => a.status === 'going').length;
+
+    // 全メンバー×全ライブ×全日程 での「〇（going）」の数を正確にカウント
+    let goingCount = 0;
+    let totalPossibleSchedules = 0;
+
+    lives.forEach(live => {
+        const dates = getDatesForLive(live);
+        totalPossibleSchedules += dates.length;
+        dates.forEach(d => {
+            members.forEach(m => {
+                if (getDayAttendanceStatus(live.id, d.dateStr, m.id) === 'going') {
+                    goingCount++;
+                }
+            });
+        });
+    });
 
     return {
         totalLives: lives.length,
@@ -291,8 +310,8 @@ export function getStats() {
         pastLives: pastLives.length,
         totalMembers: members.length,
         totalGoing: goingCount,
-        attendanceRate: lives.length > 0 && members.length > 0
-            ? Math.round((goingCount / (lives.length * members.length)) * 100)
+        attendanceRate: totalPossibleSchedules > 0 && members.length > 0
+            ? Math.round((goingCount / (totalPossibleSchedules * members.length)) * 100)
             : 0
     };
 }

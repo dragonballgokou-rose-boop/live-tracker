@@ -30,9 +30,20 @@ export function renderMembers() {
     ${members.length > 0 ? `
       <div class="members-grid">
         ${members.map(member => {
-    const attendance = getAttendanceByMember(member.id);
-    const goingCount = attendance.filter(a => a.status === 'going').length;
-    const rate = lives.length > 0 ? Math.round((goingCount / lives.length) * 100) : 0;
+    let goingCount = 0;
+    let totalPossibleSchedules = 0;
+
+    lives.forEach(live => {
+      const dates = getDatesForLive(live);
+      totalPossibleSchedules += dates.length;
+      dates.forEach(d => {
+        if (getDayAttendanceStatus(live.id, d.dateStr, member.id) === 'going') {
+          goingCount++;
+        }
+      });
+    });
+
+    const rate = totalPossibleSchedules > 0 ? Math.round((goingCount / totalPossibleSchedules) * 100) : 0;
 
     return `
           <div class="card member-card" style="cursor: pointer;" onclick="showMemberDetailsModal('${member.id}')" title="メンバー詳細を見る">
@@ -43,7 +54,7 @@ export function renderMembers() {
               <div class="member-name" style="text-decoration: underline; text-decoration-color: rgba(255,255,255,0.2);">${escapeHtml(member.name)}</div>
               ${member.nickname ? `<div class="member-nickname">@${escapeHtml(member.nickname)}</div>` : ''}
               <div class="member-stats">
-                🎫 参戦: ${goingCount}/${lives.length} (${rate}%)
+                🎫 参戦: ${goingCount}/${totalPossibleSchedules} (${rate}%)
               </div>
             </div>
             <div class="live-actions">

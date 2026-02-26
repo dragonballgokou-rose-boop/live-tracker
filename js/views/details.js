@@ -39,7 +39,6 @@ export function showLiveDetailsModal(liveId) {
         dates.forEach(dateObj => {
             const dateStr = dateObj.dateStr;
             const goingMembers = members.filter(m => getDayAttendanceStatus(liveId, dateStr, m.id) === 'going');
-            const undecidedMembers = members.filter(m => getDayAttendanceStatus(liveId, dateStr, m.id) === 'undecided');
 
             let dayLabel = dates.length > 1 ? `Day${dateObj.dayNum} (${dateObj.date.getMonth() + 1}/${dateObj.date.getDate()})` : '全日程';
 
@@ -48,7 +47,7 @@ export function showLiveDetailsModal(liveId) {
                     <div style="font-weight: 600; margin-bottom: 12px; font-size: 14px; color: var(--accent-purple-light);">${dayLabel}</div>
             `;
 
-            if (goingMembers.length === 0 && undecidedMembers.length === 0) {
+            if (goingMembers.length === 0) {
                 html += `<div style="font-size: 13px; color: var(--text-tertiary);">参戦予定者はいません</div>`;
             } else {
                 html += `<div style="display: flex; flex-wrap: wrap; gap: 8px;">`;
@@ -57,14 +56,6 @@ export function showLiveDetailsModal(liveId) {
                         <span class="badge" style="background: rgba(139, 92, 246, 0.1); color: var(--text-primary); border: 1px solid var(--border-color); display: flex; align-items: center; gap: 6px; padding: 4px 10px;">
                            <span style="width: 8px; height: 8px; border-radius: 50%; background: ${m.color}; display: inline-block;"></span>
                            ${escapeHtml(m.nickname || m.name)}
-                        </span>
-                    `;
-                });
-                undecidedMembers.forEach(m => {
-                    html += `
-                        <span class="badge" style="background: rgba(255,255,255,0.05); color: var(--text-secondary); border: 1px solid var(--border-color); display: flex; align-items: center; gap: 6px; padding: 4px 10px;">
-                           <span style="width: 8px; height: 8px; border-radius: 50%; background: ${m.color}; display: inline-block; opacity: 0.5;"></span>
-                           ${escapeHtml(m.nickname || m.name)} <span style="font-size: 10px; opacity: 0.7;">(未定)</span>
                         </span>
                     `;
                 });
@@ -92,19 +83,15 @@ export function showMemberDetailsModal(memberId) {
         const lId = parts[0];
         const dStr = parts[1]; // undefinedの場合もある
 
-        if (!liveStatusMap[lId]) liveStatusMap[lId] = { goingDates: [], undecidedDates: [] };
+        if (!liveStatusMap[lId]) liveStatusMap[lId] = { goingDates: [] };
 
         if (a.status === 'going') {
             if (dStr) liveStatusMap[lId].goingDates.push(dStr);
             else liveStatusMap[lId].goingDates.push('全日程');
-        } else if (a.status === 'undecided') {
-            if (dStr) liveStatusMap[lId].undecidedDates.push(dStr);
-            else liveStatusMap[lId].undecidedDates.push('未定日程');
         }
     });
 
     const goingLives = lives.filter(l => liveStatusMap[l.id] && liveStatusMap[l.id].goingDates.length > 0);
-    const undecidedLives = lives.filter(l => liveStatusMap[l.id] && liveStatusMap[l.id].undecidedDates.length > 0);
 
     const rate = lives.length > 0 ? Math.round((goingLives.length / lives.length) * 100) : 0;
 
@@ -148,8 +135,8 @@ export function showMemberDetailsModal(memberId) {
             <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 24px;">
         `;
         list.forEach(l => {
-            const datesArr = statusClass === 'going' ? liveStatusMap[l.id].goingDates : liveStatusMap[l.id].undecidedDates;
-            const datesDisplay = datesArr.every(d => d === '全日程' || d === '未定日程') ? '' : `<br><span style="font-size: 12px; color: var(--text-tertiary);">参戦日: ${datesArr.join(', ')}</span>`;
+            const datesArr = liveStatusMap[l.id].goingDates;
+            const datesDisplay = datesArr.every(d => d === '全日程') ? '' : `<br><span style="font-size: 12px; color: var(--text-tertiary);">参戦日: ${datesArr.join(', ')}</span>`;
 
             section += `
                 <div style="padding: 12px; background: rgba(0,0,0,0.2); border: 1px solid var(--border-color); border-radius: 8px;">
@@ -166,9 +153,8 @@ export function showMemberDetailsModal(memberId) {
     };
 
     html += renderLiveList('🎤 参戦予定ライブ', goingLives, 'going');
-    html += renderLiveList('❓ 未定のライブ', undecidedLives, 'undecided');
 
-    if (goingLives.length === 0 && undecidedLives.length === 0) {
+    if (goingLives.length === 0) {
         html += `<p style="color: var(--text-tertiary); text-align: center; padding: 20px 0;">予定されているライブはありません</p>`;
     }
 
