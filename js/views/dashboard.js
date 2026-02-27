@@ -20,23 +20,23 @@ export function renderDashboard() {
   content.innerHTML = `
     <!-- Stats -->
     <div class="stats-grid">
-      <div class="card stat-card" style="--stat-color: var(--accent-purple)">
+      <a href="#/lives" class="card stat-card" style="--stat-color: var(--accent-purple)">
         <div class="stat-label">🎵 総ライブ数</div>
         <div class="stat-value">${stats.totalLives}</div>
         <div class="stat-meta">予定: ${stats.upcomingLives} / 終了: ${stats.pastLives}</div>
-      </div>
-      <div class="card stat-card" style="--stat-color: var(--accent-cyan)">
+      </a>
+      <a href="#/members" class="card stat-card" style="--stat-color: var(--accent-cyan)">
         <div class="stat-label">👥 メンバー数</div>
         <div class="stat-value">${stats.totalMembers}</div>
-      </div>
-      <div class="card stat-card" style="--stat-color: var(--accent-green)">
+      </a>
+      <a href="#/tally" class="card stat-card" style="--stat-color: var(--accent-green)">
         <div class="stat-label">🎫 総参戦数</div>
         <div class="stat-value">${stats.totalGoing}</div>
-      </div>
-      <div class="card stat-card" style="--stat-color: var(--accent-amber)">
+      </a>
+      <a href="#/tally" class="card stat-card" style="--stat-color: var(--accent-amber)">
         <div class="stat-label">📊 参戦率</div>
         <div class="stat-value">${stats.attendanceRate}%</div>
-      </div>
+      </a>
     </div>
 
     <!-- Date-based Calendar -->
