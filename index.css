@@ -890,7 +890,14 @@ textarea {
 }
 
 .filter-bar .form-input {
-  max-width: 200px;
+  width: auto;
+  flex: 1 1 140px;
+  max-width: 220px;
+  min-width: 0;
+}
+
+.filter-bar .btn {
+  flex-shrink: 0;
 }
 
 /* ---------- Empty State ---------- */
@@ -1141,6 +1148,7 @@ textarea {
   border-radius: var(--radius-full);
   font-size: var(--font-size-xs);
   font-weight: 600;
+  white-space: nowrap;
 }
 
 .badge-upcoming {

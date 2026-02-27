@@ -28,7 +28,7 @@ export function renderTally() {
   content.innerHTML = `
     <!-- Filter -->
     <div class="filter-bar">
-      <input type="text" id="tally-filter-artist" class="form-input" placeholder="🔍 アーティストで絞り込み" />
+      <input type="text" id="tally-filter-live" class="form-input" placeholder="🔍 ライブで絞り込み" />
       <input type="month" id="tally-filter-month" class="form-input" placeholder="月で絞り込み" />
       <button id="tally-filter-clear" class="btn btn-secondary btn-sm">クリア</button>
     </div>
@@ -196,7 +196,7 @@ function buildTallyTable(lives, members) {
     ].filter(Boolean).join(' ');
 
     return `
-            <tr class="${rowClasses}" data-artist="${escapeAttr(row.live.artist || '')}" data-date="${row.dateStr}">
+            <tr class="${rowClasses}" data-live-name="${escapeAttr(row.live.name || '')}" data-date="${row.dateStr}">
               <td>
                 ${label}
               </td>
@@ -255,30 +255,30 @@ function setupTallyEvents(members) {
   });
 
   // Filter events
-  const filterArtist = document.getElementById('tally-filter-artist');
+  const filterLive = document.getElementById('tally-filter-live');
   const filterMonth = document.getElementById('tally-filter-month');
   const filterClear = document.getElementById('tally-filter-clear');
 
-  filterArtist.addEventListener('input', () => applyFilters());
+  filterLive.addEventListener('input', () => applyFilters());
   filterMonth.addEventListener('change', () => applyFilters());
   filterClear.addEventListener('click', () => {
-    filterArtist.value = '';
+    filterLive.value = '';
     filterMonth.value = '';
     applyFilters();
   });
 }
 
 function applyFilters() {
-  const artistQuery = document.getElementById('tally-filter-artist').value.toLowerCase();
+  const liveQuery = document.getElementById('tally-filter-live').value.toLowerCase();
   const monthQuery = document.getElementById('tally-filter-month').value;
 
   const rows = document.querySelectorAll('.tally-table tbody tr');
   rows.forEach(row => {
-    const artist = (row.dataset.artist || '').toLowerCase();
+    const liveName = (row.dataset.liveName || '').toLowerCase();
     const date = row.dataset.date || '';
 
     let visible = true;
-    if (artistQuery && !artist.includes(artistQuery)) visible = false;
+    if (liveQuery && !liveName.includes(liveQuery)) visible = false;
     if (monthQuery && !date.startsWith(monthQuery)) visible = false;
 
     row.style.display = visible ? '' : 'none';
