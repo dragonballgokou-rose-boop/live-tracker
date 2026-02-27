@@ -1,7 +1,7 @@
 // ============================================
 // Members Management View
 // ============================================
-import { getMembers, addMember, updateMember, deleteMember, getAttendanceByMember, getLives } from '../store.js';
+import { getMembers, addMember, updateMember, deleteMember, getAttendanceByMember, getLives, getDatesForLive, getDayAttendanceStatus } from '../store.js';
 import { showModal, closeModal, showToast, showConfirm } from '../utils.js';
 
 const MEMBER_COLORS = [
