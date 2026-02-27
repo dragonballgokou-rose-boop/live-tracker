@@ -1,96 +1,134 @@
-import React, { useState, useCallback } from 'react';
+/**
+ * TallyScreen - 集計表
+ *
+ * デザイン方針:
+ * - 縦スクロールなし: 画面全体を flex で分割し、常に全体が見える
+ * - ライブ選択: 上部の横スクロールタブ（コンパクト）
+ * - 日程選択: ライブ選択の下に横並びボタン（複数日の場合）
+ * - メンバー一覧: 残りの領域を FlatList で埋める
+ * - 各セルは大きめのタップ領域で操作しやすく
+ */
+
+import React, { useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
-  ScrollView,
   TouchableOpacity,
   StyleSheet,
-  RefreshControl,
+  FlatList,
+  ActivityIndicator,
+  Dimensions,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors, formatDateRange } from '../utils/theme';
-import { getLives, getMembers, getDatesForLive, setDayAttendance, getDayAttendanceStatus } from '../store';
-import { Live, Member, AttendanceStatus } from '../types';
+import {
+  getLives,
+  getMembers,
+  getDatesForLive,
+  setDayAttendance,
+  getDayAttendanceStatus,
+} from '../store';
+import { Live, Member, AttendanceStatus, DateEntry } from '../types';
+import { Ionicons } from '@expo/vector-icons';
 
-const STATUS_ICONS: Record<AttendanceStatus, string> = {
+const STATUS_CYCLE: AttendanceStatus[] = ['undecided', 'going', 'notgoing'];
+const STATUS_ICON: Record<AttendanceStatus, string> = {
   going: '○',
   notgoing: '×',
   undecided: '△',
 };
-
-const STATUS_COLORS: Record<AttendanceStatus, string> = {
+const STATUS_COLOR: Record<AttendanceStatus, string> = {
   going: Colors.going,
   notgoing: Colors.notgoing,
   undecided: Colors.undecided,
 };
+const STATUS_BG: Record<AttendanceStatus, string> = {
+  going: Colors.going + '22',
+  notgoing: Colors.notgoing + '18',
+  undecided: 'transparent',
+};
 
-const STATUS_CYCLE: AttendanceStatus[] = ['undecided', 'going', 'notgoing'];
+const SCREEN_WIDTH = Dimensions.get('window').width;
 
 export default function TallyScreen() {
   const [lives, setLives] = useState<Live[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
-  const [attendanceMap, setAttendanceMap] = useState<Record<string, AttendanceStatus>>({});
   const [selectedLiveId, setSelectedLiveId] = useState<string | null>(null);
-  const [refreshing, setRefreshing] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [dates, setDates] = useState<DateEntry[]>([]);
+  const [attendanceMap, setAttendanceMap] = useState<Record<string, AttendanceStatus>>({});
+  const [loading, setLoading] = useState(true);
 
   const loadData = useCallback(async () => {
     const [ls, ms] = await Promise.all([getLives(), getMembers()]);
     setLives(ls);
     setMembers(ms);
     if (ls.length > 0) {
-      const firstId = selectedLiveId && ls.find((l) => l.id === selectedLiveId) ? selectedLiveId : ls[0].id;
-      setSelectedLiveId(firstId);
-      await loadAttendance(firstId, ls, ms);
+      const liveId = selectedLiveId && ls.find((l) => l.id === selectedLiveId)
+        ? selectedLiveId
+        : ls[0].id;
+      await selectLive(liveId, ls, ms);
     }
-  }, [selectedLiveId]);
+    setLoading(false);
+  }, []);
 
-  const loadAttendance = async (liveId: string, ls: Live[], ms: Member[]) => {
+  useFocusEffect(useCallback(() => { loadData(); }, []));
+
+  const selectLive = async (liveId: string, ls: Live[], ms: Member[]) => {
     const live = ls.find((l) => l.id === liveId);
     if (!live) return;
-    const dates = getDatesForLive(live);
+    const ds = getDatesForLive(live);
+    setSelectedLiveId(liveId);
+    setDates(ds);
+    const firstDate = ds[0]?.dateStr ?? null;
+    setSelectedDate(firstDate);
+    if (firstDate) await loadAttendance(liveId, firstDate, ms);
+  };
+
+  const loadAttendance = async (liveId: string, dateStr: string, ms: Member[]) => {
     const map: Record<string, AttendanceStatus> = {};
-    for (const d of dates) {
-      for (const m of ms) {
-        const key = `${liveId}_${d.dateStr}_${m.id}`;
-        map[key] = await getDayAttendanceStatus(liveId, d.dateStr, m.id);
-      }
+    for (const m of ms) {
+      map[m.id] = await getDayAttendanceStatus(liveId, dateStr, m.id);
     }
     setAttendanceMap(map);
   };
 
-  useFocusEffect(
-    useCallback(() => {
-      loadData();
-    }, [])
-  );
-
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await loadData();
-    setRefreshing(false);
-  };
-
   const handleSelectLive = async (liveId: string) => {
-    setSelectedLiveId(liveId);
-    await loadAttendance(liveId, lives, members);
+    await selectLive(liveId, lives, members);
   };
 
-  const handleToggle = async (liveId: string, dateStr: string, memberId: string) => {
-    const key = `${liveId}_${dateStr}_${memberId}`;
-    const current = attendanceMap[key] || 'undecided';
+  const handleSelectDate = async (dateStr: string) => {
+    setSelectedDate(dateStr);
+    if (selectedLiveId) await loadAttendance(selectedLiveId, dateStr, members);
+  };
+
+  const handleToggle = async (memberId: string) => {
+    if (!selectedLiveId || !selectedDate) return;
+    const current = attendanceMap[memberId] || 'undecided';
     const idx = STATUS_CYCLE.indexOf(current);
     const next = STATUS_CYCLE[(idx + 1) % STATUS_CYCLE.length];
-    setAttendanceMap((prev) => ({ ...prev, [key]: next }));
-    await setDayAttendance(liveId, dateStr, memberId, next);
+    setAttendanceMap((prev) => ({ ...prev, [memberId]: next }));
+    await setDayAttendance(selectedLiveId, selectedDate, memberId, next);
   };
 
-  const selectedLive = lives.find((l) => l.id === selectedLiveId);
-  const dates = selectedLive ? getDatesForLive(selectedLive) : [];
+  // Summary counts
+  const goingCount = Object.values(attendanceMap).filter((s) => s === 'going').length;
+  const notgoingCount = Object.values(attendanceMap).filter((s) => s === 'notgoing').length;
+  const undecidedCount = members.length - goingCount - notgoingCount;
+
+  if (loading) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator size="large" color={Colors.accentPurple} />
+      </View>
+    );
+  }
 
   if (lives.length === 0 || members.length === 0) {
     return (
       <View style={styles.center}>
-        <Text style={styles.emptyIcon}>📊</Text>
+        <Text style={styles.emptyIcon}>{lives.length === 0 ? '🎵' : '👥'}</Text>
         <Text style={styles.emptyText}>
           {lives.length === 0 ? 'まずライブを追加してください' : 'まずメンバーを追加してください'}
         </Text>
@@ -99,124 +137,223 @@ export default function TallyScreen() {
   }
 
   return (
-    <View style={styles.container}>
-      {/* Live Selector */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.livePicker}
-        contentContainerStyle={styles.livePickerContent}
-      >
-        {lives.map((live) => (
-          <TouchableOpacity
-            key={live.id}
-            style={[styles.liveTab, selectedLiveId === live.id && styles.liveTabActive]}
-            onPress={() => handleSelectLive(live.id)}
-          >
-            <Text
-              style={[styles.liveTabText, selectedLiveId === live.id && styles.liveTabTextActive]}
-              numberOfLines={1}
-            >
-              {live.name}
-            </Text>
-            <Text style={styles.liveTabDate}>{formatDateRange(live)}</Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+    <SafeAreaView style={styles.safeArea} edges={['bottom']}>
+      {/* ── ライブ選択タブ ── */}
+      <View style={styles.livePickerWrapper}>
+        <FlatList
+          data={lives}
+          keyExtractor={(item) => item.id}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.livePickerContent}
+          renderItem={({ item }) => {
+            const active = selectedLiveId === item.id;
+            return (
+              <TouchableOpacity
+                style={[styles.liveTab, active && styles.liveTabActive]}
+                onPress={() => handleSelectLive(item.id)}
+              >
+                <Text style={[styles.liveTabName, active && styles.liveTabNameActive]} numberOfLines={1}>
+                  {item.name}
+                </Text>
+                <Text style={[styles.liveTabDate, active && styles.liveTabDateActive]}>
+                  {formatDateRange(item)}
+                </Text>
+              </TouchableOpacity>
+            );
+          }}
+        />
+      </View>
 
-      {/* Tally Table */}
-      <ScrollView
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.accentPurple} />}
-      >
-        <ScrollView horizontal showsHorizontalScrollIndicator={true}>
-          <View style={styles.table}>
-            {/* Header Row */}
-            <View style={styles.tableRow}>
-              <View style={[styles.tableCell, styles.headerCell, styles.memberHeaderCell]}>
-                <Text style={styles.headerText}>メンバー</Text>
-              </View>
-              {dates.map((d) => (
-                <View key={d.dateStr} style={[styles.tableCell, styles.headerCell, styles.dateCell]}>
-                  <Text style={styles.headerText}>Day{d.dayNum}</Text>
-                  <Text style={styles.dateCellSub}>{d.dateStr.slice(5)}</Text>
-                </View>
-              ))}
-            </View>
-
-            {/* Member Rows */}
-            {members.map((member) => (
-              <View key={member.id} style={styles.tableRow}>
-                <View style={[styles.tableCell, styles.memberCell]}>
-                  <View style={[styles.memberDot, { backgroundColor: member.color }]} />
-                  <Text style={styles.memberName} numberOfLines={1}>
-                    {member.nickname || member.name}
+      {/* ── 日程選択（複数日のみ） ── */}
+      {dates.length > 1 && (
+        <View style={styles.dateSelectorWrapper}>
+          <FlatList
+            data={dates}
+            keyExtractor={(item) => item.dateStr}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.dateSelectorContent}
+            renderItem={({ item }) => {
+              const active = selectedDate === item.dateStr;
+              return (
+                <TouchableOpacity
+                  style={[styles.dateBtn, active && styles.dateBtnActive]}
+                  onPress={() => handleSelectDate(item.dateStr)}
+                >
+                  <Text style={[styles.dateBtnDay, active && styles.dateBtnTextActive]}>
+                    Day {item.dayNum}
                   </Text>
-                </View>
-                {dates.map((d) => {
-                  const key = `${selectedLiveId}_${d.dateStr}_${member.id}`;
-                  const status = attendanceMap[key] || 'undecided';
-                  return (
-                    <TouchableOpacity
-                      key={d.dateStr}
-                      style={[styles.tableCell, styles.statusCell]}
-                      onPress={() => handleToggle(selectedLiveId!, d.dateStr, member.id)}
-                    >
-                      <Text style={[styles.statusIcon, { color: STATUS_COLORS[status] }]}>
-                        {STATUS_ICONS[status]}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            ))}
-          </View>
-        </ScrollView>
-
-        {/* Legend */}
-        <View style={styles.legend}>
-          {(Object.entries(STATUS_ICONS) as [AttendanceStatus, string][]).map(([s, icon]) => (
-            <View key={s} style={styles.legendItem}>
-              <Text style={[styles.legendIcon, { color: STATUS_COLORS[s] }]}>{icon}</Text>
-              <Text style={styles.legendLabel}>
-                {s === 'going' ? '参戦' : s === 'notgoing' ? '不参戦' : '未定'}
-              </Text>
-            </View>
-          ))}
-          <Text style={styles.legendHint}>タップで切り替え</Text>
+                  <Text style={[styles.dateBtnDate, active && styles.dateBtnTextActive]}>
+                    {item.dateStr.slice(5)}
+                  </Text>
+                </TouchableOpacity>
+              );
+            }}
+          />
         </View>
-      </ScrollView>
+      )}
+
+      {/* ── サマリーバー ── */}
+      <View style={styles.summaryBar}>
+        <SummaryItem color={Colors.going} icon="checkmark-circle" label="参戦" count={goingCount} />
+        <View style={styles.summaryDivider} />
+        <SummaryItem color={Colors.notgoing} icon="close-circle" label="不参戦" count={notgoingCount} />
+        <View style={styles.summaryDivider} />
+        <SummaryItem color={Colors.undecided} icon="help-circle" label="未定" count={undecidedCount} />
+        <View style={styles.summaryDivider} />
+        <Text style={styles.summaryHint}>タップで切替</Text>
+      </View>
+
+      {/* ── メンバーリスト（残り全領域） ── */}
+      <FlatList
+        data={members}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={styles.memberListContent}
+        renderItem={({ item }) => {
+          const status = attendanceMap[item.id] || 'undecided';
+          return (
+            <TouchableOpacity
+              style={[styles.memberRow, { backgroundColor: STATUS_BG[status] }]}
+              onPress={() => handleToggle(item.id)}
+              activeOpacity={0.65}
+            >
+              {/* Avatar */}
+              <View style={[styles.avatar, { backgroundColor: item.color }]}>
+                <Text style={styles.avatarText}>{item.name.charAt(0)}</Text>
+              </View>
+              {/* Name */}
+              <View style={styles.memberNameWrapper}>
+                <Text style={styles.memberName} numberOfLines={1}>
+                  {item.name}
+                </Text>
+                {item.nickname ? (
+                  <Text style={styles.memberNickname} numberOfLines={1}>
+                    {item.nickname}
+                  </Text>
+                ) : null}
+              </View>
+              {/* Status Button */}
+              <View style={[styles.statusBtn, { borderColor: STATUS_COLOR[status] }]}>
+                <Text style={[styles.statusIcon, { color: STATUS_COLOR[status] }]}>
+                  {STATUS_ICON[status]}
+                </Text>
+                <Text style={[styles.statusLabel, { color: STATUS_COLOR[status] }]}>
+                  {status === 'going' ? '参戦' : status === 'notgoing' ? '不参戦' : '未定'}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          );
+        }}
+        ItemSeparatorComponent={() => <View style={styles.separator} />}
+      />
+    </SafeAreaView>
+  );
+}
+
+function SummaryItem({ color, icon, label, count }: { color: string; icon: any; label: string; count: number }) {
+  return (
+    <View style={styles.summaryItem}>
+      <Ionicons name={icon} size={16} color={color} />
+      <Text style={[styles.summaryCount, { color }]}>{count}</Text>
+      <Text style={styles.summaryLabel}>{label}</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.bgPrimary },
+  safeArea: { flex: 1, backgroundColor: Colors.bgPrimary },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.bgPrimary, gap: 12 },
   emptyIcon: { fontSize: 48 },
-  emptyText: { color: Colors.textSecondary, fontSize: 15 },
-  livePicker: { maxHeight: 80, backgroundColor: Colors.bgSecondary, borderBottomWidth: 1, borderBottomColor: Colors.borderColor },
-  livePickerContent: { padding: 10, gap: 8 },
-  liveTab: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, backgroundColor: Colors.bgCard, borderWidth: 1, borderColor: Colors.borderColor, minWidth: 120 },
-  liveTabActive: { backgroundColor: Colors.accentPurple + '33', borderColor: Colors.accentPurple },
-  liveTabText: { fontSize: 13, fontWeight: '600', color: Colors.textSecondary },
-  liveTabTextActive: { color: Colors.accentPurpleLight },
-  liveTabDate: { fontSize: 10, color: Colors.textTertiary, marginTop: 2 },
-  table: { margin: 12 },
-  tableRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: Colors.borderColor },
-  tableCell: { justifyContent: 'center', alignItems: 'center', padding: 8, borderRightWidth: 1, borderRightColor: Colors.borderColor },
-  headerCell: { backgroundColor: Colors.bgSecondary },
-  memberHeaderCell: { width: 100, alignItems: 'flex-start' },
-  dateCell: { width: 56 },
-  dateCellSub: { fontSize: 10, color: Colors.textTertiary },
-  headerText: { fontSize: 12, fontWeight: '600', color: Colors.textSecondary },
-  memberCell: { width: 100, flexDirection: 'row', alignItems: 'center', gap: 6, justifyContent: 'flex-start', backgroundColor: Colors.bgCard },
-  memberDot: { width: 10, height: 10, borderRadius: 5 },
-  memberName: { fontSize: 12, color: Colors.textPrimary, flex: 1 },
-  statusCell: { width: 56, backgroundColor: Colors.bgCard },
-  statusIcon: { fontSize: 18, fontWeight: '700' },
-  legend: { flexDirection: 'row', alignItems: 'center', padding: 12, gap: 16, flexWrap: 'wrap' },
-  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  legendIcon: { fontSize: 16, fontWeight: '700' },
-  legendLabel: { fontSize: 12, color: Colors.textSecondary },
-  legendHint: { fontSize: 11, color: Colors.textTertiary, marginLeft: 'auto' },
+  emptyText: { color: Colors.textSecondary, fontSize: 15, textAlign: 'center', paddingHorizontal: 32 },
+
+  // ライブ選択
+  livePickerWrapper: {
+    backgroundColor: Colors.bgSecondary,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.borderColor,
+  },
+  livePickerContent: { paddingHorizontal: 12, paddingVertical: 8, gap: 8 },
+  liveTab: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 8,
+    backgroundColor: Colors.bgCard,
+    borderWidth: 1,
+    borderColor: Colors.borderColor,
+    maxWidth: SCREEN_WIDTH * 0.55,
+  },
+  liveTabActive: { backgroundColor: Colors.accentPurple + '30', borderColor: Colors.accentPurple },
+  liveTabName: { fontSize: 13, fontWeight: '600', color: Colors.textSecondary },
+  liveTabNameActive: { color: Colors.accentPurpleLight },
+  liveTabDate: { fontSize: 10, color: Colors.textTertiary, marginTop: 1 },
+  liveTabDateActive: { color: Colors.accentPurple },
+
+  // 日程選択
+  dateSelectorWrapper: {
+    backgroundColor: Colors.bgSecondary,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.borderColor,
+  },
+  dateSelectorContent: { paddingHorizontal: 12, paddingVertical: 6, gap: 6 },
+  dateBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 6,
+    backgroundColor: Colors.bgCard,
+    borderWidth: 1,
+    borderColor: Colors.borderColor,
+    alignItems: 'center',
+    minWidth: 60,
+  },
+  dateBtnActive: { backgroundColor: Colors.accentPurple + '30', borderColor: Colors.accentPurple },
+  dateBtnDay: { fontSize: 12, fontWeight: '700', color: Colors.textSecondary },
+  dateBtnDate: { fontSize: 10, color: Colors.textTertiary },
+  dateBtnTextActive: { color: Colors.accentPurpleLight },
+
+  // サマリーバー
+  summaryBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: Colors.bgCard,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.borderColor,
+    gap: 10,
+  },
+  summaryItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  summaryCount: { fontSize: 16, fontWeight: '800' },
+  summaryLabel: { fontSize: 12, color: Colors.textSecondary },
+  summaryDivider: { width: 1, height: 16, backgroundColor: Colors.borderColor },
+  summaryHint: { marginLeft: 'auto', fontSize: 11, color: Colors.textTertiary },
+
+  // メンバーリスト
+  memberListContent: { paddingVertical: 4 },
+  memberRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 12,
+  },
+  avatar: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
+  avatarText: { color: '#fff', fontWeight: '700', fontSize: 16 },
+  memberNameWrapper: { flex: 1 },
+  memberName: { fontSize: 15, fontWeight: '600', color: Colors.textPrimary },
+  memberNickname: { fontSize: 12, color: Colors.textSecondary, marginTop: 1 },
+  statusBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    minWidth: 90,
+    justifyContent: 'center',
+  },
+  statusIcon: { fontSize: 17, fontWeight: '800' },
+  statusLabel: { fontSize: 13, fontWeight: '700' },
+  separator: { height: 1, backgroundColor: Colors.borderColor, marginLeft: 68 },
 });

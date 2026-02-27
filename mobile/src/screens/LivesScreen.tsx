@@ -11,12 +11,16 @@ import {
   RefreshControl,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { Colors, formatDateRange, MEMBER_COLORS } from '../utils/theme';
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { Colors, formatDateRange } from '../utils/theme';
 import { getLives, addLive, updateLive, deleteLive } from '../store';
 import { Live } from '../types';
 import { Ionicons } from '@expo/vector-icons';
+import { LivesStackParamList } from '../../App';
 
-export default function LivesScreen() {
+type Props = NativeStackScreenProps<LivesStackParamList, 'LivesList'>;
+
+export default function LivesScreen({ navigation }: Props) {
   const [lives, setLives] = useState<Live[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
@@ -133,7 +137,12 @@ export default function LivesScreen() {
             else if (end < now) { badgeText = '終了'; badgeColor = Colors.textTertiary; }
 
             return (
-              <View key={live.id} style={styles.card}>
+              <TouchableOpacity
+                key={live.id}
+                style={styles.card}
+                onPress={() => navigation.navigate('LiveDetail', { liveId: live.id })}
+                activeOpacity={0.75}
+              >
                 <View style={styles.cardDateBadge}>
                   <Text style={styles.cardMonth}>
                     {['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][start.getMonth()]}
@@ -142,22 +151,30 @@ export default function LivesScreen() {
                 </View>
                 <View style={styles.cardInfo}>
                   <Text style={styles.cardName} numberOfLines={1}>{live.name}</Text>
-                  <Text style={styles.cardMeta}>🎤 {live.artist || '未設定'}</Text>
-                  <Text style={styles.cardMeta}>📍 {live.venue || '未設定'}</Text>
+                  <Text style={styles.cardMeta} numberOfLines={1}>🎤 {live.artist || '未設定'} · 📍 {live.venue || '未設定'}</Text>
                   <Text style={styles.cardMeta}>📅 {formatDateRange(live)}</Text>
                   <View style={[styles.badge, { backgroundColor: badgeColor + '33', borderColor: badgeColor }]}>
                     <Text style={[styles.badgeText, { color: badgeColor }]}>{badgeText}</Text>
                   </View>
                 </View>
                 <View style={styles.cardActions}>
-                  <TouchableOpacity onPress={() => openEdit(live)} style={styles.iconBtn}>
-                    <Ionicons name="pencil" size={18} color={Colors.accentPurpleLight} />
+                  <TouchableOpacity
+                    onPress={(e) => { e.stopPropagation(); openEdit(live); }}
+                    style={styles.iconBtn}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <Ionicons name="pencil" size={17} color={Colors.accentPurpleLight} />
                   </TouchableOpacity>
-                  <TouchableOpacity onPress={() => handleDelete(live)} style={styles.iconBtn}>
-                    <Ionicons name="trash" size={18} color={Colors.accentRed} />
+                  <TouchableOpacity
+                    onPress={(e) => { e.stopPropagation(); handleDelete(live); }}
+                    style={styles.iconBtn}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <Ionicons name="trash" size={17} color={Colors.accentRed} />
                   </TouchableOpacity>
+                  <Ionicons name="chevron-forward" size={16} color={Colors.textTertiary} />
                 </View>
-              </View>
+              </TouchableOpacity>
             );
           })
         )}
@@ -173,13 +190,13 @@ export default function LivesScreen() {
                 <Ionicons name="close" size={24} color={Colors.textSecondary} />
               </TouchableOpacity>
             </View>
-            <ScrollView>
-              <FormField label="ライブ名 *" value={form.name} onChangeText={(v) => setForm({ ...form, name: v })} placeholder="例: 乃木坂46 真夏の全国ツアー" />
-              <FormField label="アーティスト" value={form.artist} onChangeText={(v) => setForm({ ...form, artist: v })} placeholder="例: 乃木坂46" />
-              <FormField label="会場" value={form.venue} onChangeText={(v) => setForm({ ...form, venue: v })} placeholder="例: 東京ドーム" />
-              <FormField label="開始日 * (YYYY-MM-DD)" value={form.dateStart} onChangeText={(v) => setForm({ ...form, dateStart: v })} placeholder="2026-08-01" keyboardType="numbers-and-punctuation" />
-              <FormField label="終了日 (YYYY-MM-DD)" value={form.dateEnd} onChangeText={(v) => setForm({ ...form, dateEnd: v })} placeholder="2026-08-03 (複数日の場合)" keyboardType="numbers-and-punctuation" />
-              <FormField label="メモ" value={form.memo} onChangeText={(v) => setForm({ ...form, memo: v })} placeholder="メモを入力" multiline />
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <FormField label="ライブ名 *" value={form.name} onChangeText={(v: string) => setForm({ ...form, name: v })} placeholder="例: 乃木坂46 真夏の全国ツアー" />
+              <FormField label="アーティスト" value={form.artist} onChangeText={(v: string) => setForm({ ...form, artist: v })} placeholder="例: 乃木坂46" />
+              <FormField label="会場" value={form.venue} onChangeText={(v: string) => setForm({ ...form, venue: v })} placeholder="例: 東京ドーム" />
+              <FormField label="開始日 * (YYYY-MM-DD)" value={form.dateStart} onChangeText={(v: string) => setForm({ ...form, dateStart: v })} placeholder="2026-08-01" keyboardType="numbers-and-punctuation" />
+              <FormField label="終了日 (YYYY-MM-DD)" value={form.dateEnd} onChangeText={(v: string) => setForm({ ...form, dateEnd: v })} placeholder="2026-08-03 (複数日の場合)" keyboardType="numbers-and-punctuation" />
+              <FormField label="メモ" value={form.memo} onChangeText={(v: string) => setForm({ ...form, memo: v })} placeholder="メモを入力" multiline />
             </ScrollView>
             <TouchableOpacity style={styles.saveBtn} onPress={handleSave}>
               <Text style={styles.saveBtnText}>{editTarget ? '更新' : '追加'}</Text>
@@ -197,7 +214,7 @@ function FormField({ label, value, onChangeText, placeholder, multiline, keyboar
   onChangeText: (v: string) => void;
   placeholder?: string;
   multiline?: boolean;
-  keyboardType?: any;
+  keyboardType?: string;
 }) {
   return (
     <View style={styles.formField}>
@@ -209,7 +226,7 @@ function FormField({ label, value, onChangeText, placeholder, multiline, keyboar
         placeholder={placeholder}
         placeholderTextColor={Colors.textTertiary}
         multiline={multiline}
-        keyboardType={keyboardType}
+        keyboardType={keyboardType as any}
       />
     </View>
   );
@@ -225,15 +242,25 @@ const styles = StyleSheet.create({
   emptyState: { alignItems: 'center', paddingVertical: 48, gap: 12 },
   emptyIcon: { fontSize: 48 },
   emptyText: { color: Colors.textSecondary, fontSize: 15 },
-  card: { flexDirection: 'row', backgroundColor: Colors.bgCard, borderRadius: 12, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: Colors.borderColor, gap: 12 },
+  card: {
+    flexDirection: 'row',
+    backgroundColor: Colors.bgCard,
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: Colors.borderColor,
+    gap: 12,
+    alignItems: 'center',
+  },
   cardDateBadge: { width: 48, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.accentPurple + '22', borderRadius: 8, padding: 6 },
   cardMonth: { fontSize: 10, color: Colors.accentPurpleLight, fontWeight: '600' },
   cardDay: { fontSize: 22, fontWeight: '700', color: Colors.textPrimary },
   cardInfo: { flex: 1, gap: 3 },
   cardName: { fontSize: 14, fontWeight: '600', color: Colors.textPrimary, marginBottom: 2 },
   cardMeta: { fontSize: 12, color: Colors.textSecondary },
-  cardActions: { justifyContent: 'center', gap: 8 },
-  iconBtn: { padding: 6 },
+  cardActions: { alignItems: 'center', gap: 8 },
+  iconBtn: { padding: 4 },
   badge: { alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10, borderWidth: 1, marginTop: 4 },
   badgeText: { fontSize: 11, fontWeight: '600' },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' },
