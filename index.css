@@ -988,24 +988,38 @@ textarea {
 /* ---------- Member Card ---------- */
 .members-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: var(--space-md);
 }
 
 .member-card {
   display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  border-left: 3px solid var(--member-color, var(--accent-purple));
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.member-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.25);
+}
+
+.member-card-top {
+  display: flex;
   align-items: center;
-  gap: var(--space-md);
+  gap: var(--space-sm);
 }
 
 .member-avatar {
-  width: 48px;
-  height: 48px;
+  width: 44px;
+  height: 44px;
   border-radius: var(--radius-full);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: var(--font-size-lg);
+  font-size: var(--font-size-md);
   font-weight: 800;
   color: white;
   flex-shrink: 0;
@@ -1019,11 +1033,60 @@ textarea {
 .member-name {
   font-size: var(--font-size-md);
   font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .member-nickname {
   font-size: var(--font-size-xs);
   color: var(--text-tertiary);
+  margin-top: 1px;
+}
+
+.member-rate-badge {
+  font-size: var(--font-size-lg);
+  font-weight: 800;
+  flex-shrink: 0;
+  letter-spacing: -0.5px;
+}
+
+.member-card-bottom {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.member-progress-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.member-progress-track {
+  height: 5px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 99px;
+  overflow: hidden;
+}
+
+.member-progress-fill {
+  height: 100%;
+  border-radius: 99px;
+  transition: width 0.4s ease;
+}
+
+.member-stat-label {
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+.member-card-actions {
+  display: flex;
+  gap: var(--space-xs);
+  flex-shrink: 0;
 }
 
 .member-stats {

@@ -46,24 +46,32 @@ export function renderMembers() {
     const rate = totalPossibleSchedules > 0 ? Math.round((goingCount / totalPossibleSchedules) * 100) : 0;
 
     return `
-          <div class="card member-card" style="cursor: pointer;" onclick="showMemberDetailsModal('${member.id}')" title="メンバー詳細を見る">
-            <div class="member-avatar" style="background: ${member.color}">
-              ${member.name.charAt(0)}
-            </div>
-            <div class="member-info">
-              <div class="member-name" style="text-decoration: underline; text-decoration-color: rgba(255,255,255,0.2);">${escapeHtml(member.name)}</div>
-              ${member.nickname ? `<div class="member-nickname">@${escapeHtml(member.nickname)}</div>` : ''}
-              <div class="member-stats">
-                🎫 参戦: ${goingCount}/${totalPossibleSchedules} (${rate}%)
+          <div class="card member-card" style="cursor: pointer; --member-color: ${member.color};" onclick="showMemberDetailsModal('${member.id}')" title="メンバー詳細を見る">
+            <div class="member-card-top">
+              <div class="member-avatar" style="background: ${member.color}">
+                ${member.name.charAt(0)}
               </div>
+              <div class="member-info">
+                <div class="member-name">${escapeHtml(member.name)}</div>
+                ${member.nickname ? `<div class="member-nickname">@${escapeHtml(member.nickname)}</div>` : ''}
+              </div>
+              <div class="member-rate-badge" style="color: ${member.color};">${rate}%</div>
             </div>
-            <div class="live-actions">
-              <button class="btn btn-icon btn-secondary edit-member-btn" data-id="${member.id}" title="編集">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
-              </button>
-              <button class="btn btn-icon btn-danger delete-member-btn" data-id="${member.id}" title="削除">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-              </button>
+            <div class="member-card-bottom">
+              <div class="member-progress-wrap">
+                <div class="member-progress-track">
+                  <div class="member-progress-fill" style="width: ${rate}%; background: ${member.color};"></div>
+                </div>
+                <span class="member-stat-label">${goingCount} / ${totalPossibleSchedules} 回</span>
+              </div>
+              <div class="member-card-actions">
+                <button class="btn btn-icon btn-secondary edit-member-btn" data-id="${member.id}" title="編集" onclick="event.stopPropagation()">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                </button>
+                <button class="btn btn-icon btn-danger delete-member-btn" data-id="${member.id}" title="削除" onclick="event.stopPropagation()">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                </button>
+              </div>
             </div>
           </div>
           `;
