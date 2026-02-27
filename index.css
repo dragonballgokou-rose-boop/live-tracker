@@ -576,7 +576,7 @@ textarea {
   max-height: calc(100vh - 280px);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
-  background: var(--bg-main);
+  background: var(--bg-secondary);
   position: relative;
 }
 
@@ -593,7 +593,7 @@ textarea {
   font-weight: 600;
   font-size: var(--font-size-xs);
   color: var(--text-secondary);
-  background: var(--bg-main);
+  background: var(--bg-secondary);
   border-top: 1px solid var(--border-color);
   border-bottom: 1px solid var(--border-color);
   border-right: 1px solid var(--border-color);
@@ -609,7 +609,7 @@ textarea {
   position: sticky;
   left: 0;
   z-index: 20;
-  background: var(--bg-main);
+  background: var(--bg-secondary);
   border-left: 1px solid var(--border-color);
   min-width: 200px;
 }
@@ -626,7 +626,7 @@ textarea {
   text-align: left;
   position: sticky;
   left: 0;
-  background: var(--bg-main);
+  background: var(--bg-secondary);
   border-left: 1px solid rgba(255, 255, 255, 0.04);
   z-index: 5;
   min-width: 200px;
