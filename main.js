@@ -30,6 +30,13 @@ function updateNav(path) {
     const activeItem = document.querySelector(`.nav-item[href="#${path}"]`);
     if (activeItem) activeItem.classList.add('active');
 
+    // Update bottom nav active state
+    document.querySelectorAll('.bottom-nav-item').forEach(item => {
+        item.classList.remove('active');
+    });
+    const activeBottomItem = document.querySelector(`.bottom-nav-item[href="#${path}"]`);
+    if (activeBottomItem) activeBottomItem.classList.add('active');
+
     document.getElementById('page-title').textContent = pageTitles[path] || 'LIVE TRACKER';
 
     // Close sidebar on mobile
