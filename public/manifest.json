@@ -1,17 +1,18 @@
 {
-    "name": "LIVE TRACKER",
-    "short_name": "LiveTracker",
-    "description": "ライブ参戦集計表 - チームでライブの参戦状況を管理・集計",
+    "name": "乃木坂46 LIVE TRACKER",
+    "short_name": "N46 LIVE",
+    "description": "乃木坂46 ライブ参戦集計表 - チームでライブの参戦状況を管理・集計",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0f0f23",
-    "theme_color": "#8B5CF6",
+    "background_color": "#170027",
+    "theme_color": "#6A1B9A",
     "orientation": "any",
     "icons": [
         {
-            "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='80' font-size='80'>🎸</text></svg>",
+            "src": "icon.svg",
             "sizes": "any",
-            "type": "image/svg+xml"
+            "type": "image/svg+xml",
+            "purpose": "any maskable"
         }
     ]
 }

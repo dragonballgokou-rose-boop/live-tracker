@@ -1,0 +1,100 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <!-- 深紫グラデーション背景 (乃木坂46カラー) -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#170027"/>
+      <stop offset="100%" stop-color="#6A1B9A"/>
+    </linearGradient>
+    <!-- 花弁グラデーション -->
+    <radialGradient id="petalGrad" cx="50%" cy="20%" r="70%">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#DDA0F0"/>
+    </radialGradient>
+    <!-- 中央サークルグラデーション -->
+    <radialGradient id="circleGrad" cx="40%" cy="35%" r="60%">
+      <stop offset="0%" stop-color="#4A0080"/>
+      <stop offset="100%" stop-color="#170027"/>
+    </radialGradient>
+    <!-- 花弁の影 -->
+    <filter id="petalShadow" x="-15%" y="-15%" width="130%" height="130%">
+      <feDropShadow dx="0" dy="4" stdDeviation="9" flood-color="#000" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+
+  <!-- 背景 (角丸正方形) -->
+  <rect width="512" height="512" rx="110" fill="url(#bgGrad)"/>
+
+  <!-- 内側ボーダーグロー -->
+  <rect width="504" height="504" x="4" y="4" rx="107" fill="none"
+        stroke="#9C27B0" stroke-width="2" opacity="0.45"/>
+
+  <!--
+    4弁クローバー (乃木坂46風モチーフ)
+    制御点を外側に大きく取り、丸みのある花弁に
+    上の花弁の先端: (256, 58), 右: (454, 256), 下: (256, 454), 左: (58, 256)
+  -->
+
+  <!-- 上の花弁 (太く丸い) -->
+  <path d="M 256,256
+           C 164,248 160,152 256,58
+           C 352,152 348,248 256,256 Z"
+        fill="url(#petalGrad)" filter="url(#petalShadow)"/>
+
+  <!-- 右の花弁 (上を反時計回り90°回転) -->
+  <path d="M 256,256
+           C 264,164 360,160 454,256
+           C 360,352 264,348 256,256 Z"
+        fill="url(#petalGrad)" filter="url(#petalShadow)"/>
+
+  <!-- 下の花弁 (上を180°回転) -->
+  <path d="M 256,256
+           C 348,264 352,360 256,454
+           C 160,360 164,264 256,256 Z"
+        fill="url(#petalGrad)" filter="url(#petalShadow)"/>
+
+  <!-- 左の花弁 (上を時計回り90°回転) -->
+  <path d="M 256,256
+           C 248,348 152,352 58,256
+           C 152,160 248,164 256,256 Z"
+        fill="url(#petalGrad)" filter="url(#petalShadow)"/>
+
+  <!-- 中央ダークサークル -->
+  <circle cx="256" cy="256" r="56" fill="url(#circleGrad)"/>
+  <circle cx="256" cy="256" r="52" fill="none" stroke="#CE93D8" stroke-width="2.5"/>
+
+  <!-- 中央テキスト "N46" -->
+  <text x="256" y="256"
+        font-family="'Arial Black', 'Impact', sans-serif"
+        font-size="32"
+        font-weight="900"
+        fill="white"
+        text-anchor="middle"
+        dominant-baseline="central">N46</text>
+
+  <!-- 花弁先端の小ダイヤアクセント -->
+  <polygon points="256,42 264,57 256,72 248,57" fill="#CE93D8" opacity="0.85"/>
+  <polygon points="470,256 455,264 440,256 455,248" fill="#CE93D8" opacity="0.85"/>
+  <polygon points="256,470 264,455 256,440 248,455" fill="#CE93D8" opacity="0.85"/>
+  <polygon points="42,256 57,264 72,256 57,248" fill="#CE93D8" opacity="0.85"/>
+
+  <!-- "LIVE" バッジ (上部) -->
+  <rect x="200" y="22" width="112" height="27" rx="13.5" fill="#7B1FA2" opacity="0.9"/>
+  <text x="256" y="35"
+        font-family="Arial, sans-serif"
+        font-size="13"
+        font-weight="700"
+        fill="#E1BEE7"
+        text-anchor="middle"
+        dominant-baseline="middle"
+        letter-spacing="4">LIVE</text>
+
+  <!-- "乃木坂46" テキスト (下部) -->
+  <text x="256" y="480"
+        font-family="'Noto Sans JP', 'Hiragino Kaku Gothic Pro', 'Yu Gothic', Arial, sans-serif"
+        font-size="25"
+        font-weight="700"
+        fill="white"
+        text-anchor="middle"
+        opacity="0.9"
+        letter-spacing="1">乃木坂46</text>
+</svg>
