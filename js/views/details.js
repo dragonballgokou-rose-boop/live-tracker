@@ -1,4 +1,4 @@
-import { getLiveById, getMemberById, getMembers, getLives, getDatesForLive, getDayAttendanceStatus, getAttendanceByMember } from '../store.js';
+import { getLiveById, getMemberById, getMembers, getLives, getDatesForLive, getDayAttendanceStatus } from '../store.js';
 import { showModal } from '../utils.js';
 import { formatDateRange } from './lives.js';
 
@@ -73,25 +73,21 @@ export function showMemberDetailsModal(memberId) {
     const member = getMemberById(memberId);
     if (!member) return;
     const lives = getLives();
-    const attendance = getAttendanceByMember(memberId);
 
-    // 集計用に、liveIdごとにそのメンバーが参加する日付(dateStr)とステータスをまとめる
+    // 集計表と同じ getDatesForLive + getDayAttendanceStatus で正確に判定する
     const liveStatusMap = {};
-    attendance.forEach(a => {
-        // dayKeyの形式は 'liveId_YYYY-MM-DD' または旧形式 'liveId'
-        const parts = a.liveId.split('_');
-        const lId = parts[0];
-        const dStr = parts[1]; // undefinedの場合もある
-
-        if (!liveStatusMap[lId]) liveStatusMap[lId] = { goingDates: [] };
-
-        if (a.status === 'going') {
-            if (dStr) liveStatusMap[lId].goingDates.push(dStr);
-            else liveStatusMap[lId].goingDates.push('全日程');
-        }
+    lives.forEach(live => {
+        const dates = getDatesForLive(live);
+        const goingDates = [];
+        dates.forEach(d => {
+            if (getDayAttendanceStatus(live.id, d.dateStr, memberId) === 'going') {
+                goingDates.push(d.dateStr);
+            }
+        });
+        liveStatusMap[live.id] = { goingDates };
     });
 
-    const goingLives = lives.filter(l => liveStatusMap[l.id] && liveStatusMap[l.id].goingDates.length > 0);
+    const goingLives = lives.filter(l => liveStatusMap[l.id].goingDates.length > 0);
 
     const rate = lives.length > 0 ? Math.round((goingLives.length / lives.length) * 100) : 0;
 
