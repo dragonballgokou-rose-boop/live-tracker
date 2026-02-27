@@ -27,29 +27,27 @@ export function renderTally() {
 
   content.innerHTML = `
     <!-- Filter -->
-    <div class="filter-bar">
-      <input type="text" id="tally-filter-live" class="form-input" placeholder="🔍 ライブで絞り込み" />
-      <input type="month" id="tally-filter-month" class="form-input" placeholder="月で絞り込み" />
+    <div class="tally-filter-bar">
+      <input type="text" id="tally-filter-live" class="form-input" placeholder="🔍 ライブ名" />
+      <input type="month" id="tally-filter-month" class="form-input" />
       <button id="tally-filter-clear" class="btn btn-secondary btn-sm">クリア</button>
     </div>
 
     <!-- Legend -->
-    <div style="display: flex; gap: 20px; margin-bottom: 16px; font-size: 13px; color: var(--text-secondary);">
-      <span>
-        <span class="tally-cell" data-status="going" style="width: 24px; height: 24px; font-size: 12px; display: inline-flex; vertical-align: middle;">◯</span>
+    <div class="tally-legend">
+      <span class="tally-legend-item">
+        <span class="tally-cell tally-cell-sm" data-status="going">◯</span>
         参戦
       </span>
-      <span>
-        <span class="tally-cell" data-status="not_going" style="width: 24px; height: 24px; font-size: 12px; display: inline-flex; vertical-align: middle;">✕</span>
+      <span class="tally-legend-item">
+        <span class="tally-cell tally-cell-sm" data-status="not_going">✕</span>
         不参戦
       </span>
-      <span>
-        <span class="tally-cell" data-status="undecided" style="width: 24px; height: 24px; font-size: 12px; display: inline-flex; vertical-align: middle;">？</span>
+      <span class="tally-legend-item">
+        <span class="tally-cell tally-cell-sm" data-status="undecided">？</span>
         未定
       </span>
-      <span style="margin-left: auto; font-size: 12px; color: var(--text-tertiary);">
-        ※ セルをクリックで切り替え
-      </span>
+      <span class="tally-legend-hint">※ セルをタップで切り替え</span>
     </div>
 
     <!-- Table -->
