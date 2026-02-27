@@ -572,12 +572,41 @@ textarea {
   overflow-x: auto;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  overscroll-behavior: none;
+  overscroll-behavior: contain;
   max-height: calc(100vh - 280px);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
   background: var(--bg-secondary);
   position: relative;
+}
+
+/* ---------- Tally Legend ---------- */
+.tally-legend {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.tally-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tally-cell-sm {
+  width: 24px !important;
+  height: 24px !important;
+  font-size: 12px !important;
+}
+
+.tally-legend-hint {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--text-tertiary);
 }
 
 .tally-table {
@@ -898,6 +927,28 @@ textarea {
 
 .filter-bar .btn {
   flex-shrink: 0;
+}
+
+/* Tally-specific filter bar: always stays compact */
+.tally-filter-bar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.tally-filter-bar .form-input {
+  flex: 1 1 120px;
+  max-width: 200px;
+  min-width: 0;
+  padding: var(--space-sm) var(--space-md);
+  font-size: var(--font-size-sm);
+}
+
+.tally-filter-bar .btn {
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 /* ---------- Empty State ---------- */
@@ -1451,6 +1502,7 @@ textarea {
   /* Tally: touch-action fix + compact */
   .tally-table-container {
     touch-action: pan-x pan-y;
+    max-height: calc(100vh - 240px);
   }
 
   .tally-table th,
@@ -1459,19 +1511,34 @@ textarea {
     padding: var(--space-xs) 8px;
   }
 
+  /* First column: only allow vertical pan — prevents horizontal drag on live name area */
   .tally-table th:first-child,
   .tally-table td:first-child {
-    min-width: 95px;
-    max-width: 115px;
+    min-width: 130px;
+    max-width: 160px;
     white-space: normal;
     word-break: break-word;
-    line-height: 1.3;
+    line-height: 1.4;
+    touch-action: pan-y;
   }
 
   .tally-cell {
     width: 28px;
     height: 28px;
     font-size: 12px;
+  }
+
+  /* Legend compact on mobile */
+  .tally-legend {
+    gap: 10px;
+    font-size: 12px;
+    margin-bottom: 8px;
+  }
+
+  .tally-legend-hint {
+    margin-left: 0;
+    width: 100%;
+    font-size: 11px;
   }
 
   .section-header {
