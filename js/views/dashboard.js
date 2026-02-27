@@ -179,7 +179,7 @@ function renderDateSchedule(month, lives, members, now) {
       const goingMembers = members.filter(m => getDayAttendanceStatus(live.id, dateStr, m.id) === 'going');
       return `
                     <div class="date-event">
-                        <div class="date-event-info" style="cursor: pointer;" onclick="window.dispatchLiveClick('${live.id}')">
+                        <div class="date-event-info" style="cursor: pointer;" onclick="window.showLiveDetailsModal('${live.id}')">
                             <span class="date-event-name">${escapeHtml(live.name)}${dayLabel ? ` <span class="date-event-day-label">${dayLabel}</span>` : ''}</span>
                             <span class="date-event-meta">${escapeHtml(live.artist || '')} · ${escapeHtml(live.venue || '')}</span>
                         </div>
