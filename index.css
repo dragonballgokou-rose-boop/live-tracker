@@ -1707,8 +1707,8 @@ a.stat-card:active {
 /* ---------- Responsive ---------- */
 @media (max-width: 768px) {
   .main-header {
-    padding: 0 var(--space-md);
-    height: 56px;
+    padding: env(safe-area-inset-top, 0px) var(--space-md) 0;
+    height: calc(56px + env(safe-area-inset-top, 0px));
   }
 
   .header-logo-text {
