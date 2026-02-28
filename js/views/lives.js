@@ -36,7 +36,7 @@ export function renderLives() {
     const metaParts = [];
     if (live.artist) metaParts.push(escapeHtml(live.artist));
     if (live.venue) {
-      const pref = extractPrefecture(live.venue);
+      const pref = live.prefecture || extractPrefecture(live.venue);
       metaParts.push(pref ? `${escapeHtml(live.venue)}（${pref}）` : escapeHtml(live.venue));
     }
     metaParts.push(formatDateRange(live));
@@ -128,9 +128,15 @@ function openLiveModal(live = null) {
           <input type="date" id="live-date-end" class="form-input" value="${isEdit ? (live.dateEnd || '') : ''}" />
         </div>
       </div>
-      <div class="form-group">
-        <label class="form-label" for="live-venue">会場</label>
-        <input type="text" id="live-venue" class="form-input" placeholder="例: 幕張メッセ" value="${isEdit ? escapeAttr(live.venue || '') : ''}" />
+      <div class="form-row">
+        <div class="form-group" style="flex: 2;">
+          <label class="form-label" for="live-venue">会場</label>
+          <input type="text" id="live-venue" class="form-input" placeholder="例: 幕張メッセ" value="${isEdit ? escapeAttr(live.venue || '') : ''}" />
+        </div>
+        <div class="form-group" style="flex: 1;">
+          <label class="form-label" for="live-pref">都道府県 <span style="color: var(--text-tertiary); font-size: 11px;">（自動検出）</span></label>
+          <input type="text" id="live-pref" class="form-input" placeholder="例: 神奈川" value="${isEdit ? escapeAttr(live.prefecture || '') : ''}" />
+        </div>
       </div>
       <div class="form-group">
         <label class="form-label" for="live-memo">メモ</label>
@@ -154,6 +160,7 @@ function openLiveModal(live = null) {
       dateStart: dateStart,
       dateEnd: dateEnd || '',
       venue: document.getElementById('live-venue').value.trim(),
+      prefecture: document.getElementById('live-pref').value.trim(),
       memo: document.getElementById('live-memo').value.trim()
     };
 

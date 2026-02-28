@@ -1,7 +1,9 @@
+const isCapacitor = process.env.BUILD_TARGET === 'capacitor';
+
 export default {
   root: '.',
   publicDir: 'public',
-  base: '/live-tracker/',
+  base: isCapacitor ? '/' : '/live-tracker/',
   server: {
     port: 5173,
     host: true
