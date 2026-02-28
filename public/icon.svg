@@ -60,27 +60,6 @@
     filter="url(#triShadow)"
   />
 
-  <!-- "46" 三角内・右上付近 (白) -->
-  <text
-    x="358" y="215"
-    font-family="'Arial Black', 'Helvetica Neue', Arial, sans-serif"
-    font-size="72"
-    font-weight="900"
-    fill="white"
-    text-anchor="end"
-    opacity="0.97">46</text>
-
-  <!-- "乃木坂" 三角の下 -->
-  <text
-    x="256" y="425"
-    font-family="'Noto Sans JP', 'Hiragino Kaku Gothic Pro', 'Yu Gothic', 'MS Gothic', sans-serif"
-    font-size="42"
-    font-weight="700"
-    fill="#6A1B9A"
-    text-anchor="middle"
-    letter-spacing="3"
-    opacity="0.95">乃木坂</text>
-
   <!-- "LIVE" 小バッジ (右上コーナー) -->
   <rect x="330" y="58" width="72" height="22" rx="11" fill="#7B1FA2" opacity="0.85"/>
   <text x="366" y="69"

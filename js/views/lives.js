@@ -33,31 +33,38 @@ export function renderLives() {
     const isPast = lastDate < now;
     const isToday = startDate.getTime() <= now.getTime() && lastDate.getTime() >= now.getTime();
 
+    const metaParts = [];
+    if (live.artist) metaParts.push(escapeHtml(live.artist));
+    if (live.venue) metaParts.push(escapeHtml(live.venue));
+    metaParts.push(formatDateRange(live));
+    const statusBadge = isToday
+      ? '<span class="badge badge-today">開催中！</span>'
+      : isPast
+        ? '<span class="badge badge-past">終了</span>'
+        : '<span class="badge badge-upcoming">予定</span>';
+
     return `
-          <div class="card live-card">
-            <div class="live-card-main" onclick="showLiveDetailsModal('${live.id}')" style="${isPast ? 'opacity: 0.65;' : ''}">
+          <div class="card live-card${isPast ? ' live-card-past' : ''}">
+            <div class="live-card-main" onclick="showLiveDetailsModal('${live.id}')">
               <div class="live-date-badge">
                 <span class="month">${months[startDate.getMonth()]}</span>
                 <span class="day">${startDate.getDate()}</span>
-                ${endDate ? `<span style="font-size: 9px; color: rgba(255,255,255,0.7); margin-top: 2px;">〜${endDate.getMonth() + 1}/${endDate.getDate()}</span>` : ''}
+                ${endDate ? `<span class="live-date-end">〜${endDate.getDate()}</span>` : ''}
               </div>
               <div class="live-info">
-                <div class="live-name">${escapeHtml(live.name)}</div>
-                <div class="live-meta">
-                  <span>🎤 ${escapeHtml(live.artist || '未設定')}</span>
-                  <span>📍 ${escapeHtml(live.venue || '未設定')}</span>
-                  <span>📅 ${formatDateRange(live)}</span>
-                  ${isToday ? '<span class="badge badge-today">開催中！</span>' : isPast ? '<span class="badge badge-past">終了</span>' : '<span class="badge badge-upcoming">予定</span>'}
+                <div class="live-name-row">
+                  <span class="live-name">${escapeHtml(live.name)}</span>
+                  ${statusBadge}
                 </div>
-                ${live.memo ? `<p style="font-size: 12px; color: var(--text-tertiary); margin-top: 6px;">📝 ${escapeHtml(live.memo)}</p>` : ''}
+                <div class="live-meta">${metaParts.join(' · ')}</div>
               </div>
             </div>
             <div class="live-actions">
               <button class="btn btn-icon btn-secondary edit-live-btn" data-id="${live.id}" title="編集">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
               </button>
               <button class="btn btn-icon btn-danger delete-live-btn" data-id="${live.id}" title="削除">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
               </button>
             </div>
           </div>

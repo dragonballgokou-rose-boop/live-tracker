@@ -311,9 +311,12 @@ textarea {
   flex-shrink: 0;
 }
 
-.logo-icon {
-  font-size: 1.4rem;
-  filter: drop-shadow(0 0 6px rgba(139, 92, 246, 0.5));
+.logo-icon-img {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  flex-shrink: 0;
+  filter: drop-shadow(0 0 6px rgba(139, 92, 246, 0.4));
 }
 
 .header-logo-text {
@@ -371,7 +374,7 @@ textarea {
 .page-content {
   flex: 1;
   padding: var(--space-xl);
-  padding-bottom: calc(var(--space-xl) + 60px);
+  padding-bottom: calc(var(--space-xl) + 60px + env(safe-area-inset-bottom, 0px));
   animation: fadeIn var(--transition-base) ease-out;
   max-width: 100%;
   overflow-x: hidden;
@@ -1220,11 +1223,11 @@ a.stat-card:active {
 .live-card-main {
   display: flex;
   align-items: center;
-  gap: var(--space-lg);
+  gap: 10px;
   flex: 1;
   min-width: 0;
   cursor: pointer;
-  padding: var(--space-lg);
+  padding: 10px 12px;
 }
 
 .live-card-main:active {
@@ -1236,13 +1239,33 @@ a.stat-card:active {
   gap: 0;
 }
 
+.live-card-past {
+  opacity: 0.6;
+}
+
 .live-card .live-actions {
-  padding: var(--space-md);
+  padding: 8px 10px;
   flex-shrink: 0;
   display: flex;
-  gap: var(--space-xs);
+  flex-direction: column;
+  gap: 4px;
   align-items: center;
   border-left: 1px solid var(--border-color);
+}
+
+/* Live name row (name + badge inline) */
+.live-name-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 2px;
+}
+
+.live-date-end {
+  font-size: 8px;
+  color: rgba(255,255,255,0.7);
+  margin-top: 2px;
 }
 
 /* ---------- Live Card ---------- */
@@ -1266,22 +1289,23 @@ a.stat-card:active {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-width: 60px;
-  padding: var(--space-sm) var(--space-md);
+  min-width: 44px;
+  padding: 5px 7px;
   background: var(--gradient-primary);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
   text-align: center;
+  flex-shrink: 0;
 }
 
 .live-date-badge .month {
-  font-size: var(--font-size-xs);
+  font-size: 9px;
   font-weight: 600;
   text-transform: uppercase;
   color: rgba(255, 255, 255, 0.8);
 }
 
 .live-date-badge .day {
-  font-size: var(--font-size-xl);
+  font-size: 18px;
   font-weight: 800;
   color: white;
   line-height: 1;
@@ -1293,25 +1317,19 @@ a.stat-card:active {
 }
 
 .live-name {
-  font-size: var(--font-size-md);
+  font-size: 13px;
   font-weight: 700;
-  margin-bottom: var(--space-xs);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .live-meta {
-  display: flex;
-  gap: var(--space-md);
-  font-size: var(--font-size-xs);
+  font-size: 11px;
   color: var(--text-tertiary);
-}
-
-.live-meta span {
-  display: flex;
-  align-items: center;
-  gap: var(--space-xs);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .live-actions {
@@ -1752,25 +1770,6 @@ a.stat-card:active {
     grid-template-columns: 1fr;
   }
 
-  .live-card {
-    padding: var(--space-sm) var(--space-md);
-    gap: var(--space-sm);
-  }
-
-  .live-date-badge {
-    min-width: 44px;
-    padding: 4px 8px;
-  }
-
-  .live-date-badge .day {
-    font-size: var(--font-size-lg);
-  }
-
-  .live-meta {
-    flex-wrap: wrap;
-    gap: 4px var(--space-sm);
-  }
-
   /* Tally: card layout on mobile (table hidden) */
   .tally-table-container {
     display: none !important;
@@ -1818,13 +1817,15 @@ a.stat-card:active {
   bottom: 0;
   left: 0;
   right: 0;
-  height: 60px;
+  height: calc(60px + env(safe-area-inset-bottom, 0px));
   background: rgba(15, 15, 35, 0.97);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border-top: 1px solid var(--border-color);
   z-index: 101;
   padding-bottom: env(safe-area-inset-bottom, 0px);
+  align-items: flex-start;
+  padding-top: 4px;
 }
 
 .bottom-nav-item {

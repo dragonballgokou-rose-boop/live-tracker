@@ -239,9 +239,15 @@ function buildTallyCards(lives, members) {
     const isPast = d < now;
     let rowTotal = 0;
 
-    const memberBtns = members.map(member => {
-      const status = getDayAttendanceStatus(row.live.id, row.dateStr, member.id);
-      if (status === 'going') rowTotal++;
+    const memberData = members.map(member => ({
+      member,
+      status: getDayAttendanceStatus(row.live.id, row.dateStr, member.id)
+    }));
+    memberData.forEach(({ status }) => { if (status === 'going') rowTotal++; });
+    const statusOrder = { going: 0, undecided: 1, not_going: 2 };
+    memberData.sort((a, b) => statusOrder[a.status] - statusOrder[b.status]);
+
+    const memberBtns = memberData.map(({ member, status }) => {
       const display = status === 'going' ? '◯' : status === 'not_going' ? '✕' : '？';
       return `
         <button class="tally-card-member"
