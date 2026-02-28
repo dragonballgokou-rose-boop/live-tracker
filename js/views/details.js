@@ -24,7 +24,7 @@ export function showLiveDetailsModal(liveId) {
         <div class="live-details-modal" style="font-size: 14px;">
             <div class="live-meta" style="margin-bottom: 24px;">
                 <p style="margin-bottom: 8px;"><strong>🎤 アーティスト:</strong> ${escapeHtml(live.artist || '未設定')}</p>
-                <p style="margin-bottom: 8px;"><strong>📍 会場:</strong> ${escapeHtml(live.venue || '未設定')}${live.venue && extractPrefecture(live.venue) ? `　<span style="font-size: 12px; opacity: 0.7;">（${extractPrefecture(live.venue)}）</span>` : ''}</p>
+                <p style="margin-bottom: 8px;"><strong>📍 会場:</strong> ${escapeHtml(live.venue || '未設定')}${live.venue && (live.prefecture || extractPrefecture(live.venue)) ? `　<span style="font-size: 12px; opacity: 0.7;">（${live.prefecture || extractPrefecture(live.venue)}）</span>` : ''}</p>
                 <p style="margin-bottom: 8px;"><strong>📅 日程:</strong> ${formatDateRange(live)}</p>
                 ${live.memo ? `<p style="margin-top: 12px; padding: 8px; background: rgba(255,255,255,0.05); border-radius: 6px;"><strong>📝 メモ:</strong><br>${escapeHtml(live.memo).replace(/\n/g, '<br>')}</p>` : ''}
             </div>

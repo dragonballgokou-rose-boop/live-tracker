@@ -267,7 +267,7 @@ function buildTallyCards(lives, members) {
 
     const dateLine = `${d.getMonth() + 1}/${d.getDate()}(${dayOfWeek})`;
     const dayBadge = row.isMultiDay ? `<span class="tally-card-day-badge">Day${row.dayNum}</span>` : '';
-    const pref = row.live.venue ? extractPrefecture(row.live.venue) : '';
+    const pref = row.live.prefecture || (row.live.venue ? extractPrefecture(row.live.venue) : '');
     const venueLine = row.live.venue
       ? ` · ${escapeHtml(row.live.venue)}${pref ? `（${pref}）` : ''}`
       : '';
