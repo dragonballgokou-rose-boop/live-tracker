@@ -121,11 +121,11 @@ function openLiveModal(live = null) {
       <div class="form-row">
         <div class="form-group">
           <label class="form-label" for="live-date-start">開始日 <span style="color: var(--accent-red)">*</span></label>
-          <input type="date" id="live-date-start" class="form-input" value="${isEdit ? (live.dateStart || live.date || '') : ''}" required />
+          <input type="date" id="live-date-start" class="form-input" value="${isEdit ? toDateInputValue(live.dateStart || live.date) : ''}" required />
         </div>
         <div class="form-group">
           <label class="form-label" for="live-date-end">終了日 <span style="color: var(--text-tertiary); font-size: 12px;">(複数日の場合)</span></label>
-          <input type="date" id="live-date-end" class="form-input" value="${isEdit ? (live.dateEnd || '') : ''}" />
+          <input type="date" id="live-date-end" class="form-input" value="${isEdit ? toDateInputValue(live.dateEnd) : ''}" />
         </div>
       </div>
       <div class="form-row">
@@ -226,6 +226,18 @@ export function formatDateRange(live) {
     return `${startStr}〜${endStr}`;
   }
   return startStr;
+}
+
+// input[type="date"] は YYYY-MM-DD 形式のみ受け付けるため正規化する
+function toDateInputValue(dateStr) {
+  if (!dateStr) return '';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return '';
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
 }
 
 function escapeHtml(text) {
