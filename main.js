@@ -43,15 +43,15 @@ function updateNav(path) {
     closeSidebar();
 }
 
-// ---------- Sidebar ----------
+// ---------- Sidebar (kept for compatibility, sidebar removed from HTML) ----------
 function openSidebar() {
-    document.getElementById('sidebar').classList.add('open');
-    document.getElementById('sidebar-overlay').classList.add('visible');
+    document.getElementById('sidebar')?.classList.add('open');
+    document.getElementById('sidebar-overlay')?.classList.add('visible');
 }
 
 function closeSidebar() {
-    document.getElementById('sidebar').classList.remove('open');
-    document.getElementById('sidebar-overlay').classList.remove('visible');
+    document.getElementById('sidebar')?.classList.remove('open');
+    document.getElementById('sidebar-overlay')?.classList.remove('visible');
 }
 
 // ---------- Sync Indicator (Header) ----------
