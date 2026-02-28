@@ -374,7 +374,7 @@ textarea {
 .page-content {
   flex: 1;
   padding: var(--space-xl);
-  padding-bottom: calc(var(--space-xl) + 60px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(var(--space-xl) + 56px + env(safe-area-inset-bottom, 0px));
   animation: fadeIn var(--transition-base) ease-out;
   max-width: 100%;
   overflow-x: hidden;
@@ -1258,8 +1258,13 @@ a.stat-card:active {
   display: flex;
   align-items: center;
   gap: 6px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   margin-bottom: 2px;
+  overflow: hidden;
+}
+
+.live-name-row .badge {
+  flex-shrink: 0;
 }
 
 .live-date-end {
@@ -1317,6 +1322,8 @@ a.stat-card:active {
 }
 
 .live-name {
+  flex: 1;
+  min-width: 0;
   font-size: 13px;
   font-weight: 700;
   white-space: nowrap;
@@ -1817,15 +1824,13 @@ a.stat-card:active {
   bottom: 0;
   left: 0;
   right: 0;
-  height: calc(60px + env(safe-area-inset-bottom, 0px));
+  /* height: auto — grows to item height + safe area padding */
   background: rgba(15, 15, 35, 0.97);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border-top: 1px solid var(--border-color);
   z-index: 101;
   padding-bottom: env(safe-area-inset-bottom, 0px);
-  align-items: flex-start;
-  padding-top: 4px;
 }
 
 .bottom-nav-item {
@@ -1835,11 +1840,12 @@ a.stat-card:active {
   align-items: center;
   justify-content: center;
   gap: 3px;
+  height: 56px;          /* fixed tap target — always above home indicator */
   color: var(--text-tertiary);
   text-decoration: none;
   font-size: 10px;
   font-weight: 600;
-  padding: 6px 4px;
+  padding: 4px;
   transition: color var(--transition-fast);
   position: relative;
   letter-spacing: 0.02em;
