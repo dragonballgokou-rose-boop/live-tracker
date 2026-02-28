@@ -35,7 +35,10 @@ export function renderLives() {
 
     const metaParts = [];
     if (live.artist) metaParts.push(escapeHtml(live.artist));
-    if (live.venue) metaParts.push(escapeHtml(live.venue));
+    if (live.venue) {
+      const pref = extractPrefecture(live.venue);
+      metaParts.push(pref ? `${escapeHtml(live.venue)}（${pref}）` : escapeHtml(live.venue));
+    }
     metaParts.push(formatDateRange(live));
     const statusBadge = isToday
       ? '<span class="badge badge-today">開催中！</span>'
@@ -175,6 +178,33 @@ function openLiveModal(live = null) {
     closeModal();
     renderLives();
   });
+}
+
+export function extractPrefecture(venue) {
+  if (!venue) return '';
+  const prefectures = ['北海道','青森','岩手','宮城','秋田','山形','福島','茨城','栃木','群馬','埼玉','千葉','東京','神奈川','新潟','富山','石川','福井','山梨','長野','岐阜','静岡','愛知','三重','滋賀','京都','大阪','兵庫','奈良','和歌山','鳥取','島根','岡山','広島','山口','徳島','香川','愛媛','高知','福岡','佐賀','長崎','熊本','大分','宮崎','鹿児島','沖縄'];
+  for (const pref of prefectures) {
+    if (venue.includes(pref)) return pref;
+  }
+  const cityMap = {
+    '横浜':'神奈川','川崎':'神奈川','相模原':'神奈川','藤沢':'神奈川','横須賀':'神奈川',
+    '幕張':'千葉','船橋':'千葉','柏':'千葉',
+    'さいたま':'埼玉','浦和':'埼玉','川越':'埼玉',
+    '仙台':'宮城',
+    '名古屋':'愛知','豊橋':'愛知','豊田':'愛知',
+    '札幌':'北海道','旭川':'北海道',
+    '神戸':'兵庫','西宮':'兵庫','尼崎':'兵庫','姫路':'兵庫',
+    '堺':'大阪','吹田':'大阪','豊中':'大阪',
+    '金沢':'石川',
+    '静岡':'静岡','浜松':'静岡',
+    '宇都宮':'栃木',
+    '那覇':'沖縄','宜野湾':'沖縄',
+    '広島':'広島','岡山':'岡山','新潟':'新潟','熊本':'熊本','福岡':'福岡','北九州':'福岡',
+  };
+  for (const [city, pref] of Object.entries(cityMap)) {
+    if (venue.includes(city)) return pref;
+  }
+  return '';
 }
 
 export function formatDateRange(live) {

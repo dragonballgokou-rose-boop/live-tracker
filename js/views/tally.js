@@ -3,7 +3,7 @@
 // ============================================
 import { getLives, getMembers, getDatesForLive, setDayAttendance, getDayAttendanceStatus } from '../store.js';
 import { showToast } from '../utils.js';
-import { formatDateRange } from './lives.js';
+import { formatDateRange, extractPrefecture } from './lives.js';
 
 export function renderTally() {
   const content = document.getElementById('page-content');
@@ -267,7 +267,10 @@ function buildTallyCards(lives, members) {
 
     const dateLine = `${d.getMonth() + 1}/${d.getDate()}(${dayOfWeek})`;
     const dayBadge = row.isMultiDay ? `<span class="tally-card-day-badge">Day${row.dayNum}</span>` : '';
-    const venueLine = row.live.venue ? ` · ${escapeHtml(row.live.venue)}` : '';
+    const pref = row.live.venue ? extractPrefecture(row.live.venue) : '';
+    const venueLine = row.live.venue
+      ? ` · ${escapeHtml(row.live.venue)}${pref ? `（${pref}）` : ''}`
+      : '';
 
     return `
       <div class="tally-card ${isPast ? 'tally-card-past' : ''}"
