@@ -34,21 +34,23 @@ export function renderLives() {
     const isToday = startDate.getTime() <= now.getTime() && lastDate.getTime() >= now.getTime();
 
     return `
-          <div class="card live-card" style="${isPast ? 'opacity: 0.6;' : ''}">
-            <div class="live-date-badge">
-              <span class="month">${months[startDate.getMonth()]}</span>
-              <span class="day">${startDate.getDate()}</span>
-              ${endDate ? `<span style="font-size: 9px; color: rgba(255,255,255,0.7); margin-top: 2px;">〜${endDate.getMonth() + 1}/${endDate.getDate()}</span>` : ''}
-            </div>
-            <div class="live-info">
-              <div class="live-name">${escapeHtml(live.name)}</div>
-              <div class="live-meta">
-                <span>🎤 ${escapeHtml(live.artist || '未設定')}</span>
-                <span>📍 ${escapeHtml(live.venue || '未設定')}</span>
-                <span>📅 ${formatDateRange(live)}</span>
-                ${isToday ? '<span class="badge badge-today">開催中！</span>' : isPast ? '<span class="badge badge-past">終了</span>' : '<span class="badge badge-upcoming">予定</span>'}
+          <div class="card live-card">
+            <div class="live-card-main" onclick="showLiveDetailsModal('${live.id}')" style="${isPast ? 'opacity: 0.65;' : ''}">
+              <div class="live-date-badge">
+                <span class="month">${months[startDate.getMonth()]}</span>
+                <span class="day">${startDate.getDate()}</span>
+                ${endDate ? `<span style="font-size: 9px; color: rgba(255,255,255,0.7); margin-top: 2px;">〜${endDate.getMonth() + 1}/${endDate.getDate()}</span>` : ''}
               </div>
-              ${live.memo ? `<p style="font-size: 12px; color: var(--text-tertiary); margin-top: 6px;">📝 ${escapeHtml(live.memo)}</p>` : ''}
+              <div class="live-info">
+                <div class="live-name">${escapeHtml(live.name)}</div>
+                <div class="live-meta">
+                  <span>🎤 ${escapeHtml(live.artist || '未設定')}</span>
+                  <span>📍 ${escapeHtml(live.venue || '未設定')}</span>
+                  <span>📅 ${formatDateRange(live)}</span>
+                  ${isToday ? '<span class="badge badge-today">開催中！</span>' : isPast ? '<span class="badge badge-past">終了</span>' : '<span class="badge badge-upcoming">予定</span>'}
+                </div>
+                ${live.memo ? `<p style="font-size: 12px; color: var(--text-tertiary); margin-top: 6px;">📝 ${escapeHtml(live.memo)}</p>` : ''}
+              </div>
             </div>
             <div class="live-actions">
               <button class="btn btn-icon btn-secondary edit-live-btn" data-id="${live.id}" title="編集">

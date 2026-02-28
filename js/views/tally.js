@@ -50,21 +50,26 @@ export function renderTally() {
       <span class="tally-legend-hint">※ セルをタップで切り替え</span>
     </div>
 
-    <!-- Table -->
+    <!-- Table (desktop) -->
     <div class="tally-table-container" id="tally-table-container">
       ${buildTallyTable(lives, members)}
     </div>
+
+    <!-- Cards (mobile) -->
+    <div class="tally-cards-container" id="tally-cards-container">
+      ${buildTallyCards(lives, members)}
+    </div>
   `;
 
-  // Event listeners
   setupTallyEvents(members);
 }
+
+// ---- Desktop: Table layout ----
 
 function buildTallyTable(lives, members) {
   const now = new Date();
   now.setHours(0, 0, 0, 0);
 
-  // Build rows: each row is a (live, date) pair
   const rows = [];
   lives.forEach(live => {
     const dates = getDatesForLive(live);
@@ -84,7 +89,6 @@ function buildTallyTable(lives, members) {
     });
   });
 
-  // Calculate column totals (going count per member across all date-rows)
   const colTotals = {};
   members.forEach(m => { colTotals[m.id] = 0; });
   let grandTotal = 0;
@@ -123,7 +127,6 @@ function buildTallyTable(lives, members) {
         ${rows.map(row => {
     const d = row.date;
     const dayOfWeek = weekdays[d.getDay()];
-    const isWeekend = d.getDay() === 0 || d.getDay() === 6;
     const isPast = d < now;
     let rowTotal = 0;
 
@@ -140,11 +143,9 @@ function buildTallyTable(lives, members) {
             `;
     }).join('');
 
-    // Build the row label
     let label;
     if (row.isMultiDay) {
       if (row.isFirstDay) {
-        // First day: show live name + day info + venue
         label = `
                 <div style="display: flex; flex-direction: column; gap: 2px; cursor: pointer;" onclick="showLiveDetailsModal('${row.live.id}')" title="ライブ詳細を見る">
                   <span style="font-weight: 600; font-size: 13px; text-decoration: underline; text-decoration-color: rgba(255,255,255,0.2);">${escapeHtml(row.live.name)}</span>
@@ -161,7 +162,6 @@ function buildTallyTable(lives, members) {
                   </span>
                 </div>`;
       } else {
-        // Subsequent days: show only day info (indented)
         label = `
                 <div class="day-sub-row">
                   <span class="day-label">
@@ -171,7 +171,6 @@ function buildTallyTable(lives, members) {
                 </div>`;
       }
     } else {
-      // Single-day live -> Show date, artist, venue
       const dateStr = `${d.getMonth() + 1}/${d.getDate()}(${dayOfWeek})`;
       label = `
                 <div style="display: flex; flex-direction: column; gap: 2px; cursor: pointer;" onclick="showLiveDetailsModal('${row.live.id}')" title="ライブ詳細を見る">
@@ -217,40 +216,138 @@ function buildTallyTable(lives, members) {
   `;
 }
 
-function setupTallyEvents(members) {
-  const container = document.getElementById('tally-table-container');
+// ---- Mobile: Card layout ----
 
-  // Cell click - toggle status (now with date key)
-  container.addEventListener('click', (e) => {
-    const cell = e.target.closest('.tally-cell');
-    if (!cell) return;
+function buildTallyCards(lives, members) {
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
 
-    const liveId = cell.dataset.live;
-    const dateStr = cell.dataset.date;
-    const memberId = cell.dataset.member;
-    const currentStatus = cell.dataset.status;
-
-    // Cycle: undecided → going → not_going → undecided
-    const nextStatus = {
-      'undecided': 'going',
-      'going': 'not_going',
-      'not_going': 'undecided'
-    }[currentStatus];
-
-    const display = { 'going': '◯', 'not_going': '✕', 'undecided': '？' }[nextStatus];
-
-    setDayAttendance(liveId, dateStr, memberId, nextStatus);
-
-    cell.dataset.status = nextStatus;
-    cell.textContent = display;
-
-    // Add animation
-    cell.style.transform = 'scale(1.3)';
-    setTimeout(() => { cell.style.transform = ''; }, 150);
-
-    // Update totals
-    updateTotals(members);
+  const rows = [];
+  lives.forEach(live => {
+    const dates = getDatesForLive(live);
+    const isMultiDay = dates.length > 1;
+    dates.forEach(({ dateStr, dayNum, date }) => {
+      rows.push({ live, dateStr, dayNum, date, isMultiDay });
+    });
   });
+
+  const weekdays = ['日', '月', '火', '水', '木', '金', '土'];
+
+  return rows.map(row => {
+    const d = row.date;
+    const dayOfWeek = weekdays[d.getDay()];
+    const isPast = d < now;
+    let rowTotal = 0;
+
+    const memberBtns = members.map(member => {
+      const status = getDayAttendanceStatus(row.live.id, row.dateStr, member.id);
+      if (status === 'going') rowTotal++;
+      const display = status === 'going' ? '◯' : status === 'not_going' ? '✕' : '？';
+      return `
+        <button class="tally-card-member"
+          data-status="${status}"
+          data-live="${row.live.id}"
+          data-date="${row.dateStr}"
+          data-member="${member.id}"
+          title="${escapeAttr(member.name)}">
+          <div class="tally-card-avatar-wrap">
+            <div class="tally-card-avatar" style="background: ${member.color}">${member.name.charAt(0)}</div>
+            <span class="tally-card-status-dot" data-status="${status}">${display}</span>
+          </div>
+          <span class="tally-card-member-name">${escapeHtml(member.nickname || member.name)}</span>
+        </button>
+      `;
+    }).join('');
+
+    const dateLine = `${d.getMonth() + 1}/${d.getDate()}(${dayOfWeek})`;
+    const dayBadge = row.isMultiDay ? `<span class="tally-card-day-badge">Day${row.dayNum}</span>` : '';
+    const venueLine = row.live.venue ? ` · ${escapeHtml(row.live.venue)}` : '';
+
+    return `
+      <div class="tally-card ${isPast ? 'tally-card-past' : ''}"
+        data-live-name="${escapeAttr(row.live.name)}"
+        data-date="${row.dateStr}">
+        <div class="tally-card-header" onclick="showLiveDetailsModal('${row.live.id}')">
+          <div class="tally-card-title-wrap">
+            <div class="tally-card-name">${escapeHtml(row.live.name)}${dayBadge}</div>
+            <div class="tally-card-date">${dateLine}${venueLine}</div>
+          </div>
+          <div class="tally-card-total-wrap">
+            <span class="tally-card-total">${rowTotal}</span>
+            <span class="tally-card-total-label">人</span>
+          </div>
+        </div>
+        <div class="tally-card-members">${memberBtns}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+// ---- Events ----
+
+function setupTallyEvents(members) {
+  // Table cell clicks
+  const tableContainer = document.getElementById('tally-table-container');
+  if (tableContainer) {
+    tableContainer.addEventListener('click', (e) => {
+      const cell = e.target.closest('.tally-cell');
+      if (!cell) return;
+
+      const liveId = cell.dataset.live;
+      const dateStr = cell.dataset.date;
+      const memberId = cell.dataset.member;
+      const currentStatus = cell.dataset.status;
+
+      const nextStatus = { 'undecided': 'going', 'going': 'not_going', 'not_going': 'undecided' }[currentStatus];
+      const display = { 'going': '◯', 'not_going': '✕', 'undecided': '？' }[nextStatus];
+
+      setDayAttendance(liveId, dateStr, memberId, nextStatus);
+      cell.dataset.status = nextStatus;
+      cell.textContent = display;
+
+      cell.style.transform = 'scale(1.3)';
+      setTimeout(() => { cell.style.transform = ''; }, 150);
+
+      updateTotals(members);
+    });
+  }
+
+  // Card member button clicks
+  const cardsContainer = document.getElementById('tally-cards-container');
+  if (cardsContainer) {
+    cardsContainer.addEventListener('click', (e) => {
+      const btn = e.target.closest('.tally-card-member');
+      if (!btn) return;
+
+      const liveId = btn.dataset.live;
+      const dateStr = btn.dataset.date;
+      const memberId = btn.dataset.member;
+      const currentStatus = btn.dataset.status;
+
+      const nextStatus = { 'undecided': 'going', 'going': 'not_going', 'not_going': 'undecided' }[currentStatus];
+      const display = { 'going': '◯', 'not_going': '✕', 'undecided': '？' }[nextStatus];
+
+      setDayAttendance(liveId, dateStr, memberId, nextStatus);
+      btn.dataset.status = nextStatus;
+
+      const dot = btn.querySelector('.tally-card-status-dot');
+      if (dot) {
+        dot.dataset.status = nextStatus;
+        dot.textContent = display;
+      }
+
+      // Update card total
+      const card = btn.closest('.tally-card');
+      if (card) {
+        const total = card.querySelectorAll('.tally-card-member[data-status="going"]').length;
+        const totalEl = card.querySelector('.tally-card-total');
+        if (totalEl) totalEl.textContent = total;
+      }
+
+      btn.style.transform = 'scale(1.2)';
+      setTimeout(() => { btn.style.transform = ''; }, 150);
+    });
+  }
 
   // Filter events
   const filterLive = document.getElementById('tally-filter-live');
@@ -270,16 +367,24 @@ function applyFilters() {
   const liveQuery = document.getElementById('tally-filter-live').value.toLowerCase();
   const monthQuery = document.getElementById('tally-filter-month').value;
 
-  const rows = document.querySelectorAll('.tally-table tbody tr');
-  rows.forEach(row => {
+  // Filter table rows
+  document.querySelectorAll('.tally-table tbody tr').forEach(row => {
     const liveName = (row.dataset.liveName || '').toLowerCase();
     const date = row.dataset.date || '';
-
     let visible = true;
     if (liveQuery && !liveName.includes(liveQuery)) visible = false;
     if (monthQuery && !date.startsWith(monthQuery)) visible = false;
-
     row.style.display = visible ? '' : 'none';
+  });
+
+  // Filter cards
+  document.querySelectorAll('.tally-card').forEach(card => {
+    const liveName = (card.dataset.liveName || '').toLowerCase();
+    const date = card.dataset.date || '';
+    let visible = true;
+    if (liveQuery && !liveName.includes(liveQuery)) visible = false;
+    if (monthQuery && !date.startsWith(monthQuery)) visible = false;
+    card.style.display = visible ? '' : 'none';
   });
 }
 
