@@ -76,12 +76,17 @@ export function showMemberDetailsModal(memberId) {
 
     // 集計表と同じ getDatesForLive + getDayAttendanceStatus で正確に判定する
     const liveStatusMap = {};
+    let goingDaysCount = 0;
+    let totalDays = 0;
+
     lives.forEach(live => {
         const dates = getDatesForLive(live);
         const goingDates = [];
         dates.forEach(d => {
+            totalDays++;
             if (getDayAttendanceStatus(live.id, d.dateStr, memberId) === 'going') {
                 goingDates.push(d.dateStr);
+                goingDaysCount++;
             }
         });
         liveStatusMap[live.id] = { goingDates };
@@ -89,7 +94,8 @@ export function showMemberDetailsModal(memberId) {
 
     const goingLives = lives.filter(l => liveStatusMap[l.id].goingDates.length > 0);
 
-    const rate = lives.length > 0 ? Math.round((goingLives.length / lives.length) * 100) : 0;
+    // メンバー一覧カードと同じく日数ベースで参戦率を算出
+    const rate = totalDays > 0 ? Math.round((goingDaysCount / totalDays) * 100) : 0;
 
     let html = `
         <div class="member-details-modal">
@@ -102,11 +108,11 @@ export function showMemberDetailsModal(memberId) {
                     ${member.nickname ? `<div style="color: var(--text-tertiary); font-size: 13px;">@${escapeHtml(member.nickname)}</div>` : ''}
                 </div>
             </div>
-            
+
             <div style="display: flex; gap: 12px; margin-bottom: 24px;">
                 <div style="background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; flex: 1; text-align: center;">
-                    <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px;">参戦予定ライブ</div>
-                    <div style="font-size: 20px; font-weight: bold; color: var(--accent-purple-light);">${goingLives.length} <span style="font-size: 12px; font-weight: normal; color: var(--text-tertiary);">/ ${lives.length}件</span></div>
+                    <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px;">参戦日数</div>
+                    <div style="font-size: 20px; font-weight: bold; color: var(--accent-purple-light);">${goingDaysCount} <span style="font-size: 12px; font-weight: normal; color: var(--text-tertiary);">/ ${totalDays}回</span></div>
                 </div>
                 <div style="background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; flex: 1; text-align: center;">
                     <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px;">参戦率</div>
