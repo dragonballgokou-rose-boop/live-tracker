@@ -3,10 +3,12 @@
 // ============================================
 import { getLives, addLive, updateLive, deleteLive, getMembers, getDayAttendanceStatus, setDayAttendance, getDatesForLive } from '../store.js';
 import { showModal, closeModal, showToast, showConfirm } from '../utils.js';
+import { showLiveDetailsModal, showMemberDetailsModal } from './details.js';
 
 const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
 
 let livesFilter = 'upcoming'; // 'upcoming' | 'past'
+let activeFilterMemberIds = new Set(); // 空=全員表示
 
 export function renderLives() {
   const content = document.getElementById('page-content');
@@ -28,7 +30,17 @@ export function renderLives() {
     return last < now;
   }).sort((a, b) => new Date(b.dateStart || b.date) - new Date(a.dateStart || a.date)); // 降順（新しい順）
 
-  const filtered = livesFilter === 'upcoming' ? upcoming : past;
+  let filtered = livesFilter === 'upcoming' ? upcoming : past;
+
+  // メンバーフィルター（AND: 選択した全員が参戦しているライブのみ）
+  if (activeFilterMemberIds.size > 0) {
+    filtered = filtered.filter(live => {
+      const liveDates = getDatesForLive(live);
+      return [...activeFilterMemberIds].every(memberId =>
+        liveDates.some(d => getDayAttendanceStatus(live.id, d.dateStr, memberId) === 'going')
+      );
+    });
+  }
 
   // 年月グループ化
   const groups = {};
@@ -53,7 +65,6 @@ export function renderLives() {
       const isPast = lastD < now;
       const isOngoing = startD <= now && lastD >= now;
       const isWeekend = startD.getDay() === 0 || startD.getDay() === 6;
-      const endLabel = endD ? `〜${endD.getDate()}` : '';
 
       const metaParts = [];
       if (live.artist) metaParts.push(escapeHtml(live.artist));
@@ -83,8 +94,9 @@ export function renderLives() {
       return `
         <div class="history-entry${isPast ? ' history-entry-past' : ''}">
           <div class="history-entry-date">
-            <span class="history-date-num">${startD.getDate()}${endLabel}</span>
+            <span class="history-date-num">${startD.getDate()}</span>
             <span class="history-date-wd${isWeekend ? ' weekend' : ''}">${WEEKDAYS[startD.getDay()]}</span>
+            ${endD ? `<span class="history-date-end">〜${endD.getDate()}</span>` : ''}
           </div>
           <div class="history-entry-body">
             <div class="history-entry-title" onclick="showLiveDetailsModal('${live.id}')">
@@ -116,6 +128,22 @@ export function renderLives() {
     `;
   }).join('');
 
+  // メンバーフィルターチップ
+  const memberFilterHtml = members.length > 0 ? `
+    <div class="history-filter">
+      <button class="history-chip${activeFilterMemberIds.size === 0 ? ' history-chip-active' : ''}" data-member="">全員</button>
+      ${members.map(m => {
+        const isActive = activeFilterMemberIds.has(m.id);
+        return `<button class="history-chip${isActive ? ' history-chip-active' : ''}"
+          data-member="${m.id}"
+          ${isActive ? `style="background:${escapeHtml(m.color)}22;border-color:${escapeHtml(m.color)};color:${escapeHtml(m.color)};"` : ''}>
+          <span style="width:8px;height:8px;border-radius:50%;background:${escapeHtml(m.color)};display:inline-block;flex-shrink:0;"></span>
+          ${escapeHtml(m.nickname || m.name)}
+        </button>`;
+      }).join('')}
+    </div>
+  ` : '';
+
   content.innerHTML = `
     <div class="section-header">
       <div class="live-filter-bar">
@@ -126,22 +154,30 @@ export function renderLives() {
           終了 <span class="filter-count">${past.length}</span>
         </button>
       </div>
-      <button id="add-live-btn" class="btn btn-primary">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-        ライブを追加
-      </button>
+      <div style="display:flex;gap:8px;">
+        <button id="add-record-btn" class="btn btn-secondary btn-sm">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          参戦記録を追加
+        </button>
+        <button id="add-live-btn" class="btn btn-primary">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          ライブを追加
+        </button>
+      </div>
     </div>
+
+    ${memberFilterHtml}
 
     ${filtered.length > 0 ? `<div class="history-timeline">${timelineHtml}</div>` : `
       <div class="card empty-state">
         <div class="empty-state-icon"><svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div>
-        <p class="empty-state-text">${livesFilter === 'upcoming' ? '予定のライブがありません' : '終了したライブはありません'}</p>
-        ${livesFilter === 'upcoming' ? '<p style="color:var(--text-tertiary);font-size:14px;">「ライブを追加」ボタンから登録しましょう！</p>' : ''}
+        <p class="empty-state-text">${activeFilterMemberIds.size > 0 ? '該当するライブがありません' : livesFilter === 'upcoming' ? '予定のライブがありません' : '終了したライブはありません'}</p>
+        ${livesFilter === 'upcoming' && activeFilterMemberIds.size === 0 ? '<p style="color:var(--text-tertiary);font-size:14px;">「ライブを追加」ボタンから登録しましょう！</p>' : ''}
       </div>
     `}
   `;
 
-  // フィルターボタン
+  // ステータスフィルターボタン（予定/終了）
   content.querySelectorAll('.live-filter-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       livesFilter = btn.dataset.filter;
@@ -149,7 +185,26 @@ export function renderLives() {
     });
   });
 
+  // メンバーフィルターチップ（複数選択 AND）
+  content.querySelectorAll('.history-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const memberId = chip.dataset.member;
+      if (!memberId) {
+        activeFilterMemberIds.clear();
+      } else if (activeFilterMemberIds.has(memberId)) {
+        activeFilterMemberIds.delete(memberId);
+      } else {
+        activeFilterMemberIds.add(memberId);
+      }
+      renderLives();
+    });
+  });
+
+  document.getElementById('add-record-btn')?.addEventListener('click', () => openQuickRecordModal(members));
   document.getElementById('add-live-btn')?.addEventListener('click', () => openLiveModal());
+
+  window.showLiveDetailsModal = showLiveDetailsModal;
+  window.showMemberDetailsModal = showMemberDetailsModal;
 
   content.querySelectorAll('.edit-live-btn').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -321,6 +376,147 @@ function setupAttendanceToggles() {
       btn.querySelector('.att-toggle-label').style.color = d.color;
       btn.style.borderColor = d.border;
     });
+  });
+}
+
+// ---- 参戦記録を追加（クイックモーダル）----
+function openQuickRecordModal(members) {
+  const today = new Date();
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  const attendanceMap = new Map();
+
+  function calcDates(startVal, endVal) {
+    if (!startVal) return [];
+    const result = [];
+    const cursor = new Date(startVal);
+    const last = endVal ? new Date(endVal) : new Date(startVal);
+    cursor.setHours(0, 0, 0, 0);
+    last.setHours(0, 0, 0, 0);
+    if (cursor > last) return [];
+    let dayNum = 1;
+    while (cursor <= last) {
+      const y = cursor.getFullYear();
+      const m = String(cursor.getMonth() + 1).padStart(2, '0');
+      const d = String(cursor.getDate()).padStart(2, '0');
+      result.push({ dateStr: `${y}-${m}-${d}`, dayNum, wd: WEEKDAYS[cursor.getDay()] });
+      cursor.setDate(cursor.getDate() + 1);
+      dayNum++;
+    }
+    return result;
+  }
+
+  function memberGridHtml(dateStr) {
+    const selected = attendanceMap.get(dateStr) || new Set();
+    return members.map(m => `
+      <button type="button" class="qr-member-btn${selected.has(m.id) ? ' qr-member-btn-selected' : ''}"
+        data-member-id="${m.id}" data-date="${dateStr}" style="--qr-color:${m.color};">
+        <span class="qr-member-avatar" style="background:${m.color};">${escapeHtml(m.name.charAt(0))}</span>
+        <span class="qr-member-name">${escapeHtml(m.nickname || m.name)}</span>
+      </button>
+    `).join('');
+  }
+
+  function renderAttendance() {
+    const startVal = document.getElementById('qr-date-start')?.value;
+    const endVal = document.getElementById('qr-date-end')?.value;
+    const dates = calcDates(startVal, endVal);
+    const container = document.getElementById('qr-attendance-container');
+    if (!container || !members.length) return;
+    const isMulti = dates.length > 1;
+    container.innerHTML = `
+      <div class="form-group">
+        <label class="form-label">${isMulti ? '日程別 参戦メンバー' : '参戦メンバー（複数選択可）'}</label>
+        ${dates.map(d => `
+          ${isMulti ? `<div class="qr-day-label">Day ${d.dayNum}<span style="font-weight:400;margin-left:4px;">${parseInt(d.dateStr.slice(5,7))}/${parseInt(d.dateStr.slice(8))}(${d.wd})</span></div>` : ''}
+          <div class="qr-members-grid" style="${isMulti ? 'margin-bottom:10px;' : ''}">${memberGridHtml(d.dateStr)}</div>
+        `).join('')}
+      </div>
+    `;
+    container.querySelectorAll('.qr-member-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const memberId = btn.dataset.memberId;
+        const dateStr = btn.dataset.date;
+        if (!attendanceMap.has(dateStr)) attendanceMap.set(dateStr, new Set());
+        const set = attendanceMap.get(dateStr);
+        if (set.has(memberId)) { set.delete(memberId); btn.classList.remove('qr-member-btn-selected'); }
+        else { set.add(memberId); btn.classList.add('qr-member-btn-selected'); }
+      });
+    });
+  }
+
+  showModal('参戦記録を追加', `
+    <form id="qr-form">
+      <div class="form-group">
+        <label class="form-label" for="qr-name">ライブ名 <span style="color:var(--accent-red)">*</span></label>
+        <input type="text" id="qr-name" class="form-input" placeholder="例: 乃木坂46 32nd Single 握手会" required />
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="qr-artist">アーティスト</label>
+        <input type="text" id="qr-artist" class="form-input" placeholder="例: 乃木坂46" />
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="qr-date-start">日付 <span style="color:var(--accent-red)">*</span></label>
+        <input type="date" id="qr-date-start" class="form-input" value="${todayStr}" required />
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="qr-date-end">終了日 <span style="color:var(--text-tertiary);font-size:12px;">(複数日の場合)</span></label>
+        <input type="date" id="qr-date-end" class="form-input" />
+      </div>
+      <div class="form-row">
+        <div class="form-group" style="flex:2;">
+          <label class="form-label" for="qr-venue">会場</label>
+          <input type="text" id="qr-venue" class="form-input" placeholder="例: 幕張メッセ" />
+        </div>
+        <div class="form-group" style="flex:1;">
+          <label class="form-label" for="qr-pref">都道府県</label>
+          <input type="text" id="qr-pref" class="form-input" placeholder="例: 千葉" />
+        </div>
+      </div>
+      <div id="qr-attendance-container"></div>
+      <div class="form-actions">
+        <button type="button" class="btn btn-secondary" onclick="document.getElementById('modal-close').click()">キャンセル</button>
+        <button type="submit" class="btn btn-primary">保存</button>
+      </div>
+    </form>
+  `);
+
+  renderAttendance();
+  document.getElementById('qr-date-start')?.addEventListener('change', renderAttendance);
+  document.getElementById('qr-date-end')?.addEventListener('change', renderAttendance);
+  document.getElementById('qr-venue')?.addEventListener('blur', () => {
+    const venue = document.getElementById('qr-venue').value;
+    const prefInput = document.getElementById('qr-pref');
+    if (venue && !prefInput.value) { const pref = extractPrefecture(venue); if (pref) prefInput.value = pref; }
+  });
+
+  document.getElementById('qr-form')?.addEventListener('submit', e => {
+    e.preventDefault();
+    const dateStart = document.getElementById('qr-date-start').value;
+    const dateEnd = document.getElementById('qr-date-end').value;
+    if (!document.getElementById('qr-name').value.trim() || !dateStart) {
+      showToast('ライブ名と日付は必須です', 'error'); return;
+    }
+    if (dateEnd && dateEnd < dateStart) { showToast('終了日は開始日以降にしてください', 'error'); return; }
+    const newLive = addLive({
+      name: document.getElementById('qr-name').value.trim(),
+      artist: document.getElementById('qr-artist').value.trim(),
+      dateStart, dateEnd: dateEnd || '',
+      venue: document.getElementById('qr-venue').value.trim(),
+      prefecture: document.getElementById('qr-pref').value.trim(),
+      memo: ''
+    });
+    const dates = calcDates(dateStart, dateEnd);
+    let totalGoing = 0;
+    dates.forEach(d => {
+      (attendanceMap.get(d.dateStr) || new Set()).forEach(memberId => {
+        setDayAttendance(newLive.id, d.dateStr, memberId, 'going');
+        totalGoing++;
+      });
+    });
+    closeModal();
+    showToast(totalGoing > 0 ? '参戦記録を保存しました' : 'ライブを追加しました', 'success');
+    livesFilter = 'past'; // 追加後は終了タブへ（過去の記録なら）
+    renderLives();
   });
 }
 

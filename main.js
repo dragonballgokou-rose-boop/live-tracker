@@ -8,7 +8,6 @@ import { renderTally } from './js/views/tally.js';
 import { renderLives } from './js/views/lives.js';
 import { renderMembers } from './js/views/members.js';
 import { renderChart } from './js/views/chart.js';
-import { renderHistory } from './js/views/history.js';
 import { exportData, importData, fetchFromGAS } from './js/store.js';
 import { showToast } from './js/utils.js';
 import { showLiveDetailsModal, showMemberDetailsModal } from './js/views/details.js';
@@ -23,7 +22,7 @@ const pageTitles = {
     '/lives': 'ライブ管理',
     '/members': 'メンバー管理',
     '/chart': 'グラフ',
-    '/history': '参戦記録'
+    '/history': 'ライブ管理'
 };
 
 // ---------- Navigation ----------
@@ -124,8 +123,8 @@ const router = new Router([
     {
         path: '/history',
         handler: () => {
-            updateNav('/history');
-            renderHistory();
+            updateNav('/lives');
+            renderLives();
         }
     }
 ]);

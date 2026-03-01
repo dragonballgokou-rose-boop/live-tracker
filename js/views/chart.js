@@ -266,18 +266,39 @@ export function renderChart() {
 // ---- メンバーカラー凡例 ----
 function buildLegend(memberStats) {
   return `
-    <div style="display:flex;flex-wrap:wrap;gap:8px 12px;margin-bottom:var(--space-md);">
-      ${memberStats.map(m => `
-        <div style="display:flex;align-items:center;gap:5px;">
-          <span style="width:14px;height:3px;border-radius:2px;background:${escapeHtml(m.color)};display:inline-block;flex-shrink:0;"></span>
-          <span style="font-size:11px;color:var(--text-secondary);">${escapeHtml(m.nickname || m.name)}</span>
-        </div>
-      `).join('')}
+    <div style="display:flex;flex-wrap:wrap;gap:8px 14px;margin-bottom:var(--space-md);">
+      ${memberStats.map((m, idx) => {
+        const style = LINE_STYLES[idx % LINE_STYLES.length];
+        // SVG凡例ライン（ストローク種別を反映）
+        const svgLine = `<svg width="20" height="10" viewBox="0 0 20 10" style="flex-shrink:0;vertical-align:middle;">
+          <line x1="0" y1="5" x2="20" y2="5" stroke="${escapeHtml(m.color)}" stroke-width="2"
+            ${style.dash ? `stroke-dasharray="${style.dash}"` : ''} stroke-linecap="round"/>
+          ${style.dotFill
+            ? `<circle cx="10" cy="5" r="2.5" fill="${escapeHtml(m.color)}"/>`
+            : `<circle cx="10" cy="5" r="2.5" fill="var(--bg-card)" stroke="${escapeHtml(m.color)}" stroke-width="1.5"/>`
+          }
+        </svg>`;
+        return `
+          <div style="display:flex;align-items:center;gap:5px;">
+            ${svgLine}
+            <span style="font-size:11px;color:var(--text-secondary);">${escapeHtml(m.nickname || m.name)}</span>
+          </div>
+        `;
+      }).join('')}
     </div>
   `;
 }
 
 // ---- 折れ線グラフ（月別参戦率） ----
+// 同じ参戦率でも線が重ならないよう、メンバーごとにストローク種別を変える
+const LINE_STYLES = [
+  { dash: '',            dotR: 3,   dotFill: true  },  // 実線 ●
+  { dash: '6,3',         dotR: 3,   dotFill: false },  // 破線 ○
+  { dash: '2,3',         dotR: 3.5, dotFill: true  },  // 点線 ●
+  { dash: '8,3,2,3',     dotR: 3,   dotFill: false },  // 一点鎖線 ○
+  { dash: '4,2,4,2',     dotR: 3.5, dotFill: true  },  // ダッシュ ●
+];
+
 function buildLineChart(sortedMonths, memberMonthStats, memberStats) {
   const COL_W = 44;
   const CHART_H = 140;
@@ -306,7 +327,8 @@ function buildLineChart(sortedMonths, memberMonthStats, memberStats) {
     `;
   }).join('');
 
-  const lines = memberStats.map(member => {
+  const lines = memberStats.map((member, idx) => {
+    const style = LINE_STYLES[idx % LINE_STYLES.length];
     const points = sortedMonths.map((month, i) => {
       const stat = memberMonthStats[member.id]?.[month];
       if (!stat || stat.total === 0) return null;
@@ -322,12 +344,18 @@ function buildLineChart(sortedMonths, memberMonthStats, memberStats) {
       if (pt === null) { started = false; return; }
       d += started ? `L ${pt.x} ${pt.y} ` : `M ${pt.x} ${pt.y} `;
       started = true;
-      dots.push(`<circle cx="${pt.x}" cy="${pt.y}" r="3" fill="${member.color}" stroke="var(--bg-secondary)" stroke-width="1.5"/>`);
+      if (style.dotFill) {
+        dots.push(`<circle cx="${pt.x}" cy="${pt.y}" r="${style.dotR}" fill="${member.color}" stroke="var(--bg-secondary)" stroke-width="1.5"/>`);
+      } else {
+        dots.push(`<circle cx="${pt.x}" cy="${pt.y}" r="${style.dotR}" fill="var(--bg-secondary)" stroke="${member.color}" stroke-width="2"/>`);
+      }
     });
 
     if (!d) return '';
     return `
-      <path d="${d}" fill="none" stroke="${member.color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.85"/>
+      <path d="${d}" fill="none" stroke="${member.color}" stroke-width="2"
+        ${style.dash ? `stroke-dasharray="${style.dash}"` : ''}
+        stroke-linecap="round" stroke-linejoin="round" opacity="0.9"/>
       ${dots.join('')}
     `;
   }).join('');
