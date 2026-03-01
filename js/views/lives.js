@@ -100,8 +100,10 @@ export function renderLives() {
         </span>`;
       }).join('');
 
-      const liveIcon = live.icon || '';
       const liveColor = live.color || '#8B5CF6';
+      const liveIconHtml = live.iconImg
+        ? `<img src="${live.iconImg}" style="width:22px;height:22px;border-radius:5px;object-fit:cover;flex-shrink:0;margin-right:5px;vertical-align:middle;" />`
+        : live.icon ? `<span style="margin-right:4px;">${live.icon}</span>` : '';
 
       return `
         <div class="history-entry${isPast ? ' history-entry-past' : ''}" style="border-left:3px solid ${liveColor};">
@@ -111,8 +113,8 @@ export function renderLives() {
             ${endD ? `<span class="history-date-end">〜${endD.getDate()}</span>` : ''}
           </div>
           <div class="history-entry-body">
-            <div class="history-entry-title" onclick="showLiveDetailsModal('${live.id}')">
-              ${liveIcon ? `<span style="margin-right:4px;">${liveIcon}</span>` : ''}${escapeHtml(live.name)}
+            <div class="history-entry-title" onclick="showLiveDetailsModal('${live.id}')" style="display:flex;align-items:center;flex-wrap:wrap;gap:4px;">
+              ${liveIconHtml}${escapeHtml(live.name)}
               <span style="margin-left:2px;">${statusBadge}</span>
             </div>
             ${metaParts.length > 0 ? `<div class="history-entry-meta">${metaParts.join(' · ')}</div>` : ''}
@@ -326,21 +328,33 @@ function openLiveModal(live = null) {
         <label class="form-label" for="live-memo">メモ</label>
         <textarea id="live-memo" class="form-input" rows="3" placeholder="備考があれば入力">${isEdit ? escapeHtml(live.memo || '') : ''}</textarea>
       </div>
-      <div class="form-row" style="gap:12px;">
-        <div class="form-group" style="flex:1;">
-          <label class="form-label">アイコン</label>
+      <div class="form-group">
+        <label class="form-label">アイコン</label>
+        <div class="avatar-upload-area" style="align-items:flex-start;">
+          <div id="live-icon-preview" style="width:56px;height:56px;border-radius:8px;background:rgba(255,255,255,0.06);border:1px solid var(--border-color);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;font-size:28px;">
+            ${live?.iconImg ? `<img id="live-icon-preview-img" src="${live.iconImg}" style="width:100%;height:100%;object-fit:cover;" />` : `<span id="live-icon-preview-emoji">${selIcon}</span>`}
+          </div>
+          <div class="avatar-upload-actions">
+            <button type="button" class="btn btn-secondary btn-sm" id="live-icon-upload-btn">画像を選択</button>
+            ${live?.iconImg ? `<button type="button" class="btn btn-sm" id="live-icon-remove-btn" style="color:var(--accent-red);background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.3);">削除</button>` : ''}
+          </div>
+        </div>
+        <input type="file" id="live-icon-file-input" accept="image/*" style="display:none;" />
+        <input type="hidden" id="live-iconImg" value="${live?.iconImg ? escapeAttr(live.iconImg) : ''}" />
+        <div style="margin-top:8px;">
+          <p style="font-size:11px;color:var(--text-tertiary);margin-bottom:6px;">または絵文字を選択</p>
           <div class="live-icon-picker" id="live-icon-picker">
             ${LIVE_ICONS.map(ic => `<button type="button" class="live-icon-option${ic === selIcon ? ' selected' : ''}" data-icon="${ic}">${ic}</button>`).join('')}
           </div>
           <input type="hidden" id="live-icon" value="${escapeAttr(selIcon)}" />
         </div>
-        <div class="form-group" style="flex:1;">
-          <label class="form-label">カラー</label>
-          <div class="color-picker" id="live-color-picker">
-            ${LIVE_COLORS.map(c => `<div class="color-option${c === selColor ? ' selected' : ''}" style="background:${c}" data-color="${c}"></div>`).join('')}
-          </div>
-          <input type="hidden" id="live-color" value="${escapeAttr(selColor)}" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">カラー</label>
+        <div class="color-picker" id="live-color-picker">
+          ${LIVE_COLORS.map(c => `<div class="color-option${c === selColor ? ' selected' : ''}" style="background:${c}" data-color="${c}"></div>`).join('')}
         </div>
+        <input type="hidden" id="live-color" value="${escapeAttr(selColor)}" />
       </div>
       ${isEdit ? buildAttendanceSection(live) : ''}
       <div class="form-actions">
@@ -352,12 +366,49 @@ function openLiveModal(live = null) {
 
   if (isEdit) setupAttendanceToggles();
 
-  // アイコンピッカー
+  // アイコン画像アップロード
+  document.getElementById('live-icon-upload-btn')?.addEventListener('click', () => {
+    document.getElementById('live-icon-file-input').click();
+  });
+
+  document.getElementById('live-icon-file-input')?.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    resizeLiveIconToBase64(file, 200, (base64) => {
+      document.getElementById('live-iconImg').value = base64;
+      const preview = document.getElementById('live-icon-preview');
+      preview.innerHTML = `<img id="live-icon-preview-img" src="${base64}" style="width:100%;height:100%;object-fit:cover;" />`;
+      if (!document.getElementById('live-icon-remove-btn')) {
+        const btn = document.createElement('button');
+        btn.type = 'button'; btn.id = 'live-icon-remove-btn'; btn.className = 'btn btn-sm';
+        btn.style.cssText = 'color:var(--accent-red);background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.3);';
+        btn.textContent = '削除';
+        btn.addEventListener('click', removeLiveIcon);
+        document.querySelector('.avatar-upload-actions').appendChild(btn);
+      }
+    });
+  });
+
+  function removeLiveIcon() {
+    document.getElementById('live-iconImg').value = '';
+    const icon = document.getElementById('live-icon').value;
+    document.getElementById('live-icon-preview').innerHTML = `<span id="live-icon-preview-emoji" style="font-size:28px;">${icon}</span>`;
+    document.getElementById('live-icon-remove-btn')?.remove();
+  }
+  document.getElementById('live-icon-remove-btn')?.addEventListener('click', removeLiveIcon);
+
+  // 絵文字アイコンピッカー
   document.querySelectorAll('.live-icon-option').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.live-icon-option').forEach(b => b.classList.remove('selected'));
       btn.classList.add('selected');
       document.getElementById('live-icon').value = btn.dataset.icon;
+      // 画像未設定ならプレビューの絵文字も更新
+      if (!document.getElementById('live-iconImg').value) {
+        const el = document.getElementById('live-icon-preview-emoji');
+        if (el) el.textContent = btn.dataset.icon;
+        else document.getElementById('live-icon-preview').innerHTML = `<span id="live-icon-preview-emoji" style="font-size:28px;">${btn.dataset.icon}</span>`;
+      }
     });
   });
 
@@ -384,6 +435,7 @@ function openLiveModal(live = null) {
       prefecture: document.getElementById('live-pref').value.trim(),
       memo: document.getElementById('live-memo').value.trim(),
       icon: document.getElementById('live-icon').value || '🎵',
+      iconImg: document.getElementById('live-iconImg').value || '',
       color: document.getElementById('live-color').value || '#8B5CF6',
     };
 
@@ -673,8 +725,11 @@ function renderLivesCalendar(filteredLives, members, now, content) {
         .join('');
       const evColor = live.color || 'rgba(139,92,246,0.4)';
       const evBg = isPast ? 'rgba(255,255,255,0.05)' : `${evColor}28`;
+      const evIconHtml = live.iconImg
+        ? `<img src="${live.iconImg}" style="width:10px;height:10px;border-radius:2px;object-fit:cover;flex-shrink:0;vertical-align:middle;margin-right:2px;" />`
+        : live.icon ? `<span style="font-size:9px;margin-right:1px;">${live.icon}</span>` : '';
       return `<div class="cal-event${isPast ? ' cal-event-past' : ''}" onclick="window.showLiveDetailsModal('${live.id}')" title="${escapeAttr(live.name)}" style="background:${evBg};border-left:2px solid ${evColor};">
-        <span class="cal-event-name">${live.icon ? live.icon + ' ' : ''}${escapeHtml(live.name)}</span>
+        <span class="cal-event-name" style="display:flex;align-items:center;">${evIconHtml}${escapeHtml(live.name)}</span>
         ${goingDots ? `<div class="cal-member-dots">${goingDots}</div>` : ''}
       </div>`;
     }).join('');
@@ -767,4 +822,22 @@ function escapeHtml(text) {
 
 function escapeAttr(text) {
   return String(text ?? '').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function resizeLiveIconToBase64(file, maxSize, callback) {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const size = Math.min(img.width, img.height, maxSize);
+      const scale = size / Math.min(img.width, img.height);
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      callback(canvas.toDataURL('image/jpeg', 0.82));
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
 }
