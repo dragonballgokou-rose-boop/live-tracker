@@ -3,6 +3,7 @@
 // ============================================
 import { getLives, getMembers, getDayAttendanceStatus, getDatesForLive } from '../store.js';
 import { showMemberDetailsModal, showLiveDetailsModal } from './details.js';
+import { formatDateRange } from './lives.js';
 
 export function renderChart() {
   const members = getMembers();
@@ -78,6 +79,9 @@ export function renderChart() {
   }).filter(l => l.goingCount > 0).sort((a, b) => b.goingCount - a.goingCount).slice(0, 12);
 
   const maxLiveCount = Math.max(...liveStats.map(l => l.goingCount), 1);
+  // 同名ライブを検出して区別するためのサブタイトル用マップ
+  const liveNameCounts = {};
+  liveStats.forEach(l => { liveNameCounts[l.name] = (liveNameCounts[l.name] || 0) + 1; });
 
   // 4. 会場別
   const venueMap = {};
@@ -171,10 +175,17 @@ export function renderChart() {
         <span style="font-size:11px;font-weight:400;color:var(--text-tertiary);margin-left:6px;">上位12件</span>
       </h2>
       <div class="chart-bars">
-        ${liveStats.map((l, idx) => `
+        ${liveStats.map((l, idx) => {
+          const isDup = liveNameCounts[l.name] > 1;
+          const subParts = isDup ? [formatDateRange(l), l.venue || l.prefecture].filter(Boolean) : [];
+          const sub = subParts.join('・');
+          return `
           <div class="chart-row chart-row-live" onclick="showLiveDetailsModal('${l.id}')">
             <div class="chart-row-rank" style="color:var(--text-tertiary);">${idx + 1}</div>
-            <div class="chart-row-label-long">${escapeHtml(l.name)}</div>
+            <div class="chart-row-label-long">
+              ${escapeHtml(l.name)}
+              ${sub ? `<span class="chart-live-sub">${escapeHtml(sub)}</span>` : ''}
+            </div>
             <div class="chart-bar-track chart-bar-track-sm">
               <div class="chart-bar-fill" style="width:${(l.goingCount / maxLiveCount) * 100}%;background:var(--gradient-primary);"></div>
             </div>
@@ -182,7 +193,7 @@ export function renderChart() {
               <span class="chart-value-count">${l.goingCount}<span class="chart-value-unit">人</span></span>
             </div>
           </div>
-        `).join('')}
+        `; }).join('')}
       </div>
     </div>
     ` : ''}
