@@ -2212,6 +2212,101 @@ a.stat-card:active {
 
 .qr-day-label:first-child { margin-top: 0; }
 
+/* ---- ライブ管理タイムライン: 編集・削除ボタン行 ---- */
+.lives-entry-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.btn-sm {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all var(--transition-fast);
+}
+
+.btn-sm:active { transform: scale(0.94); }
+
+/* ---- 参戦状況トグル（ライブ編集モーダル）---- */
+.att-section {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 12px;
+}
+
+.att-section-multi { display: flex; flex-direction: column; gap: 4px; }
+
+.att-day-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.att-day-row:last-child { border-bottom: none; }
+
+.att-day-head {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  min-width: 50px;
+  flex-shrink: 0;
+  line-height: 1.4;
+}
+
+.att-members-row { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.att-toggle-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 8px;
+  min-width: 48px;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--border-color);
+  background: rgba(255, 255, 255, 0.03);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  font-family: inherit;
+}
+
+.att-toggle-btn:active { transform: scale(0.9); }
+
+.att-toggle-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 800;
+  color: white;
+}
+
+.att-toggle-label { font-size: 14px; font-weight: 700; line-height: 1; }
+
+.att-toggle-name {
+  font-size: 9px;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+  overflow: hidden;
+  max-width: 48px;
+  text-overflow: ellipsis;
+}
+
 .chart-row-live {
   gap: 6px;
 }
