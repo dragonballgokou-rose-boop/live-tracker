@@ -302,6 +302,37 @@ function openLiveModal(live = null) {
         <label class="form-label" for="live-name">ライブ名 <span style="color: var(--accent-red)">*</span></label>
         <input type="text" id="live-name" class="form-input" placeholder="例: SUMMER SONIC 2026" value="${isEdit ? escapeAttr(live.name) : ''}" required />
       </div>
+      <div class="form-row" style="gap:12px;align-items:flex-start;">
+        <div class="form-group" style="flex:0 0 auto;">
+          <label class="form-label">アイコン・カラー</label>
+          <div style="display:flex;gap:10px;align-items:flex-start;">
+            <div id="live-icon-preview" style="width:56px;height:56px;border-radius:8px;background:rgba(255,255,255,0.06);border:2px solid ${selColor};display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;font-size:28px;cursor:pointer;" id="live-icon-preview" title="クリックして画像を選択">
+              ${live?.iconImg ? `<img id="live-icon-preview-img" src="${live.iconImg}" style="width:100%;height:100%;object-fit:cover;" />` : `<span id="live-icon-preview-emoji">${selIcon}</span>`}
+            </div>
+            <div style="display:flex;flex-direction:column;gap:6px;">
+              <button type="button" class="btn btn-secondary btn-sm" id="live-icon-upload-btn">📁 画像を選択</button>
+              ${live?.iconImg ? `<button type="button" class="btn btn-sm" id="live-icon-remove-btn" style="color:var(--accent-red);background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.3);">削除</button>` : ''}
+            </div>
+          </div>
+          <input type="file" id="live-icon-file-input" accept="image/*" style="display:none;" />
+          <input type="hidden" id="live-iconImg" value="${live?.iconImg ? escapeAttr(live.iconImg) : ''}" />
+          <p style="font-size:11px;color:var(--text-tertiary);margin-top:4px;">絵文字 or 画像</p>
+        </div>
+        <div style="flex:1;min-width:0;">
+          <div class="form-group" style="margin-bottom:8px;">
+            <div class="live-icon-picker" id="live-icon-picker" style="max-height:74px;overflow-y:auto;">
+              ${LIVE_ICONS.map(ic => `<button type="button" class="live-icon-option${ic === selIcon ? ' selected' : ''}" data-icon="${ic}">${ic}</button>`).join('')}
+            </div>
+            <input type="hidden" id="live-icon" value="${escapeAttr(selIcon)}" />
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
+            <div class="color-picker" id="live-color-picker">
+              ${LIVE_COLORS.map(c => `<div class="color-option${c === selColor ? ' selected' : ''}" style="background:${c}" data-color="${c}"></div>`).join('')}
+            </div>
+            <input type="hidden" id="live-color" value="${escapeAttr(selColor)}" />
+          </div>
+        </div>
+      </div>
       <div class="form-group">
         <label class="form-label" for="live-artist">アーティスト</label>
         <input type="text" id="live-artist" class="form-input" placeholder="例: ONE OK ROCK" value="${isEdit ? escapeAttr(live.artist || '') : ''}" />
@@ -327,34 +358,6 @@ function openLiveModal(live = null) {
       <div class="form-group">
         <label class="form-label" for="live-memo">メモ</label>
         <textarea id="live-memo" class="form-input" rows="3" placeholder="備考があれば入力">${isEdit ? escapeHtml(live.memo || '') : ''}</textarea>
-      </div>
-      <div class="form-group">
-        <label class="form-label">アイコン</label>
-        <div class="avatar-upload-area" style="align-items:flex-start;">
-          <div id="live-icon-preview" style="width:56px;height:56px;border-radius:8px;background:rgba(255,255,255,0.06);border:1px solid var(--border-color);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;font-size:28px;">
-            ${live?.iconImg ? `<img id="live-icon-preview-img" src="${live.iconImg}" style="width:100%;height:100%;object-fit:cover;" />` : `<span id="live-icon-preview-emoji">${selIcon}</span>`}
-          </div>
-          <div class="avatar-upload-actions">
-            <button type="button" class="btn btn-secondary btn-sm" id="live-icon-upload-btn">画像を選択</button>
-            ${live?.iconImg ? `<button type="button" class="btn btn-sm" id="live-icon-remove-btn" style="color:var(--accent-red);background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.3);">削除</button>` : ''}
-          </div>
-        </div>
-        <input type="file" id="live-icon-file-input" accept="image/*" style="display:none;" />
-        <input type="hidden" id="live-iconImg" value="${live?.iconImg ? escapeAttr(live.iconImg) : ''}" />
-        <div style="margin-top:8px;">
-          <p style="font-size:11px;color:var(--text-tertiary);margin-bottom:6px;">または絵文字を選択</p>
-          <div class="live-icon-picker" id="live-icon-picker">
-            ${LIVE_ICONS.map(ic => `<button type="button" class="live-icon-option${ic === selIcon ? ' selected' : ''}" data-icon="${ic}">${ic}</button>`).join('')}
-          </div>
-          <input type="hidden" id="live-icon" value="${escapeAttr(selIcon)}" />
-        </div>
-      </div>
-      <div class="form-group">
-        <label class="form-label">カラー</label>
-        <div class="color-picker" id="live-color-picker">
-          ${LIVE_COLORS.map(c => `<div class="color-option${c === selColor ? ' selected' : ''}" style="background:${c}" data-color="${c}"></div>`).join('')}
-        </div>
-        <input type="hidden" id="live-color" value="${escapeAttr(selColor)}" />
       </div>
       ${isEdit ? buildAttendanceSection(live) : ''}
       <div class="form-actions">
@@ -412,13 +415,19 @@ function openLiveModal(live = null) {
     });
   });
 
-  // カラーピッカー（#live-color-picker の .color-option のみ対象）
+  // カラーピッカー（プレビュー枠のボーダーも連動）
   document.querySelectorAll('#live-color-picker .color-option').forEach(opt => {
     opt.addEventListener('click', () => {
       document.querySelectorAll('#live-color-picker .color-option').forEach(o => o.classList.remove('selected'));
       opt.classList.add('selected');
       document.getElementById('live-color').value = opt.dataset.color;
+      document.getElementById('live-icon-preview').style.borderColor = opt.dataset.color;
     });
+  });
+
+  // プレビューをクリックしても画像選択できる
+  document.getElementById('live-icon-preview')?.addEventListener('click', () => {
+    document.getElementById('live-icon-file-input').click();
   });
 
   document.getElementById('live-form').addEventListener('submit', (e) => {
