@@ -587,6 +587,28 @@ a.stat-card:active {
   color: var(--text-tertiary);
 }
 
+/* iOS date/month input の高さ・左寄せを統一 */
+input[type="date"].form-input,
+input[type="month"].form-input {
+  -webkit-appearance: none;
+  appearance: none;
+  line-height: 1.5;
+  box-sizing: border-box;
+}
+
+input[type="date"].form-input::-webkit-date-and-time-value,
+input[type="month"].form-input::-webkit-date-and-time-value {
+  text-align: left;
+  min-height: 1.5em;
+  padding: 0;
+}
+
+/* Safari での date 入力の内部テキストを左寄せ */
+input[type="date"].form-input::-webkit-calendar-picker-indicator {
+  opacity: 0.5;
+  cursor: pointer;
+}
+
 .form-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
