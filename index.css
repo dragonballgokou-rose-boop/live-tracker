@@ -2548,6 +2548,40 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
   color: var(--text-secondary);
 }
 
+/* ---- プルトゥリフレッシュ ---- */
+.ptr-indicator {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  padding-top: 12px;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(-50px);
+}
+
+.ptr-indicator > * {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 20px 8px 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-full);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  white-space: nowrap;
+}
+
+.ptr-icon {
+  flex-shrink: 0;
+}
+
 /* ---- ビューモード切替（TL ↔ カレンダー）---- */
 .view-mode-toggle {
   display: flex;
