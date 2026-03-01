@@ -5,10 +5,26 @@ import { getMembers, addMember, updateMember, deleteMember, getAttendanceByMembe
 import { showModal, closeModal, showToast, showConfirm, memberAvatarHtml } from '../utils.js';
 
 const MEMBER_COLORS = [
-  '#8B5CF6', '#EC4899', '#22D3EE', '#34D399', '#FBBF24',
-  '#F87171', '#6366F1', '#14B8A6', '#F97316', '#A78BFA',
-  '#FB7185', '#38BDF8', '#4ADE80', '#FACC15', '#E879F9',
-  '#2DD4BF', '#818CF8', '#FB923C'
+  // パープル・バイオレット
+  '#7C3AED', '#8B5CF6', '#A78BFA', '#C4B5FD',
+  // ピンク・ローズ
+  '#BE185D', '#EC4899', '#F472B6', '#FBCFE8',
+  // レッド・コーラル
+  '#DC2626', '#F87171', '#FCA5A5', '#FECDD3',
+  // オレンジ
+  '#EA580C', '#F97316', '#FB923C', '#FDBA74',
+  // イエロー・アンバー
+  '#D97706', '#FBBF24', '#FCD34D', '#FEF08A',
+  // グリーン
+  '#059669', '#34D399', '#6EE7B7', '#A7F3D0',
+  // ティール・シアン
+  '#0891B2', '#22D3EE', '#67E8F9', '#A5F3FC',
+  // ブルー
+  '#2563EB', '#60A5FA', '#93C5FD', '#BFDBFE',
+  // インディゴ
+  '#4338CA', '#6366F1', '#818CF8', '#A5B4FC',
+  // フューシャ
+  '#A21CAF', '#D946EF', '#E879F9', '#F0ABFC',
 ];
 
 export function renderMembers() {
@@ -149,6 +165,10 @@ function openMemberModal(member = null) {
             </div>
           `).join('')}
         </div>
+        <div class="color-custom-row">
+          <label for="color-custom-input">カスタム</label>
+          <input type="color" id="color-custom-input" value="${selectedColor}" />
+        </div>
         <input type="hidden" id="member-color" value="${selectedColor}" />
       </div>
       <div class="form-actions">
@@ -158,16 +178,25 @@ function openMemberModal(member = null) {
     </form>
   `);
 
-  // Color picker
+  // Color picker (palette)
+  function applyColor(color) {
+    document.getElementById('member-color').value = color;
+    document.getElementById('color-custom-input').value = color;
+    const placeholder = document.getElementById('avatar-preview-placeholder');
+    if (placeholder) placeholder.style.background = color;
+  }
+
   document.querySelectorAll('.color-option').forEach(opt => {
     opt.addEventListener('click', () => {
       document.querySelectorAll('.color-option').forEach(o => o.classList.remove('selected'));
       opt.classList.add('selected');
-      document.getElementById('member-color').value = opt.dataset.color;
-      // Update placeholder color if no avatar set
-      const placeholder = document.getElementById('avatar-preview-placeholder');
-      if (placeholder) placeholder.style.background = opt.dataset.color;
+      applyColor(opt.dataset.color);
     });
+  });
+
+  document.getElementById('color-custom-input')?.addEventListener('input', (e) => {
+    document.querySelectorAll('.color-option').forEach(o => o.classList.remove('selected'));
+    applyColor(e.target.value);
   });
 
   // Avatar upload

@@ -100,8 +100,11 @@ export function renderLives() {
         </span>`;
       }).join('');
 
+      const liveIcon = live.icon || '';
+      const liveColor = live.color || '#8B5CF6';
+
       return `
-        <div class="history-entry${isPast ? ' history-entry-past' : ''}">
+        <div class="history-entry${isPast ? ' history-entry-past' : ''}" style="border-left:3px solid ${liveColor};">
           <div class="history-entry-date">
             <span class="history-date-num">${startD.getDate()}</span>
             <span class="history-date-wd${isWeekend ? ' weekend' : ''}">${WEEKDAYS[startD.getDay()]}</span>
@@ -109,7 +112,7 @@ export function renderLives() {
           </div>
           <div class="history-entry-body">
             <div class="history-entry-title" onclick="showLiveDetailsModal('${live.id}')">
-              ${escapeHtml(live.name)}
+              ${liveIcon ? `<span style="margin-right:4px;">${liveIcon}</span>` : ''}${escapeHtml(live.name)}
               <span style="margin-left:2px;">${statusBadge}</span>
             </div>
             ${metaParts.length > 0 ? `<div class="history-entry-meta">${metaParts.join(' · ')}</div>` : ''}
@@ -269,10 +272,27 @@ export function renderLives() {
   });
 }
 
+// ---- ライブアイコン & カラー ----
+const LIVE_ICONS = [
+  '🎵', '🎶', '🎸', '🎹', '🎺', '🎻', '🥁', '🎤',
+  '🎼', '🎧', '🎭', '🎪', '🏟', '✨', '⭐', '🌟',
+  '💫', '🔥', '💎', '👑', '🎊', '🎉', '🌸', '🌺',
+  '🌙', '☀️', '🌈', '❤️', '💜', '💙', '🤍', '🖤',
+];
+
+const LIVE_COLORS = [
+  '#8B5CF6', '#EC4899', '#22D3EE', '#34D399', '#FBBF24',
+  '#F87171', '#6366F1', '#14B8A6', '#F97316', '#A78BFA',
+  '#FB7185', '#38BDF8', '#4ADE80', '#FACC15', '#E879F9',
+  '#2DD4BF', '#818CF8', '#FB923C', '#60A5FA', '#F472B6',
+];
+
 // ---- ライブ追加・編集モーダル ----
 function openLiveModal(live = null) {
   const isEdit = !!live;
   const title = isEdit ? 'ライブを編集' : 'ライブを追加';
+  const selIcon = live?.icon || '🎵';
+  const selColor = live?.color || '#8B5CF6';
 
   showModal(title, `
     <form id="live-form">
@@ -306,6 +326,22 @@ function openLiveModal(live = null) {
         <label class="form-label" for="live-memo">メモ</label>
         <textarea id="live-memo" class="form-input" rows="3" placeholder="備考があれば入力">${isEdit ? escapeHtml(live.memo || '') : ''}</textarea>
       </div>
+      <div class="form-row" style="gap:12px;">
+        <div class="form-group" style="flex:1;">
+          <label class="form-label">アイコン</label>
+          <div class="live-icon-picker" id="live-icon-picker">
+            ${LIVE_ICONS.map(ic => `<button type="button" class="live-icon-option${ic === selIcon ? ' selected' : ''}" data-icon="${ic}">${ic}</button>`).join('')}
+          </div>
+          <input type="hidden" id="live-icon" value="${escapeAttr(selIcon)}" />
+        </div>
+        <div class="form-group" style="flex:1;">
+          <label class="form-label">カラー</label>
+          <div class="color-picker" id="live-color-picker">
+            ${LIVE_COLORS.map(c => `<div class="color-option${c === selColor ? ' selected' : ''}" style="background:${c}" data-color="${c}"></div>`).join('')}
+          </div>
+          <input type="hidden" id="live-color" value="${escapeAttr(selColor)}" />
+        </div>
+      </div>
       ${isEdit ? buildAttendanceSection(live) : ''}
       <div class="form-actions">
         <button type="button" class="btn btn-secondary" onclick="document.getElementById('modal-close').click()">キャンセル</button>
@@ -315,6 +351,24 @@ function openLiveModal(live = null) {
   `);
 
   if (isEdit) setupAttendanceToggles();
+
+  // アイコンピッカー
+  document.querySelectorAll('.live-icon-option').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.live-icon-option').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      document.getElementById('live-icon').value = btn.dataset.icon;
+    });
+  });
+
+  // カラーピッカー（#live-color-picker の .color-option のみ対象）
+  document.querySelectorAll('#live-color-picker .color-option').forEach(opt => {
+    opt.addEventListener('click', () => {
+      document.querySelectorAll('#live-color-picker .color-option').forEach(o => o.classList.remove('selected'));
+      opt.classList.add('selected');
+      document.getElementById('live-color').value = opt.dataset.color;
+    });
+  });
 
   document.getElementById('live-form').addEventListener('submit', (e) => {
     e.preventDefault();
@@ -328,7 +382,9 @@ function openLiveModal(live = null) {
       dateEnd: dateEnd || '',
       venue: document.getElementById('live-venue').value.trim(),
       prefecture: document.getElementById('live-pref').value.trim(),
-      memo: document.getElementById('live-memo').value.trim()
+      memo: document.getElementById('live-memo').value.trim(),
+      icon: document.getElementById('live-icon').value || '🎵',
+      color: document.getElementById('live-color').value || '#8B5CF6',
     };
 
     if (!data.name || !data.dateStart) {
@@ -615,8 +671,10 @@ function renderLivesCalendar(filteredLives, members, now, content) {
           ? `<img src="${m.avatar}" style="width:6px;height:6px;border-radius:50%;object-fit:cover;" />`
           : `<span style="width:5px;height:5px;border-radius:50%;background:${m.color};display:inline-block;flex-shrink:0;"></span>`)
         .join('');
-      return `<div class="cal-event${isPast ? ' cal-event-past' : ''}" onclick="window.showLiveDetailsModal('${live.id}')" title="${escapeAttr(live.name)}">
-        <span class="cal-event-name">${escapeHtml(live.name)}</span>
+      const evColor = live.color || 'rgba(139,92,246,0.4)';
+      const evBg = isPast ? 'rgba(255,255,255,0.05)' : `${evColor}28`;
+      return `<div class="cal-event${isPast ? ' cal-event-past' : ''}" onclick="window.showLiveDetailsModal('${live.id}')" title="${escapeAttr(live.name)}" style="background:${evBg};border-left:2px solid ${evColor};">
+        <span class="cal-event-name">${live.icon ? live.icon + ' ' : ''}${escapeHtml(live.name)}</span>
         ${goingDots ? `<div class="cal-member-dots">${goingDots}</div>` : ''}
       </div>`;
     }).join('');
