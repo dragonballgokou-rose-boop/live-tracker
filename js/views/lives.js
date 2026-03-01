@@ -76,7 +76,7 @@ export function renderLives() {
       </div>
     ` : `
       <div class="card empty-state">
-        <div class="empty-state-icon">🎸</div>
+        <div class="empty-state-icon"><svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div>
         <p class="empty-state-text">まだライブが登録されていません</p>
         <p style="color: var(--text-tertiary); font-size: 14px;">「ライブを追加」ボタンから最初のライブを登録しましょう！</p>
       </div>
