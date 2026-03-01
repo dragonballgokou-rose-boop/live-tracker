@@ -1615,6 +1615,9 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
 .date-row-weekday.weekend {
   color: var(--accent-pink);
 }
+.date-row-weekday.saturday {
+  color: var(--accent-cyan);
+}
 
 .date-row-events {
   flex: 1;
@@ -2693,7 +2696,10 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
   margin-bottom: 2px;
 }
 
-.cal-day-num.weekend { color: var(--accent-pink); }
+.cal-day-num.weekend  { color: var(--accent-pink); }
+.cal-day-num.saturday { color: var(--accent-cyan); }
+.cal-wd.weekend  { color: var(--accent-pink); }
+.cal-wd.saturday { color: var(--accent-cyan); }
 
 .cal-event {
   display: block;

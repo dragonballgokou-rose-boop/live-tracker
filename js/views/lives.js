@@ -2,7 +2,7 @@
 // Lives Management View
 // ============================================
 import { getLives, addLive, updateLive, deleteLive, getMembers, getDayAttendanceStatus, setDayAttendance, getDatesForLive } from '../store.js';
-import { showModal, closeModal, showToast, showConfirm } from '../utils.js';
+import { showModal, closeModal, showToast, showConfirm, isJapaneseHoliday } from '../utils.js';
 import { showLiveDetailsModal, showMemberDetailsModal } from './details.js';
 
 const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
@@ -605,7 +605,7 @@ function renderLivesCalendar(filteredLives, members, now, content) {
       </div>`;
     }).join('');
     cells += `<div class="cal-day${isToday ? ' cal-day-today' : ''}${dayLives.length ? ' cal-day-has-event' : ''}">
-      <span class="cal-day-num${(dow===0||dow===6) ? ' weekend' : ''}">${d}</span>
+      <span class="cal-day-num${(isJapaneseHoliday(ds)||dow===0) ? ' weekend' : dow===6 ? ' saturday' : ''}">${d}</span>
       ${events}
     </div>`;
   }
@@ -616,7 +616,7 @@ function renderLivesCalendar(filteredLives, members, now, content) {
       <span class="cal-month-label">${year}年${month+1}月</span>
       <button class="cal-nav-btn" id="cal-next">›</button>
     </div>
-    <div class="cal-weekdays">${['日','月','火','水','木','金','土'].map(w=>`<div class="cal-wd">${w}</div>`).join('')}</div>
+    <div class="cal-weekdays">${['日','月','火','水','木','金','土'].map((w,i)=>`<div class="cal-wd${i===0?' weekend':i===6?' saturday':''}">${w}</div>`).join('')}</div>
     <div class="cal-grid">${cells}</div>
   `;
 
