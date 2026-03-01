@@ -253,15 +253,13 @@ function openQuickRecordModal(members) {
         <label class="form-label" for="qr-artist">アーティスト</label>
         <input type="text" id="qr-artist" class="form-input" placeholder="例: 乃木坂46" />
       </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label" for="qr-date-start">日付 <span style="color:var(--accent-red)">*</span></label>
-          <input type="date" id="qr-date-start" class="form-input" value="${todayStr}" required />
-        </div>
-        <div class="form-group">
-          <label class="form-label" for="qr-date-end">終了日</label>
-          <input type="date" id="qr-date-end" class="form-input" />
-        </div>
+      <div class="form-group">
+        <label class="form-label" for="qr-date-start">日付 <span style="color:var(--accent-red)">*</span></label>
+        <input type="date" id="qr-date-start" class="form-input" value="${todayStr}" required />
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="qr-date-end">終了日 <span style="color:var(--text-tertiary);font-size:12px;">(複数日の場合)</span></label>
+        <input type="date" id="qr-date-end" class="form-input" />
       </div>
       <div class="form-row">
         <div class="form-group" style="flex:2;">
