@@ -1,8 +1,11 @@
 import { getLiveById, getMemberById, getMembers, getLives, getDatesForLive, getDayAttendanceStatus } from '../store.js';
-import { showModal, memberAvatarHtml } from '../utils.js';
+import { showModal, memberAvatarHtml, isJapaneseHoliday } from '../utils.js';
 import { formatDateRange, extractPrefecture } from './lives.js';
 
 const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
+
+// カレンダー表示月（モーダル間で保持）
+let memberCalDate = new Date();
 
 function escapeHtml(text) {
     if (!text) return '';
@@ -112,6 +115,74 @@ export function showLiveDetailsModal(liveId) {
 }
 
 // ============================================
+// メンバー詳細カレンダー
+// ============================================
+function buildMemberCalHtml(memberId, year, month) {
+    const lives = getLives();
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    const pad = n => String(n).padStart(2, '0');
+    const todayStr = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
+    const firstDow = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+    // dateStr → lives マップ（全ライブ対象）
+    const dayMap = {};
+    lives.forEach(live => {
+        getDatesForLive(live).forEach(({ dateStr }) => {
+            if (!dayMap[dateStr]) dayMap[dateStr] = [];
+            if (!dayMap[dateStr].find(l => l.id === live.id)) dayMap[dateStr].push(live);
+        });
+    });
+
+    let cells = Array(firstDow).fill('<div class="cal-day cal-day-empty"></div>').join('');
+    for (let d = 1; d <= daysInMonth; d++) {
+        const ds = `${year}-${pad(month+1)}-${pad(d)}`;
+        const dayLives = dayMap[ds] || [];
+        const isToday = ds === todayStr;
+        const dow = new Date(year, month, d).getDay();
+
+        // このメンバーが参戦する日かどうか
+        const isMemberGoing = dayLives.some(live => getDayAttendanceStatus(live.id, ds, memberId) === 'going');
+
+        const events = dayLives.map(live => {
+            const lastD = new Date(live.dateEnd || live.dateStart || live.date);
+            lastD.setHours(0, 0, 0, 0);
+            const isPast = lastD < now;
+            const isGoing = getDayAttendanceStatus(live.id, ds, memberId) === 'going';
+            // 参戦ライブは左に黄色ボーダーで強調
+            const goingStyle = isGoing ? 'border-left:2px solid #facc15;padding-left:2px;' : '';
+            return `<div class="cal-event${isPast ? ' cal-event-past' : ''}" data-live-id="${live.id}" style="${goingStyle}">
+                <span class="cal-event-name">${escapeHtml(live.name)}</span>
+            </div>`;
+        }).join('');
+
+        // 参戦日はセルに黄色ボーダー、当日は内側に黄色リング
+        let cellStyle = '';
+        if (isMemberGoing) {
+            cellStyle = isToday
+                ? 'box-shadow: inset 0 0 0 2px #facc15;'
+                : 'border-color: #facc15; border-width: 2px;';
+        }
+
+        cells += `<div class="cal-day${isToday ? ' cal-day-today' : ''}${dayLives.length ? ' cal-day-has-event' : ''}" style="${cellStyle}">
+            <span class="cal-day-num${(isJapaneseHoliday(ds) || dow === 0) ? ' weekend' : dow === 6 ? ' saturday' : ''}">${d}</span>
+            ${events}
+        </div>`;
+    }
+
+    return `
+        <div class="cal-nav">
+            <button class="cal-nav-btn" id="member-cal-prev">‹</button>
+            <span class="cal-month-label">${year}年${month+1}月</span>
+            <button class="cal-nav-btn" id="member-cal-next">›</button>
+        </div>
+        <div class="cal-weekdays">${['日','月','火','水','木','金','土'].map((w,i)=>`<div class="cal-wd${i===0?' weekend':i===6?' saturday':''}">${w}</div>`).join('')}</div>
+        <div class="cal-grid">${cells}</div>
+    `;
+}
+
+// ============================================
 // メンバー詳細モーダル
 // ============================================
 export function showMemberDetailsModal(memberId) {
@@ -180,6 +251,22 @@ export function showMemberDetailsModal(memberId) {
         </div>
     `;
 
+    // カレンダー（今月にリセット）
+    memberCalDate = new Date();
+    memberCalDate.setDate(1);
+
+    html += `
+        <div style="margin-bottom:20px;">
+            <h4 style="margin-bottom:10px;font-size:14px;font-weight:700;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border-color);padding-bottom:8px;">
+                カレンダー
+                <span style="font-size:11px;font-weight:400;color:var(--text-tertiary);">黄枠 = 参戦日</span>
+            </h4>
+            <div id="member-cal-container">
+                ${buildMemberCalHtml(memberId, memberCalDate.getFullYear(), memberCalDate.getMonth())}
+            </div>
+        </div>
+    `;
+
     // ライブカードを生成するヘルパー
     function liveCard(live) {
         const goingDates = liveStatusMap[live.id].goingDates;
@@ -234,4 +321,28 @@ export function showMemberDetailsModal(memberId) {
 
     html += `</div>`;
     showModal(`メンバー詳細：${member.name}`, html);
+
+    // カレンダーのナビゲーションとライブクリックを設定
+    window.showLiveDetailsModal = showLiveDetailsModal;
+    const calContainer = document.getElementById('member-cal-container');
+    if (calContainer) {
+        // ライブクリック（イベント委任・一度だけ登録）
+        calContainer.addEventListener('click', e => {
+            const liveId = e.target.closest('[data-live-id]')?.dataset.liveId;
+            if (liveId) showLiveDetailsModal(liveId);
+        });
+        function bindNavButtons() {
+            calContainer.querySelector('#member-cal-prev')?.addEventListener('click', () => {
+                memberCalDate = new Date(memberCalDate.getFullYear(), memberCalDate.getMonth() - 1, 1);
+                calContainer.innerHTML = buildMemberCalHtml(memberId, memberCalDate.getFullYear(), memberCalDate.getMonth());
+                bindNavButtons();
+            });
+            calContainer.querySelector('#member-cal-next')?.addEventListener('click', () => {
+                memberCalDate = new Date(memberCalDate.getFullYear(), memberCalDate.getMonth() + 1, 1);
+                calContainer.innerHTML = buildMemberCalHtml(memberId, memberCalDate.getFullYear(), memberCalDate.getMonth());
+                bindNavButtons();
+            });
+        }
+        bindNavButtons();
+    }
 }

@@ -582,11 +582,27 @@ function renderLivesCalendar(filteredLives, members, now, content) {
     });
   });
 
+  // 選択メンバーの参戦日セットを構築（黄枠強調用）
+  const memberHighlightDays = new Set();
+  if (activeFilterMemberIds.size > 0) {
+    filteredLives.forEach(live => {
+      getDatesForLive(live).forEach(({ dateStr }) => {
+        for (const memberId of activeFilterMemberIds) {
+          if (getDayAttendanceStatus(live.id, dateStr, memberId) === 'going') {
+            memberHighlightDays.add(dateStr);
+            break;
+          }
+        }
+      });
+    });
+  }
+
   let cells = Array(firstDow).fill('<div class="cal-day cal-day-empty"></div>').join('');
   for (let d = 1; d <= daysInMonth; d++) {
     const ds = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
     const dayLives = dayMap[ds] || [];
     const isToday = ds === nowStr;
+    const isMemberHighlight = memberHighlightDays.has(ds);
     const dow = new Date(year, month, d).getDay();
     const events = dayLives.map(live => {
       const lastD = new Date(live.dateEnd || live.dateStart || live.date);
@@ -604,7 +620,10 @@ function renderLivesCalendar(filteredLives, members, now, content) {
         ${goingDots ? `<div class="cal-member-dots">${goingDots}</div>` : ''}
       </div>`;
     }).join('');
-    cells += `<div class="cal-day${isToday ? ' cal-day-today' : ''}${dayLives.length ? ' cal-day-has-event' : ''}">
+    const cellHighlightStyle = isMemberHighlight
+      ? (isToday ? 'box-shadow:inset 0 0 0 2px #facc15;' : 'border-color:#facc15;border-width:2px;')
+      : '';
+    cells += `<div class="cal-day${isToday ? ' cal-day-today' : ''}${dayLives.length ? ' cal-day-has-event' : ''}" style="${cellHighlightStyle}">
       <span class="cal-day-num${(isJapaneseHoliday(ds)||dow===0) ? ' weekend' : dow===6 ? ' saturday' : ''}">${d}</span>
       ${events}
     </div>`;
