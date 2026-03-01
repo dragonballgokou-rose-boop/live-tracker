@@ -749,7 +749,7 @@ a.stat-card:active {
   cursor: pointer;
   padding: 4px;
   border-radius: var(--radius-sm);
-  min-width: 48px;
+  width: 56px;
   transition: transform var(--transition-fast);
   color: inherit;
   font-family: inherit;
@@ -812,7 +812,7 @@ a.stat-card:active {
 .tally-card-member-name {
   font-size: 9px;
   color: var(--text-tertiary);
-  max-width: 48px;
+  max-width: 52px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
