@@ -1211,9 +1211,11 @@ a.stat-card:active {
 }
 
 .empty-state-icon {
-  font-size: 3rem;
+  display: flex;
+  justify-content: center;
   margin-bottom: var(--space-md);
-  opacity: 0.5;
+  opacity: 0.4;
+  color: var(--text-secondary);
 }
 
 .empty-state-text {

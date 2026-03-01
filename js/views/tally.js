@@ -13,7 +13,7 @@ export function renderTally() {
   if (lives.length === 0 || members.length === 0) {
     content.innerHTML = `
       <div class="card empty-state">
-        <div class="empty-state-icon">📊</div>
+        <div class="empty-state-icon"><svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/><line x1="2" y1="20" x2="22" y2="20"/></svg></div>
         <p class="empty-state-text">
           ${lives.length === 0 ? 'ライブを追加してください' : 'メンバーを追加してください'}
         </p>
@@ -28,7 +28,7 @@ export function renderTally() {
   content.innerHTML = `
     <!-- Filter -->
     <div class="tally-filter-bar">
-      <input type="text" id="tally-filter-live" class="form-input" placeholder="🔍 ライブ名" />
+      <input type="text" id="tally-filter-live" class="form-input" placeholder="ライブ名を検索" />
       <input type="month" id="tally-filter-month" class="form-input" />
       <button id="tally-filter-clear" class="btn btn-secondary btn-sm">クリア</button>
     </div>
@@ -153,7 +153,7 @@ function buildTallyTable(lives, members) {
                     ${escapeHtml(row.live.artist || '')} · ${formatDateRange(row.live)}
                   </span>
                   <span style="font-size: 11px; color: var(--text-tertiary); display: flex; align-items: center; gap: 4px;">
-                    📍 ${escapeHtml(row.live.venue || '会場未定')}
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;margin-right:2px;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>${escapeHtml(row.live.venue || '会場未定')}
                     ${isPast ? '<span class="badge badge-past" style="font-size: 10px;">終了</span>' : ''}
                   </span>
                   <span class="day-label" style="margin-top: 4px;">
@@ -179,7 +179,7 @@ function buildTallyTable(lives, members) {
                     ${dateStr} · ${escapeHtml(row.live.artist || '')}
                   </span>
                   <span style="font-size: 11px; color: var(--text-tertiary); display: flex; align-items: center; gap: 4px;">
-                    📍 ${escapeHtml(row.live.venue || '会場未定')}
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;margin-right:2px;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>${escapeHtml(row.live.venue || '会場未定')}
                     ${isPast ? '<span class="badge badge-past" style="font-size: 10px;">終了</span>' : ''}
                   </span>
                 </div>`;
