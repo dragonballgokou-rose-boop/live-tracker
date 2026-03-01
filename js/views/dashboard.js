@@ -1,9 +1,13 @@
 // ============================================
 // Dashboard View
 // ============================================
-import { getLives, getMembers, getStats, getAttendanceByMember, getDayAttendanceStatus, getDatesForLive } from '../store.js';
+import { getLives, getMembers, getStats, getDayAttendanceStatus, getDatesForLive } from '../store.js';
 import { formatDateRange } from './lives.js';
 import { showLiveDetailsModal, showMemberDetailsModal } from './details.js';
+import { isJapaneseHoliday, memberAvatarHtml } from '../utils.js';
+
+let dashboardViewMode = 'tl';      // 'tl' | 'calendar'
+let dashboardCalendarDate = null;  // null = use current month on first load
 
 export function renderDashboard() {
   const stats = getStats();
@@ -12,9 +16,22 @@ export function renderDashboard() {
   const now = new Date();
   now.setHours(0, 0, 0, 0);
 
+  if (!dashboardCalendarDate) dashboardCalendarDate = new Date(now.getFullYear(), now.getMonth(), 1);
+
   const upcomingLives = lives
     .filter(l => new Date(l.dateEnd || l.dateStart || l.date) >= now)
     .slice(0, 5);
+
+  const viewToggleHtml = `
+    <div class="view-mode-toggle">
+      <button class="view-mode-btn${dashboardViewMode === 'tl' ? ' active' : ''}" data-view="tl" title="リスト">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+      </button>
+      <button class="view-mode-btn${dashboardViewMode === 'calendar' ? ' active' : ''}" data-view="calendar" title="カレンダー">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      </button>
+    </div>
+  `;
 
   const content = document.getElementById('page-content');
   content.innerHTML = `
@@ -39,19 +56,22 @@ export function renderDashboard() {
       </a>
     </div>
 
-    <!-- Date-based Calendar -->
+    <!-- Date-based Schedule -->
     ${lives.length > 0 && members.length > 0 ? `
     <div class="upcoming-section">
       <div class="section-header">
-        <h2 class="section-title"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-4px;margin-right:6px;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>日付別 参加スケジュール</h2>
-        <div class="section-header-controls" style="display: flex; gap: 8px; align-items: center;">
-          <button id="cal-prev" class="btn btn-secondary btn-sm">← 前月</button>
-          <span id="cal-month-label" style="font-weight: 600; font-size: 14px; min-width: 80px; text-align: center;"></span>
-          <button id="cal-next" class="btn btn-secondary btn-sm">翌月 →</button>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <h2 class="section-title"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-4px;margin-right:6px;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>日付別 参加スケジュール</h2>
+          ${viewToggleHtml}
+        </div>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <button id="cal-prev" class="btn btn-secondary btn-sm">‹</button>
+          <span id="cal-month-label" style="font-weight:600;font-size:14px;min-width:80px;text-align:center;"></span>
+          <button id="cal-next" class="btn btn-secondary btn-sm">›</button>
         </div>
       </div>
-      <div class="card" style="padding: 0; overflow: hidden;">
-        <div id="date-schedule" class="date-schedule"></div>
+      <div class="card" style="padding:0;overflow:hidden;">
+        <div id="date-schedule"></div>
       </div>
     </div>
     ` : ''}
@@ -90,70 +110,83 @@ export function renderDashboard() {
     </div>
   `;
 
-  // Calendar navigation
   if (lives.length > 0 && members.length > 0) {
-    let currentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    renderDateSchedule(currentMonth, lives, members, now);
+    // View toggle
+    content.querySelectorAll('.view-mode-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        dashboardViewMode = btn.dataset.view;
+        renderDashboard();
+      });
+    });
+
+    // Month navigation helper
+    const updateSchedule = () => {
+      const label = document.getElementById('cal-month-label');
+      if (label) {
+        const y = dashboardCalendarDate.getFullYear();
+        const m = dashboardCalendarDate.getMonth() + 1;
+        label.textContent = `${y}年${m}月`;
+      }
+      if (dashboardViewMode === 'calendar') {
+        renderDashboardCalendar(dashboardCalendarDate, lives, members, now);
+      } else {
+        renderDateSchedule(dashboardCalendarDate, lives, members, now);
+      }
+    };
 
     document.getElementById('cal-prev')?.addEventListener('click', () => {
-      currentMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1);
-      renderDateSchedule(currentMonth, lives, members, now);
+      dashboardCalendarDate = new Date(dashboardCalendarDate.getFullYear(), dashboardCalendarDate.getMonth() - 1, 1);
+      updateSchedule();
     });
     document.getElementById('cal-next')?.addEventListener('click', () => {
-      currentMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1);
-      renderDateSchedule(currentMonth, lives, members, now);
+      dashboardCalendarDate = new Date(dashboardCalendarDate.getFullYear(), dashboardCalendarDate.getMonth() + 1, 1);
+      updateSchedule();
     });
+
+    updateSchedule();
   }
 }
 
-// ---------- Date-based Schedule ----------
+// ---------- Helper: day number class ----------
+function dayClass(dow, dateStr) {
+  const isHol = isJapaneseHoliday(dateStr);
+  if (isHol || dow === 0) return 'weekend';
+  if (dow === 6) return 'saturday';
+  return '';
+}
 
+// ---------- TL View (list of dates with events) ----------
 function renderDateSchedule(month, lives, members, now) {
   const container = document.getElementById('date-schedule');
-  const label = document.getElementById('cal-month-label');
-  if (!container || !label) return;
+  if (!container) return;
 
   const year = month.getFullYear();
   const mon = month.getMonth();
-  label.textContent = `${year}年${mon + 1}月`;
 
-  // Build a map: dateStr -> [{live, dayLabel}]
   const dateMap = {};
   lives.forEach(live => {
     const start = new Date(live.dateStart || live.date);
     const end = live.dateEnd ? new Date(live.dateEnd) : new Date(start);
     start.setHours(0, 0, 0, 0);
     end.setHours(0, 0, 0, 0);
-
     const cursor = new Date(start);
     let dayNum = 1;
     const totalDays = Math.round((end - start) / (1000 * 60 * 60 * 24)) + 1;
     while (cursor <= end) {
       if (cursor.getFullYear() === year && cursor.getMonth() === mon) {
-        const y = cursor.getFullYear();
-        const m = String(cursor.getMonth() + 1).padStart(2, '0');
-        const d = String(cursor.getDate()).padStart(2, '0');
-        const key = `${y}-${m}-${d}`;
-        if (!dateMap[key]) dateMap[key] = [];
-        dateMap[key].push({
-          live,
-          dayLabel: totalDays > 1 ? `Day${dayNum}` : null
-        });
+        const ds = toDateStr(cursor);
+        if (!dateMap[ds]) dateMap[ds] = [];
+        dateMap[ds].push({ live, dayLabel: totalDays > 1 ? `Day${dayNum}` : null });
       }
       cursor.setDate(cursor.getDate() + 1);
       dayNum++;
     }
   });
 
-  // Sort dates
   const sortedDates = Object.keys(dateMap).sort();
 
   if (sortedDates.length === 0) {
-    container.innerHTML = `
-            <div style="padding: 32px; text-align: center; color: var(--text-tertiary); font-size: 14px;">
-                この月にはライブの予定がありません
-            </div>
-        `;
+    container.innerHTML = `<div style="padding:32px;text-align:center;color:var(--text-tertiary);font-size:14px;">この月にはライブの予定がありません</div>`;
     return;
   }
 
@@ -161,81 +194,138 @@ function renderDateSchedule(month, lives, members, now) {
 
   container.innerHTML = sortedDates.map(dateStr => {
     const d = new Date(dateStr + 'T00:00:00');
-    const dayOfWeek = weekdays[d.getDay()];
-    const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+    const dow = d.getDay();
+    const wdCls = dayClass(dow, dateStr);
     const isToday = d.getTime() === now.getTime();
     const isPast = d < now;
     const entries = dateMap[dateStr];
 
     return `
-        <div class="date-row ${isToday ? 'date-row-today' : ''} ${isPast ? 'date-row-past' : ''}" >
-            <div class="date-row-date">
-                <span class="date-row-day">${d.getDate()}</span>
-                <span class="date-row-weekday ${isWeekend ? 'weekend' : ''}">${dayOfWeek}</span>
-                ${isToday ? '<span class="badge badge-today" style="font-size: 9px; padding: 1px 6px;">TODAY</span>' : ''}
-            </div>
-            <div class="date-row-events">
-                ${entries.map(({ live, dayLabel }) => {
-      const goingMembers = members.filter(m => getDayAttendanceStatus(live.id, dateStr, m.id) === 'going');
-      return `
-                    <div class="date-event">
-                        <div class="date-event-info" style="cursor: pointer;" onclick="window.showLiveDetailsModal('${live.id}')">
-                            <span class="date-event-name">${escapeHtml(live.name)}${dayLabel ? ` <span class="date-event-day-label">${dayLabel}</span>` : ''}</span>
-                            <span class="date-event-meta">${escapeHtml(live.artist || '')} · ${escapeHtml(live.venue || '')}</span>
-                        </div>
-                        <div class="date-event-members">
-                            ${goingMembers.length > 0 ? `
-                                <div class="date-member-group going">
-                                    ${goingMembers.map(m => `
-                                        <span class="date-member-chip going" title="${escapeHtml(m.name)}">
-                                            <span class="date-member-dot" style="background: ${m.color};"></span>
-                                            ${escapeHtml(m.nickname || m.name)}
-                                        </span>
-                                    `).join('')}
-                                </div>
-                            ` : ''}
-                            ${goingMembers.length === 0 ? `
-                                <span style="font-size: 11px; color: var(--text-tertiary);">参加者なし</span>
-                            ` : ''}
-                        </div>
-                    </div>
-                    `;
-    }).join('')}
-            </div>
+      <div class="date-row ${isToday ? 'date-row-today' : ''} ${isPast ? 'date-row-past' : ''}">
+        <div class="date-row-date">
+          <span class="date-row-day">${d.getDate()}</span>
+          <span class="date-row-weekday ${wdCls}">${weekdays[dow]}</span>
+          ${isToday ? '<span class="badge badge-today" style="font-size:9px;padding:1px 6px;">TODAY</span>' : ''}
         </div>
-        `;
+        <div class="date-row-events">
+          ${entries.map(({ live, dayLabel }) => {
+            const goingMembers = members.filter(m => getDayAttendanceStatus(live.id, dateStr, m.id) === 'going');
+            return `
+              <div class="date-event">
+                <div class="date-event-info" style="cursor:pointer;" onclick="window.showLiveDetailsModal('${live.id}')">
+                  <span class="date-event-name">${escapeHtml(live.name)}${dayLabel ? ` <span class="date-event-day-label">${dayLabel}</span>` : ''}</span>
+                  <span class="date-event-meta">${escapeHtml(live.artist || '')} · ${escapeHtml(live.venue || '')}</span>
+                </div>
+                <div class="date-event-members">
+                  ${goingMembers.length > 0 ? `
+                    <div class="date-member-group going">
+                      ${goingMembers.map(m => `
+                        <span class="date-member-chip going" title="${escapeHtml(m.name)}">
+                          <span class="date-member-dot" style="background:${m.color};"></span>
+                          ${escapeHtml(m.nickname || m.name)}
+                        </span>
+                      `).join('')}
+                    </div>
+                  ` : `<span style="font-size:11px;color:var(--text-tertiary);">参加者なし</span>`}
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+    `;
   }).join('');
 }
 
-// ---------- Member Ranking ----------
+// ---------- Calendar Grid View ----------
+function renderDashboardCalendar(month, lives, members, now) {
+  const container = document.getElementById('date-schedule');
+  if (!container) return;
 
+  const year = month.getFullYear();
+  const mon = month.getMonth();
+  const firstDow = new Date(year, mon, 1).getDay();
+  const daysInMonth = new Date(year, mon + 1, 0).getDate();
+  const nowStr = toDateStr(now);
+
+  // Build dateStr → [live] map
+  const dayMap = {};
+  lives.forEach(live => {
+    getDatesForLive(live).forEach(({ dateStr }) => {
+      const [y, m] = dateStr.split('-').map(Number);
+      if (y !== year || m - 1 !== mon) return;
+      if (!dayMap[dateStr]) dayMap[dateStr] = [];
+      if (!dayMap[dateStr].find(l => l.id === live.id)) dayMap[dateStr].push(live);
+    });
+  });
+
+  const WD = ['日', '月', '火', '水', '木', '金', '土'];
+  const wdHeaders = WD.map((w, i) => {
+    const cls = i === 0 ? ' weekend' : i === 6 ? ' saturday' : '';
+    return `<div class="cal-wd${cls}">${w}</div>`;
+  }).join('');
+
+  let cells = '';
+  for (let i = 0; i < firstDow; i++) cells += '<div class="cal-day cal-day-empty"></div>';
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const ds = `${year}-${String(mon + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    const dow = new Date(year, mon, d).getDay();
+    const isToday = ds === nowStr;
+    const numCls = dayClass(dow, ds);
+
+    const dayLives = dayMap[ds] || [];
+    const events = dayLives.map(live => {
+      const lastD = new Date(live.dateEnd || live.dateStart || live.date);
+      lastD.setHours(0, 0, 0, 0);
+      const isPast = lastD < now;
+      const goingDots = members
+        .filter(m => getDayAttendanceStatus(live.id, ds, m.id) === 'going')
+        .slice(0, 5)
+        .map(m => m.avatar
+          ? `<img src="${m.avatar}" style="width:6px;height:6px;border-radius:50%;object-fit:cover;" />`
+          : `<span style="width:5px;height:5px;border-radius:50%;background:${m.color};display:inline-block;flex-shrink:0;"></span>`)
+        .join('');
+      return `<div class="cal-event${isPast ? ' cal-event-past' : ''}" onclick="window.showLiveDetailsModal('${live.id}')" title="${escapeAttr(live.name)}">
+        <span class="cal-event-name">${escapeHtml(live.name)}</span>
+        ${goingDots ? `<div class="cal-member-dots">${goingDots}</div>` : ''}
+      </div>`;
+    }).join('');
+
+    cells += `<div class="cal-day${isToday ? ' cal-day-today' : ''}${dayLives.length ? ' cal-day-has-event' : ''}">
+      <span class="cal-day-num${numCls ? ' ' + numCls : ''}">${d}</span>
+      ${events}
+    </div>`;
+  }
+
+  container.innerHTML = `<div style="padding:12px;">
+    <div class="cal-weekdays">${wdHeaders}</div>
+    <div class="cal-grid">${cells}</div>
+  </div>`;
+}
+
+// ---------- Member Ranking ----------
 function getMemberRanking(members, lives) {
   const ranked = members.map(member => {
     let goingCount = 0;
     lives.forEach(live => {
       const dates = getDatesForLive(live);
       dates.forEach(d => {
-        if (getDayAttendanceStatus(live.id, d.dateStr, member.id) === 'going') {
-          goingCount++;
-        }
+        if (getDayAttendanceStatus(live.id, d.dateStr, member.id) === 'going') goingCount++;
       });
     });
     return { ...member, goingCount };
   }).sort((a, b) => b.goingCount - a.goingCount);
 
   return `
-    <div style="display: flex; flex-direction: column; gap: 8px;">
+    <div style="display:flex;flex-direction:column;gap:8px;">
       ${ranked.map((member, idx) => `
-        <div style="display: flex; align-items: center; gap: 12px; padding: 8px 12px; border-radius: 8px; background: ${idx < 3 ? 'rgba(139, 92, 246, 0.06)' : 'transparent'};">
-          <span style="width: 24px; text-align: center; font-weight: 700; color: ${idx === 0 ? 'var(--accent-amber)' : idx === 1 ? 'var(--text-secondary)' : idx === 2 ? '#CD7F32' : 'var(--text-tertiary)'}; font-size: 14px;">
-            ${idx + 1}
-          </span>
-          <div class="member-avatar" style="background: ${member.color}; width: 32px; height: 32px; font-size: 14px; cursor: pointer;" onclick="showMemberDetailsModal('${member.id}')">
-            ${member.name.charAt(0)}
-          </div>
-          <span style="flex: 1; font-weight: 500; font-size: 14px; cursor: pointer; text-decoration: underline; text-decoration-color: rgba(255,255,255,0.2);" onclick="showMemberDetailsModal('${member.id}')">${escapeHtml(member.name)}</span>
-          <span style="font-weight: 700; color: var(--accent-purple-light); font-size: 14px;">${member.goingCount}</span>
-          <span style="color: var(--text-tertiary); font-size: 12px;">参戦</span>
+        <div style="display:flex;align-items:center;gap:12px;padding:8px 12px;border-radius:8px;background:${idx < 3 ? 'rgba(139,92,246,0.06)' : 'transparent'};">
+          <span style="width:24px;text-align:center;font-weight:700;color:${idx === 0 ? 'var(--accent-amber)' : idx === 1 ? 'var(--text-secondary)' : idx === 2 ? '#CD7F32' : 'var(--text-tertiary)'};font-size:14px;">${idx + 1}</span>
+          <div style="cursor:pointer;" onclick="showMemberDetailsModal('${member.id}')">${memberAvatarHtml(member, 32)}</div>
+          <span style="flex:1;font-weight:500;font-size:14px;cursor:pointer;text-decoration:underline;text-decoration-color:rgba(255,255,255,0.2);" onclick="showMemberDetailsModal('${member.id}')">${escapeHtml(member.name)}</span>
+          <span style="font-weight:700;color:var(--accent-purple-light);font-size:14px;">${member.goingCount}</span>
+          <span style="color:var(--text-tertiary);font-size:12px;">参戦</span>
         </div>
       `).join('')}
     </div>
@@ -243,7 +333,6 @@ function getMemberRanking(members, lives) {
 }
 
 // ---------- Live Card ----------
-
 function renderLiveCard(live) {
   const startDate = new Date(live.dateStart || live.date);
   const endDate = live.dateEnd ? new Date(live.dateEnd) : null;
@@ -252,25 +341,23 @@ function renderLiveCard(live) {
   now.setHours(0, 0, 0, 0);
   const sDate = new Date(live.dateStart || live.date);
   sDate.setHours(0, 0, 0, 0);
-  const eDate = endDate ? new Date(live.dateEnd) : sDate;
+  const eDate = endDate ? new Date(live.dateEnd) : new Date(sDate);
   eDate.setHours(0, 0, 0, 0);
 
-  let badgeClass = 'badge-upcoming';
-  let badgeText = '予定';
-  if (sDate.getTime() <= now.getTime() && eDate.getTime() >= now.getTime()) {
+  let badgeClass = 'badge-upcoming', badgeText = '予定';
+  if (sDate <= now && eDate >= now) {
     badgeClass = 'badge-today';
     badgeText = sDate.getTime() === now.getTime() && eDate.getTime() === now.getTime() ? '今日！' : '開催中！';
   } else if (eDate < now) {
-    badgeClass = 'badge-past';
-    badgeText = '終了';
+    badgeClass = 'badge-past'; badgeText = '終了';
   }
 
   return `
-    <div class="card live-card" style="cursor: pointer;" onclick="showLiveDetailsModal('${live.id}')">
+    <div class="card live-card" style="cursor:pointer;" onclick="showLiveDetailsModal('${live.id}')">
       <div class="live-date-badge">
         <span class="month">${months[startDate.getMonth()]}</span>
         <span class="day">${startDate.getDate()}</span>
-        ${endDate ? `<span style="font-size: 9px; color: rgba(255,255,255,0.7); margin-top: 2px;">〜${endDate.getMonth() + 1}/${endDate.getDate()}</span>` : ''}
+        ${endDate ? `<span style="font-size:9px;color:rgba(255,255,255,0.7);margin-top:2px;">〜${endDate.getMonth() + 1}/${endDate.getDate()}</span>` : ''}
       </div>
       <div class="live-info">
         <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;min-width:0;">
@@ -287,8 +374,17 @@ function renderLiveCard(live) {
   `;
 }
 
+// ---------- Utilities ----------
+function toDateStr(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 function escapeHtml(text) {
   const div = document.createElement('div');
-  div.textContent = text;
+  div.textContent = text ?? '';
   return div.innerHTML;
+}
+
+function escapeAttr(text) {
+  return String(text ?? '').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }

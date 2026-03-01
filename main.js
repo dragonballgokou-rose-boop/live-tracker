@@ -83,6 +83,78 @@ window.addEventListener('livetracker:sync-error', () => {
     setTimeout(hideSyncIndicator, 3000);
 });
 
+// ---------- Pull to Refresh ----------
+function initPullToRefresh(router) {
+    const THRESHOLD = 65;
+    let startY = 0;
+    let pulling = false;
+
+    const indicator = document.createElement('div');
+    indicator.className = 'ptr-indicator';
+    indicator.innerHTML = `
+        <svg class="ptr-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/>
+            <polyline points="21 3 21 8 16 8"/>
+        </svg>
+        <span class="ptr-text">引っ張って更新</span>
+    `;
+    document.getElementById('app').prepend(indicator);
+
+    document.addEventListener('touchstart', (e) => {
+        startY = e.touches[0].clientY;
+        pulling = window.scrollY === 0;
+    }, { passive: true });
+
+    document.addEventListener('touchmove', (e) => {
+        if (!pulling) return;
+        const dy = e.touches[0].clientY - startY;
+        if (dy <= 0) { pulling = false; return; }
+
+        const progress = Math.min(dy / THRESHOLD, 1);
+        const offsetY = Math.min(dy * 0.4, THRESHOLD * 0.6) - 50;
+        indicator.style.transform = `translateY(${offsetY}px)`;
+        indicator.style.opacity = progress;
+
+        const icon = indicator.querySelector('.ptr-icon');
+        const text = indicator.querySelector('.ptr-text');
+        if (dy >= THRESHOLD) {
+            icon.style.transform = 'rotate(180deg)';
+            text.textContent = '放して更新';
+        } else {
+            icon.style.transform = `rotate(${progress * 180}deg)`;
+            text.textContent = '引っ張って更新';
+        }
+    }, { passive: true });
+
+    document.addEventListener('touchend', async (e) => {
+        if (!pulling) return;
+        pulling = false;
+        const dy = e.changedTouches[0].clientY - startY;
+
+        if (dy >= THRESHOLD) {
+            const icon = indicator.querySelector('.ptr-icon');
+            const text = indicator.querySelector('.ptr-text');
+            icon.style.transform = '';
+            icon.classList.add('animate-spin');
+            text.textContent = '更新中...';
+            indicator.style.transform = 'translateY(-10px)';
+            indicator.style.opacity = '1';
+
+            await fetchFromGAS();
+            router.currentRoute = null;
+            router.resolve();
+        }
+
+        indicator.style.transition = 'opacity 0.3s, transform 0.3s';
+        indicator.style.opacity = '0';
+        indicator.style.transform = 'translateY(-50px)';
+        setTimeout(() => {
+            indicator.style.transition = '';
+            indicator.querySelector('.ptr-icon').classList.remove('animate-spin');
+        }, 300);
+    });
+}
+
 // ---------- Router ----------
 const router = new Router([
     {
@@ -200,6 +272,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Initialize router
     router.resolve();
+
+    // Pull to refresh
+    initPullToRefresh(router);
 });
 
 // Register Service Worker

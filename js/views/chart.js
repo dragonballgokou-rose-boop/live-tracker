@@ -134,7 +134,7 @@ export function renderChart() {
         ${memberStats.map((m, idx) => `
           <div class="chart-row" onclick="showMemberDetailsModal('${m.id}')">
             <div class="chart-row-rank" style="color:${idx < 3 ? ['var(--accent-amber)','var(--text-secondary)','#CD7F32'][idx] : 'var(--text-tertiary)'};">${idx + 1}</div>
-            <div class="chart-avatar-sm" style="background:${escapeHtml(m.color)};">${escapeHtml(m.name.charAt(0))}</div>
+            <div class="chart-avatar-sm" style="background:${escapeHtml(m.color)};">${m.avatar ? `<img src="${m.avatar}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;display:block;" />` : escapeHtml(m.name.charAt(0))}</div>
             <div class="chart-row-label">${escapeHtml(m.nickname || m.name)}</div>
             <div class="chart-bar-track">
               <div class="chart-bar-fill" style="width:${(m.goingCount / maxMemberCount) * 100}%;background:${escapeHtml(m.color)};"></div>
@@ -378,7 +378,7 @@ function buildHeatmap(memberStats, coMatrix, maxCo) {
 
   const colHeaders = memberStats.map(m => `
     <div style="width:${CELL}px;height:${CELL}px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-      <div class="chart-avatar-sm" style="background:${escapeHtml(m.color)};width:22px;height:22px;font-size:9px;">${escapeHtml(m.name.charAt(0))}</div>
+      <div class="chart-avatar-sm" style="background:${escapeHtml(m.color)};width:22px;height:22px;font-size:9px;">${m.avatar ? `<img src="${m.avatar}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;display:block;" />` : escapeHtml(m.name.charAt(0))}</div>
     </div>
   `).join('');
 
@@ -396,7 +396,7 @@ function buildHeatmap(memberStats, coMatrix, maxCo) {
     return `
       <div style="display:flex;align-items:center;gap:2px;margin-bottom:2px;">
         <div style="width:${LABEL_W}px;display:flex;align-items:center;gap:4px;flex-shrink:0;padding-right:4px;">
-          <div class="chart-avatar-sm" style="background:${escapeHtml(a.color)};width:20px;height:20px;font-size:9px;flex-shrink:0;">${escapeHtml(a.name.charAt(0))}</div>
+          <div class="chart-avatar-sm" style="background:${escapeHtml(a.color)};width:20px;height:20px;font-size:9px;flex-shrink:0;">${a.avatar ? `<img src="${a.avatar}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;display:block;" />` : escapeHtml(a.name.charAt(0))}</div>
           <span style="font-size:10px;color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(a.nickname || a.name)}</span>
         </div>
         <div style="display:flex;gap:2px;">${cells}</div>
