@@ -749,7 +749,7 @@ a.stat-card:active {
   cursor: pointer;
   padding: 4px;
   border-radius: var(--radius-sm);
-  min-width: 48px;
+  width: 56px;
   transition: transform var(--transition-fast);
   color: inherit;
   font-family: inherit;
@@ -812,7 +812,7 @@ a.stat-card:active {
 .tally-card-member-name {
   font-size: 9px;
   color: var(--text-tertiary);
-  max-width: 48px;
+  max-width: 52px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1721,7 +1721,14 @@ a.stat-card:active {
 
   .page-content {
     padding: var(--space-md);
-    padding-bottom: calc(var(--space-md) + 64px);
+    padding-bottom: calc(var(--space-md) + 56px + env(safe-area-inset-bottom, 0px));
+  }
+
+  /* iOS zoom prevention: inputs below 16px trigger auto-zoom on focus */
+  .form-input,
+  select,
+  textarea {
+    font-size: 16px;
   }
 
   .stats-grid {
@@ -1775,7 +1782,13 @@ a.stat-card:active {
   .toast-container {
     left: var(--space-md);
     right: var(--space-md);
-    bottom: calc(var(--space-md) + 60px);
+    bottom: calc(var(--space-md) + 56px + env(safe-area-inset-bottom, 0px));
+  }
+
+  /* Allow live-meta to wrap on narrow screens */
+  .live-meta {
+    white-space: normal;
+    word-break: break-word;
   }
 
   .toast {
@@ -1814,7 +1827,7 @@ a.stat-card:active {
     gap: var(--space-md);
   }
 
-  .section-header>div[style*="display: flex"] {
+  .section-header-controls {
     width: 100%;
     justify-content: space-between;
   }

@@ -128,6 +128,7 @@ function buildTallyTable(lives, members) {
     const d = row.date;
     const dayOfWeek = weekdays[d.getDay()];
     const isPast = d < now;
+    const pref = row.live.prefecture || (row.live.venue ? extractPrefecture(row.live.venue) : '');
     let rowTotal = 0;
 
     const cells = members.map(member => {
@@ -153,7 +154,7 @@ function buildTallyTable(lives, members) {
                     ${escapeHtml(row.live.artist || '')} · ${formatDateRange(row.live)}
                   </span>
                   <span style="font-size: 11px; color: var(--text-tertiary); display: flex; align-items: center; gap: 4px;">
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;margin-right:2px;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>${escapeHtml(row.live.venue || '会場未定')}
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;margin-right:2px;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>${escapeHtml(row.live.venue || '会場未定')}${pref ? `（${pref}）` : ''}
                     ${isPast ? '<span class="badge badge-past" style="font-size: 10px;">終了</span>' : ''}
                   </span>
                   <span class="day-label" style="margin-top: 4px;">
@@ -179,7 +180,7 @@ function buildTallyTable(lives, members) {
                     ${dateStr} · ${escapeHtml(row.live.artist || '')}
                   </span>
                   <span style="font-size: 11px; color: var(--text-tertiary); display: flex; align-items: center; gap: 4px;">
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;margin-right:2px;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>${escapeHtml(row.live.venue || '会場未定')}
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;margin-right:2px;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>${escapeHtml(row.live.venue || '会場未定')}${pref ? `（${pref}）` : ''}
                     ${isPast ? '<span class="badge badge-past" style="font-size: 10px;">終了</span>' : ''}
                   </span>
                 </div>`;
@@ -268,9 +269,15 @@ function buildTallyCards(lives, members) {
     const dateLine = `${d.getMonth() + 1}/${d.getDate()}(${dayOfWeek})`;
     const dayBadge = row.isMultiDay ? `<span class="tally-card-day-badge">Day${row.dayNum}</span>` : '';
     const pref = row.live.prefecture || (row.live.venue ? extractPrefecture(row.live.venue) : '');
-    const venueLine = row.live.venue
-      ? ` · ${escapeHtml(row.live.venue)}${pref ? `（${pref}）` : ''}`
-      : '';
+    const isToday = d.getTime() === now.getTime();
+    const statusBadge = isPast
+      ? '<span class="badge badge-past" style="font-size:10px;flex-shrink:0;">終了</span>'
+      : isToday
+      ? '<span class="badge badge-today" style="font-size:10px;flex-shrink:0;">今日！</span>'
+      : '<span class="badge badge-upcoming" style="font-size:10px;flex-shrink:0;">予定</span>';
+    const venuePart = row.live.venue
+      ? `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;vertical-align:-1px;margin-right:2px;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>${escapeHtml(row.live.venue)}${pref ? `（${pref}）` : ''}`
+      : (pref ? `（${pref}）` : '');
 
     return `
       <div class="tally-card ${isPast ? 'tally-card-past' : ''}"
@@ -278,8 +285,12 @@ function buildTallyCards(lives, members) {
         data-date="${row.dateStr}">
         <div class="tally-card-header" onclick="showLiveDetailsModal('${row.live.id}')">
           <div class="tally-card-title-wrap">
-            <div class="tally-card-name">${escapeHtml(row.live.name)}${dayBadge}</div>
-            <div class="tally-card-date">${dateLine}${venueLine}</div>
+            <div style="display:flex;align-items:center;gap:4px;margin-bottom:2px;min-width:0;">
+              <span class="tally-card-name" style="margin-bottom:0;">${escapeHtml(row.live.name)}${dayBadge}</span>
+              ${statusBadge}
+            </div>
+            ${venuePart ? `<div class="tally-card-date">${venuePart}</div>` : ''}
+            <div class="tally-card-date" style="margin-top:1px;">${dateLine}</div>
           </div>
           <div class="tally-card-total-wrap">
             <span class="tally-card-total">${rowTotal}</span>
