@@ -112,14 +112,15 @@ function buildMonthChart(months, monthMap, maxGoing) {
   const BAR_GAP = 8;
   const CHART_H = 120;
   const LABEL_H = 36;
+  const TOP_PAD = 20; // 数字ラベルがSVG上端で切れないための余白
   const svgW = months.length * (BAR_W + BAR_GAP);
-  const svgH = CHART_H + LABEL_H;
+  const svgH = TOP_PAD + CHART_H + LABEL_H;
 
   const bars = months.map((key, i) => {
     const { going } = monthMap[key];
     const barH = maxGoing > 0 ? Math.round((going / maxGoing) * CHART_H) : 0;
     const x = i * (BAR_W + BAR_GAP);
-    const y = CHART_H - barH;
+    const y = TOP_PAD + CHART_H - barH;
     const [year, mon] = key.split('-');
     const label = `${parseInt(mon)}月`;
     const subLabel = i === 0 || mon === '01' ? year : '';
@@ -129,8 +130,8 @@ function buildMonthChart(months, monthMap, maxGoing) {
         <rect x="${x}" y="${y}" width="${BAR_W}" height="${barH}" rx="4"
           fill="url(#chartGrad)" opacity="0.85"/>
         ${going > 0 ? `<text x="${x + BAR_W / 2}" y="${y - 4}" text-anchor="middle" font-size="10" font-weight="700" fill="var(--accent-purple-light)">${going}</text>` : ''}
-        <text x="${x + BAR_W / 2}" y="${CHART_H + 16}" text-anchor="middle" font-size="10" fill="var(--text-tertiary)">${label}</text>
-        ${subLabel ? `<text x="${x + BAR_W / 2}" y="${CHART_H + 30}" text-anchor="middle" font-size="9" fill="var(--text-tertiary)" opacity="0.7">${subLabel}</text>` : ''}
+        <text x="${x + BAR_W / 2}" y="${TOP_PAD + CHART_H + 16}" text-anchor="middle" font-size="10" fill="var(--text-tertiary)">${label}</text>
+        ${subLabel ? `<text x="${x + BAR_W / 2}" y="${TOP_PAD + CHART_H + 30}" text-anchor="middle" font-size="9" fill="var(--text-tertiary)" opacity="0.7">${subLabel}</text>` : ''}
       </g>
     `;
   }).join('');
@@ -147,7 +148,7 @@ function buildMonthChart(months, monthMap, maxGoing) {
         </defs>
         <!-- 横グリッド線 -->
         ${[0.25, 0.5, 0.75, 1].map(r => {
-          const y = CHART_H - Math.round(r * CHART_H);
+          const y = TOP_PAD + CHART_H - Math.round(r * CHART_H);
           return `<line x1="0" y1="${y}" x2="${Math.max(svgW, 300)}" y2="${y}" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>`;
         }).join('')}
         ${bars}
