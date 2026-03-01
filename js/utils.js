@@ -57,7 +57,15 @@ export function showToast(message, type = 'info') {
     }, 3000);
 }
 
-// ---------- Confirm Dialog ----------
+// ---------- Member Avatar ----------
+export function memberAvatarHtml(member, size = 40) {
+    const fontSize = Math.max(10, Math.round(size * 0.42));
+    if (member.avatar) {
+        return `<img src="${member.avatar}" style="width:${size}px;height:${size}px;border-radius:50%;object-fit:cover;border:2px solid ${member.color};display:block;flex-shrink:0;" alt="" />`;
+    }
+    return `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${member.color};display:flex;align-items:center;justify-content:center;font-size:${fontSize}px;font-weight:700;color:white;flex-shrink:0;">${member.name.charAt(0)}</div>`;
+}
+
 export function showConfirm(title, message, onConfirm) {
     showModal(title, `
     <div class="confirm-delete">

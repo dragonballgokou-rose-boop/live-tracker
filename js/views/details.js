@@ -1,5 +1,5 @@
 import { getLiveById, getMemberById, getMembers, getLives, getDatesForLive, getDayAttendanceStatus } from '../store.js';
-import { showModal } from '../utils.js';
+import { showModal, memberAvatarHtml } from '../utils.js';
 import { formatDateRange, extractPrefecture } from './lives.js';
 
 const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
@@ -158,9 +158,7 @@ export function showMemberDetailsModal(memberId) {
     // アバター & 名前
     html += `
         <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px;">
-            <div style="width:50px;height:50px;border-radius:50%;background:${member.color};display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:bold;color:white;flex-shrink:0;">
-                ${member.name.charAt(0)}
-            </div>
+            ${memberAvatarHtml(member, 50)}
             <div>
                 <h3 style="margin:0;font-size:18px;">${escapeHtml(member.name)}</h3>
                 ${member.nickname ? `<div style="color:var(--text-tertiary);font-size:13px;">@${escapeHtml(member.nickname)}</div>` : ''}

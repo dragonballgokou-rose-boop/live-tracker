@@ -7,8 +7,10 @@ import { showLiveDetailsModal, showMemberDetailsModal } from './details.js';
 
 const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
 
-let livesFilter = 'upcoming'; // 'upcoming' | 'past'
-let activeFilterMemberIds = new Set(); // 空=全員表示
+let livesFilter = 'upcoming'; // 'all' | 'upcoming' | 'past'
+let livesViewMode = 'tl';     // 'tl' | 'calendar'
+let livesCalendarDate = new Date();
+let activeFilterMemberIds = new Set();
 
 export function renderLives() {
   const content = document.getElementById('page-content');
@@ -30,7 +32,11 @@ export function renderLives() {
     return last < now;
   }).sort((a, b) => new Date(b.dateStart || b.date) - new Date(a.dateStart || a.date)); // 降順（新しい順）
 
-  let filtered = livesFilter === 'upcoming' ? upcoming : past;
+  const all = [...lives].sort((a, b) => new Date(b.dateStart || b.date) - new Date(a.dateStart || a.date));
+
+  let filtered = livesFilter === 'upcoming' ? upcoming
+               : livesFilter === 'past'     ? past
+               : all;
 
   // メンバーフィルター（AND: 選択した全員が参戦しているライブのみ）
   if (activeFilterMemberIds.size > 0) {
@@ -42,7 +48,7 @@ export function renderLives() {
     });
   }
 
-  // 年月グループ化
+  // 年月グループ化（TL用）
   const groups = {};
   filtered.forEach(live => {
     const d = new Date(live.dateStart || live.date);
@@ -51,8 +57,8 @@ export function renderLives() {
     groups[key].push(live);
   });
   const sortedKeys = livesFilter === 'upcoming'
-    ? Object.keys(groups).sort()          // 予定: 古い月から
-    : Object.keys(groups).sort().reverse(); // 終了: 新しい月から
+    ? Object.keys(groups).sort()
+    : Object.keys(groups).sort().reverse();
 
   const timelineHtml = sortedKeys.map(key => {
     const [year, mon] = key.split('-');
@@ -79,14 +85,17 @@ export function renderLives() {
           ? `<span class="badge badge-upcoming" style="font-size:10px;padding:1px 8px;">予定</span>`
           : `<span class="badge badge-past" style="font-size:10px;padding:1px 8px;">終了</span>`;
 
-      // 参戦メンバーチップ
+      // 参戦メンバーチップ（アバター対応）
       const liveDates = getDatesForLive(live);
       const goingChips = members.map(m => {
         const isGoing = liveDates.some(d => getDayAttendanceStatus(live.id, d.dateStr, m.id) === 'going');
         if (!isGoing) return '';
+        const dot = m.avatar
+          ? `<img src="${m.avatar}" style="width:14px;height:14px;border-radius:50%;object-fit:cover;flex-shrink:0;" />`
+          : `<span style="width:8px;height:8px;border-radius:50%;background:${m.color};display:inline-block;flex-shrink:0;"></span>`;
         return `<span class="history-member-chip"
           style="background:${m.color}20;border-color:${m.color}55;color:${m.color};">
-          <span style="width:7px;height:7px;border-radius:50%;background:${m.color};display:inline-block;flex-shrink:0;"></span>
+          ${dot}
           ${escapeHtml(m.nickname || m.name)}
         </span>`;
       }).join('');
@@ -144,15 +153,32 @@ export function renderLives() {
     </div>
   ` : '';
 
+  const viewToggleHtml = `
+    <div class="view-mode-toggle">
+      <button class="view-mode-btn${livesViewMode === 'tl' ? ' active' : ''}" data-view="tl" title="タイムライン">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+      </button>
+      <button class="view-mode-btn${livesViewMode === 'calendar' ? ' active' : ''}" data-view="calendar" title="カレンダー">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      </button>
+    </div>
+  `;
+
   content.innerHTML = `
     <div class="section-header">
-      <div class="live-filter-bar">
-        <button class="live-filter-btn${livesFilter === 'upcoming' ? ' active' : ''}" data-filter="upcoming">
-          予定 <span class="filter-count">${upcoming.length}</span>
-        </button>
-        <button class="live-filter-btn${livesFilter === 'past' ? ' active' : ''}" data-filter="past">
-          終了 <span class="filter-count">${past.length}</span>
-        </button>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div class="live-filter-bar">
+          <button class="live-filter-btn${livesFilter === 'all' ? ' active' : ''}" data-filter="all">
+            全て <span class="filter-count">${lives.length}</span>
+          </button>
+          <button class="live-filter-btn${livesFilter === 'upcoming' ? ' active' : ''}" data-filter="upcoming">
+            予定 <span class="filter-count">${upcoming.length}</span>
+          </button>
+          <button class="live-filter-btn${livesFilter === 'past' ? ' active' : ''}" data-filter="past">
+            終了 <span class="filter-count">${past.length}</span>
+          </button>
+        </div>
+        ${viewToggleHtml}
       </div>
       <div style="display:flex;gap:8px;">
         <button id="add-record-btn" class="btn btn-secondary btn-sm">
@@ -168,22 +194,41 @@ export function renderLives() {
 
     ${memberFilterHtml}
 
-    ${filtered.length > 0 ? `<div class="history-timeline">${timelineHtml}</div>` : `
-      <div class="card empty-state">
-        <div class="empty-state-icon"><svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div>
-        <p class="empty-state-text">${activeFilterMemberIds.size > 0 ? '該当するライブがありません' : livesFilter === 'upcoming' ? '予定のライブがありません' : '終了したライブはありません'}</p>
-        ${livesFilter === 'upcoming' && activeFilterMemberIds.size === 0 ? '<p style="color:var(--text-tertiary);font-size:14px;">「ライブを追加」ボタンから登録しましょう！</p>' : ''}
-      </div>
-    `}
+    ${livesViewMode === 'calendar'
+      ? `<div class="card" style="padding:var(--space-md);"><div id="cal-container"></div></div>`
+      : filtered.length > 0
+        ? `<div class="history-timeline">${timelineHtml}</div>`
+        : `<div class="card empty-state">
+            <div class="empty-state-icon"><svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div>
+            <p class="empty-state-text">${activeFilterMemberIds.size > 0 ? '該当するライブがありません' : livesFilter === 'upcoming' ? '予定のライブがありません' : livesFilter === 'past' ? '終了したライブはありません' : 'まだライブが登録されていません'}</p>
+            ${livesFilter === 'upcoming' && activeFilterMemberIds.size === 0 ? '<p style="color:var(--text-tertiary);font-size:14px;">「ライブを追加」ボタンから登録しましょう！</p>' : ''}
+          </div>`
+    }
   `;
 
-  // ステータスフィルターボタン（予定/終了）
+  // ステータスフィルターボタン（全て/予定/終了）
   content.querySelectorAll('.live-filter-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       livesFilter = btn.dataset.filter;
       renderLives();
     });
   });
+
+  // ビューモード切替（TL ↔ カレンダー）
+  content.querySelectorAll('.view-mode-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      livesViewMode = btn.dataset.view;
+      if (livesViewMode === 'calendar') {
+        livesCalendarDate = new Date(); // 今月にリセット
+      }
+      renderLives();
+    });
+  });
+
+  // カレンダー描画
+  if (livesViewMode === 'calendar') {
+    renderLivesCalendar(filtered, members, now, content);
+  }
 
   // メンバーフィルターチップ（複数選択 AND）
   content.querySelectorAll('.history-chip').forEach(chip => {
@@ -517,6 +562,74 @@ function openQuickRecordModal(members) {
     showToast(totalGoing > 0 ? '参戦記録を保存しました' : 'ライブを追加しました', 'success');
     livesFilter = 'past'; // 追加後は終了タブへ（過去の記録なら）
     renderLives();
+  });
+}
+
+// ---- カレンダービュー ----
+function renderLivesCalendar(filteredLives, members, now, content) {
+  const year = livesCalendarDate.getFullYear();
+  const month = livesCalendarDate.getMonth();
+  const firstDow = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const nowStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+
+  // dateStr → lives マップ
+  const dayMap = {};
+  filteredLives.forEach(live => {
+    getDatesForLive(live).forEach(({ dateStr }) => {
+      if (!dayMap[dateStr]) dayMap[dateStr] = [];
+      if (!dayMap[dateStr].find(l => l.id === live.id)) dayMap[dateStr].push(live);
+    });
+  });
+
+  let cells = Array(firstDow).fill('<div class="cal-day cal-day-empty"></div>').join('');
+  for (let d = 1; d <= daysInMonth; d++) {
+    const ds = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const dayLives = dayMap[ds] || [];
+    const isToday = ds === nowStr;
+    const dow = new Date(year, month, d).getDay();
+    const events = dayLives.map(live => {
+      const lastD = new Date(live.dateEnd || live.dateStart || live.date);
+      lastD.setHours(0,0,0,0);
+      const isPast = lastD < now;
+      const goingDots = members
+        .filter(m => getDayAttendanceStatus(live.id, ds, m.id) === 'going')
+        .slice(0, 5)
+        .map(m => m.avatar
+          ? `<img src="${m.avatar}" style="width:6px;height:6px;border-radius:50%;object-fit:cover;" />`
+          : `<span style="width:5px;height:5px;border-radius:50%;background:${m.color};display:inline-block;flex-shrink:0;"></span>`)
+        .join('');
+      return `<div class="cal-event${isPast ? ' cal-event-past' : ''}" onclick="window.showLiveDetailsModal('${live.id}')" title="${escapeAttr(live.name)}">
+        <span class="cal-event-name">${escapeHtml(live.name)}</span>
+        ${goingDots ? `<div class="cal-member-dots">${goingDots}</div>` : ''}
+      </div>`;
+    }).join('');
+    cells += `<div class="cal-day${isToday ? ' cal-day-today' : ''}${dayLives.length ? ' cal-day-has-event' : ''}">
+      <span class="cal-day-num${(dow===0||dow===6) ? ' weekend' : ''}">${d}</span>
+      ${events}
+    </div>`;
+  }
+
+  const html = `
+    <div class="cal-nav">
+      <button class="cal-nav-btn" id="cal-prev">‹</button>
+      <span class="cal-month-label">${year}年${month+1}月</span>
+      <button class="cal-nav-btn" id="cal-next">›</button>
+    </div>
+    <div class="cal-weekdays">${['日','月','火','水','木','金','土'].map(w=>`<div class="cal-wd">${w}</div>`).join('')}</div>
+    <div class="cal-grid">${cells}</div>
+  `;
+
+  const container = content.querySelector('#cal-container');
+  if (!container) return;
+  container.innerHTML = html;
+  container.querySelector('#cal-prev')?.addEventListener('click', () => {
+    livesCalendarDate = new Date(year, month - 1, 1);
+    renderLivesCalendar(filteredLives, members, now, content);
+  });
+  container.querySelector('#cal-next')?.addEventListener('click', () => {
+    livesCalendarDate = new Date(year, month + 1, 1);
+    renderLivesCalendar(filteredLives, members, now, content);
   });
 }
 
