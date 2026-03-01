@@ -44,9 +44,9 @@ export function renderDashboard() {
     <div class="upcoming-section">
       <div class="section-header">
         <h2 class="section-title"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-4px;margin-right:6px;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>日付別 参加スケジュール</h2>
-        <div style="display: flex; gap: 8px; align-items: center;">
+        <div class="section-header-controls" style="display: flex; gap: 8px; align-items: center;">
           <button id="cal-prev" class="btn btn-secondary btn-sm">← 前月</button>
-          <span id="cal-month-label" style="font-weight: 600; font-size: 14px; min-width: 100px; text-align: center;"></span>
+          <span id="cal-month-label" style="font-weight: 600; font-size: 14px; min-width: 80px; text-align: center;"></span>
           <button id="cal-next" class="btn btn-secondary btn-sm">翌月 →</button>
         </div>
       </div>
