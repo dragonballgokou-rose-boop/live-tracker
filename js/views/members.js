@@ -2,7 +2,7 @@
 // Members Management View
 // ============================================
 import { getMembers, addMember, updateMember, deleteMember, getAttendanceByMember, getLives, getDatesForLive, getDayAttendanceStatus } from '../store.js';
-import { showModal, closeModal, showToast, showConfirm } from '../utils.js';
+import { showModal, closeModal, showToast, showConfirm, memberAvatarHtml } from '../utils.js';
 
 const MEMBER_COLORS = [
   '#8B5CF6', '#EC4899', '#22D3EE', '#34D399', '#FBBF24',
@@ -48,9 +48,7 @@ export function renderMembers() {
     return `
           <div class="card member-card" style="cursor: pointer; --member-color: ${member.color};" onclick="showMemberDetailsModal('${member.id}')" title="メンバー詳細を見る">
             <div class="member-card-top">
-              <div class="member-avatar" style="background: ${member.color}">
-                ${member.name.charAt(0)}
-              </div>
+              ${memberAvatarHtml(member, 44)}
               <div class="member-info">
                 <div class="member-name">${escapeHtml(member.name)}</div>
                 ${member.nickname ? `<div class="member-nickname">@${escapeHtml(member.nickname)}</div>` : ''}
@@ -112,6 +110,10 @@ function openMemberModal(member = null) {
   const title = isEdit ? 'メンバーを編集' : 'メンバーを追加';
   const selectedColor = member?.color || MEMBER_COLORS[Math.floor(Math.random() * MEMBER_COLORS.length)];
 
+  const avatarPreviewHtml = member?.avatar
+    ? `<img class="avatar-preview" id="avatar-preview-img" src="${member.avatar}" />`
+    : `<div class="avatar-preview-placeholder" id="avatar-preview-placeholder" style="background:${selectedColor};">${isEdit ? escapeHtml(member.name.charAt(0)) : '？'}</div>`;
+
   showModal(title, `
     <form id="member-form">
       <div class="form-group">
@@ -121,6 +123,19 @@ function openMemberModal(member = null) {
       <div class="form-group">
         <label class="form-label" for="member-nickname">ニックネーム</label>
         <input type="text" id="member-nickname" class="form-input" placeholder="例: たなっち" value="${isEdit ? escapeAttr(member.nickname || '') : ''}" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">アイコン画像</label>
+        <div class="avatar-upload-area">
+          ${avatarPreviewHtml}
+          <div class="avatar-upload-actions">
+            <button type="button" class="btn btn-secondary btn-sm" id="avatar-upload-btn">画像を選択</button>
+            ${member?.avatar ? `<button type="button" class="btn btn-sm" id="avatar-remove-btn" style="color:var(--accent-red);background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.3);">削除</button>` : ''}
+          </div>
+        </div>
+        <input type="file" id="avatar-file-input" accept="image/*" style="display:none;" />
+        <input type="hidden" id="member-avatar" value="${isEdit ? escapeAttr(member.avatar || '') : ''}" />
+        <p style="font-size:11px;color:var(--text-tertiary);margin-top:2px;">JPG・PNG・GIF など（推奨: 正方形）</p>
       </div>
       <div class="form-group">
         <label class="form-label">アイコンカラー</label>
@@ -149,15 +164,73 @@ function openMemberModal(member = null) {
       document.querySelectorAll('.color-option').forEach(o => o.classList.remove('selected'));
       opt.classList.add('selected');
       document.getElementById('member-color').value = opt.dataset.color;
+      // Update placeholder color if no avatar set
+      const placeholder = document.getElementById('avatar-preview-placeholder');
+      if (placeholder) placeholder.style.background = opt.dataset.color;
     });
   });
+
+  // Avatar upload
+  document.getElementById('avatar-upload-btn')?.addEventListener('click', () => {
+    document.getElementById('avatar-file-input').click();
+  });
+
+  document.getElementById('avatar-file-input')?.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    resizeImageToBase64(file, 160, (base64) => {
+      document.getElementById('member-avatar').value = base64;
+      const area = document.querySelector('.avatar-upload-area');
+      const placeholder = document.getElementById('avatar-preview-placeholder');
+      const existingImg = document.getElementById('avatar-preview-img');
+      if (placeholder) placeholder.remove();
+      if (existingImg) existingImg.remove();
+      const img = document.createElement('img');
+      img.className = 'avatar-preview';
+      img.id = 'avatar-preview-img';
+      img.src = base64;
+      area.insertBefore(img, area.firstChild);
+
+      // Show remove button if not already shown
+      if (!document.getElementById('avatar-remove-btn')) {
+        const removeBtn = document.createElement('button');
+        removeBtn.type = 'button';
+        removeBtn.id = 'avatar-remove-btn';
+        removeBtn.className = 'btn btn-sm';
+        removeBtn.style.cssText = 'color:var(--accent-red);background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.3);';
+        removeBtn.textContent = '削除';
+        document.querySelector('.avatar-upload-actions').appendChild(removeBtn);
+        removeBtn.addEventListener('click', handleAvatarRemove);
+      }
+    });
+    e.target.value = '';
+  });
+
+  function handleAvatarRemove() {
+    document.getElementById('member-avatar').value = '';
+    const color = document.getElementById('member-color').value;
+    const nameVal = document.getElementById('member-name').value || (isEdit ? member.name : '？');
+    const area = document.querySelector('.avatar-upload-area');
+    const existingImg = document.getElementById('avatar-preview-img');
+    if (existingImg) existingImg.remove();
+    const placeholder = document.createElement('div');
+    placeholder.className = 'avatar-preview-placeholder';
+    placeholder.id = 'avatar-preview-placeholder';
+    placeholder.style.background = color;
+    placeholder.textContent = nameVal.charAt(0);
+    area.insertBefore(placeholder, area.firstChild);
+    document.getElementById('avatar-remove-btn')?.remove();
+  }
+
+  document.getElementById('avatar-remove-btn')?.addEventListener('click', handleAvatarRemove);
 
   document.getElementById('member-form').addEventListener('submit', (e) => {
     e.preventDefault();
     const data = {
       name: document.getElementById('member-name').value.trim(),
       nickname: document.getElementById('member-nickname').value.trim(),
-      color: document.getElementById('member-color').value
+      color: document.getElementById('member-color').value,
+      avatar: document.getElementById('member-avatar').value || ''
     };
 
     if (!data.name) {
@@ -176,6 +249,26 @@ function openMemberModal(member = null) {
     closeModal();
     renderMembers();
   });
+}
+
+// ---- 画像リサイズ（Canvas） ----
+function resizeImageToBase64(file, maxSize, callback) {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const size = Math.min(img.width, img.height, maxSize);
+      const scale = size / Math.min(img.width, img.height);
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      callback(canvas.toDataURL('image/jpeg', 0.82));
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
 }
 
 function escapeHtml(text) {
