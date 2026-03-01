@@ -1964,6 +1964,33 @@ a.stat-card:active {
   flex-shrink: 0;
 }
 
+/* ライブ名・会場名などの長いラベル用 */
+.chart-row-label-long {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chart-row-live {
+  gap: 6px;
+}
+
+.chart-bar-track-sm {
+  flex: 0 0 80px !important;
+}
+
+.chart-value-unit {
+  font-size: 10px;
+  font-weight: 400;
+  color: var(--text-tertiary);
+  margin-left: 1px;
+}
+
 .chart-bar-track {
   flex: 1;
   height: 20px;
