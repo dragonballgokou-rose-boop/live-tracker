@@ -5,6 +5,8 @@ import { getLives, getMembers, getDatesForLive, setDayAttendance, getDayAttendan
 import { showToast } from '../utils.js';
 import { formatDateRange, extractPrefecture } from './lives.js';
 
+let tallyStatusFilter = 'all'; // 'all' | 'upcoming' | 'past'
+
 export function renderTally() {
   const content = document.getElementById('page-content');
   const lives = getLives();
@@ -25,7 +27,29 @@ export function renderTally() {
     return;
   }
 
+  // ステータスフィルター適用
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  const upcomingLives = lives.filter(l => { const d = new Date(l.dateEnd || l.dateStart || l.date); d.setHours(0,0,0,0); return d >= now; });
+  const pastLives     = lives.filter(l => { const d = new Date(l.dateEnd || l.dateStart || l.date); d.setHours(0,0,0,0); return d < now; });
+  const filteredLives = tallyStatusFilter === 'upcoming' ? upcomingLives
+                      : tallyStatusFilter === 'past'     ? pastLives
+                      : lives;
+
   content.innerHTML = `
+    <!-- ステータスフィルター -->
+    <div class="live-filter-bar" style="margin-bottom:10px;">
+      <button class="live-filter-btn${tallyStatusFilter === 'all'      ? ' active' : ''}" data-status-filter="all">
+        全て <span class="filter-count">${lives.length}</span>
+      </button>
+      <button class="live-filter-btn${tallyStatusFilter === 'upcoming' ? ' active' : ''}" data-status-filter="upcoming">
+        予定 <span class="filter-count">${upcomingLives.length}</span>
+      </button>
+      <button class="live-filter-btn${tallyStatusFilter === 'past'     ? ' active' : ''}" data-status-filter="past">
+        終了 <span class="filter-count">${pastLives.length}</span>
+      </button>
+    </div>
+
     <!-- Filter -->
     <div class="tally-filter-bar">
       <input type="text" id="tally-filter-live" class="form-input" placeholder="ライブ名を検索" />
@@ -52,16 +76,16 @@ export function renderTally() {
 
     <!-- Table (desktop) -->
     <div class="tally-table-container" id="tally-table-container">
-      ${buildTallyTable(lives, members)}
+      ${filteredLives.length > 0 ? buildTallyTable(filteredLives, members) : '<p style="padding:24px;color:var(--text-tertiary);text-align:center;">該当するライブがありません</p>'}
     </div>
 
     <!-- Cards (mobile) -->
     <div class="tally-cards-container" id="tally-cards-container">
-      ${buildTallyCards(lives, members)}
+      ${filteredLives.length > 0 ? buildTallyCards(filteredLives, members) : ''}
     </div>
   `;
 
-  setupTallyEvents(members);
+  setupTallyEvents(members, filteredLives);
 }
 
 // ---- Desktop: Table layout ----
@@ -305,7 +329,14 @@ function buildTallyCards(lives, members) {
 
 // ---- Events ----
 
-function setupTallyEvents(members) {
+function setupTallyEvents(members, filteredLives) {
+  // ステータスフィルターボタン
+  document.querySelectorAll('[data-status-filter]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      tallyStatusFilter = btn.dataset.statusFilter;
+      renderTally();
+    });
+  });
   // Table cell clicks
   const tableContainer = document.getElementById('tally-table-container');
   if (tableContainer) {

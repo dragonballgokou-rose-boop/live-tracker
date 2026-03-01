@@ -69,7 +69,6 @@ export function renderHistory() {
       const isPast = (endD || startD) < now;
       const isOngoing = startD <= now && (!endD || endD >= now);
       const isWeekend = startD.getDay() === 0 || startD.getDay() === 6;
-      const endLabel = endD ? `〜${endD.getDate()}` : '';
 
       const metaParts = [];
       if (live.artist) metaParts.push(escHtml(live.artist));
@@ -98,8 +97,9 @@ export function renderHistory() {
       return `
         <div class="history-entry${isPast ? ' history-entry-past' : ''}">
           <div class="history-entry-date">
-            <span class="history-date-num">${startD.getDate()}${endLabel}</span>
+            <span class="history-date-num">${startD.getDate()}</span>
             <span class="history-date-wd${isWeekend ? ' weekend' : ''}">${weekdays[startD.getDay()]}</span>
+            ${endD ? `<span class="history-date-end">〜${endD.getDate()}</span>` : ''}
           </div>
           <div class="history-entry-body">
             <div class="history-entry-title" onclick="showLiveDetailsModal('${live.id}')">
