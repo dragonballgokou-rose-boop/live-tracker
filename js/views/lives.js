@@ -377,7 +377,7 @@ function buildAttendanceSection(live) {
         <button type="button" class="att-toggle-btn"
           data-live-id="${live.id}" data-date="${d.dateStr}" data-member-id="${m.id}" data-status="${status}"
           style="border-color:${s.border};">
-          <span class="att-toggle-avatar" style="background:${m.color};">${escapeHtml(m.name.charAt(0))}</span>
+          <span class="att-toggle-avatar" style="background:${m.color};">${m.avatar ? `<img src="${m.avatar}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;display:block;" />` : escapeHtml(m.name.charAt(0))}</span>
           <span class="att-toggle-label" style="color:${s.color};">${s.label}</span>
           <span class="att-toggle-name">${escapeHtml(m.nickname || m.name)}</span>
         </button>

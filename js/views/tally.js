@@ -138,7 +138,7 @@ function buildTallyTable(lives, members) {
             <th style="text-align: center;">
               <div style="display: flex; flex-direction: column; align-items: center; gap: 2px; cursor: pointer;" onclick="showMemberDetailsModal('${m.id}')" title="メンバー詳細を見る">
                 <div class="member-avatar" style="background: ${m.color}; width: 28px; height: 28px; font-size: 11px; line-height: 28px;">
-                  ${m.name.charAt(0)}
+                  ${m.avatar ? `<img src="${m.avatar}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;display:block;" />` : m.name.charAt(0)}
                 </div>
                 <span style="font-size: 11px; max-width: 60px; overflow: hidden; text-overflow: ellipsis; text-decoration: underline; text-decoration-color: rgba(255,255,255,0.2);">${escapeHtml(m.nickname || m.name)}</span>
               </div>
@@ -282,7 +282,7 @@ function buildTallyCards(lives, members) {
           data-member="${member.id}"
           title="${escapeAttr(member.name)}">
           <div class="tally-card-avatar-wrap">
-            <div class="tally-card-avatar" style="background: ${member.color}">${member.name.charAt(0)}</div>
+            <div class="tally-card-avatar" style="background: ${member.color}">${member.avatar ? `<img src="${member.avatar}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;display:block;" />` : member.name.charAt(0)}</div>
             <span class="tally-card-status-dot" data-status="${status}">${display}</span>
           </div>
           <span class="tally-card-member-name">${escapeHtml(member.nickname || member.name)}</span>
