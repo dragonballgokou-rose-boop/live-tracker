@@ -167,6 +167,82 @@ function openQuickRecordModal(members) {
   const today = new Date();
   const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 
+  // dateStr -> Set<memberId>
+  const attendanceMap = new Map();
+  const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
+
+  function calcDates(startVal, endVal) {
+    if (!startVal) return [];
+    const result = [];
+    const cursor = new Date(startVal);
+    const last = endVal ? new Date(endVal) : new Date(startVal);
+    cursor.setHours(0, 0, 0, 0);
+    last.setHours(0, 0, 0, 0);
+    if (cursor > last) return [];
+    let dayNum = 1;
+    while (cursor <= last) {
+      const y = cursor.getFullYear();
+      const m = String(cursor.getMonth() + 1).padStart(2, '0');
+      const d = String(cursor.getDate()).padStart(2, '0');
+      result.push({ dateStr: `${y}-${m}-${d}`, dayNum, wd: WEEKDAYS[cursor.getDay()], isWeekend: cursor.getDay() === 0 || cursor.getDay() === 6 });
+      cursor.setDate(cursor.getDate() + 1);
+      dayNum++;
+    }
+    return result;
+  }
+
+  function memberGridHtml(dateStr) {
+    const selected = attendanceMap.get(dateStr) || new Set();
+    return members.map(m => `
+      <button type="button" class="qr-member-btn${selected.has(m.id) ? ' qr-member-btn-selected' : ''}"
+        data-member-id="${m.id}" data-date="${dateStr}" style="--qr-color:${m.color};">
+        <span class="qr-member-avatar" style="background:${m.color};">${escHtml(m.name.charAt(0))}</span>
+        <span class="qr-member-name">${escHtml(m.nickname || m.name)}</span>
+      </button>
+    `).join('');
+  }
+
+  function renderAttendance() {
+    const startVal = document.getElementById('qr-date-start')?.value;
+    const endVal = document.getElementById('qr-date-end')?.value;
+    const dates = calcDates(startVal, endVal);
+    const container = document.getElementById('qr-attendance-container');
+    if (!container || !members.length) return;
+
+    const isMulti = dates.length > 1;
+    container.innerHTML = `
+      <div class="form-group">
+        <label class="form-label">${isMulti ? '日程別 参戦メンバー' : '参戦メンバー（複数選択可）'}</label>
+        ${dates.map(d => `
+          ${isMulti ? `
+            <div class="qr-day-label">
+              Day ${d.dayNum}
+              <span style="font-weight:400;margin-left:4px;">${parseInt(d.dateStr.slice(5, 7))}/${parseInt(d.dateStr.slice(8))}(${d.wd})</span>
+            </div>` : ''}
+          <div class="qr-members-grid" style="${isMulti ? 'margin-bottom:10px;' : ''}">
+            ${memberGridHtml(d.dateStr)}
+          </div>
+        `).join('')}
+      </div>
+    `;
+
+    container.querySelectorAll('.qr-member-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const memberId = btn.dataset.memberId;
+        const dateStr = btn.dataset.date;
+        if (!attendanceMap.has(dateStr)) attendanceMap.set(dateStr, new Set());
+        const set = attendanceMap.get(dateStr);
+        if (set.has(memberId)) {
+          set.delete(memberId);
+          btn.classList.remove('qr-member-btn-selected');
+        } else {
+          set.add(memberId);
+          btn.classList.add('qr-member-btn-selected');
+        }
+      });
+    });
+  }
+
   showModal('参戦記録を追加', `
     <form id="qr-form">
       <div class="form-group">
@@ -198,20 +274,7 @@ function openQuickRecordModal(members) {
         </div>
       </div>
 
-      ${members.length > 0 ? `
-        <div class="form-group">
-          <label class="form-label">参戦メンバー（複数選択可）</label>
-          <div class="qr-members-grid">
-            ${members.map(m => `
-              <button type="button" class="qr-member-btn" data-member-id="${m.id}"
-                style="--qr-color:${m.color};">
-                <span class="qr-member-avatar" style="background:${m.color};">${escHtml(m.name.charAt(0))}</span>
-                <span class="qr-member-name">${escHtml(m.nickname || m.name)}</span>
-              </button>
-            `).join('')}
-          </div>
-        </div>
-      ` : ''}
+      <div id="qr-attendance-container"></div>
 
       <div class="form-actions">
         <button type="button" class="btn btn-secondary" onclick="document.getElementById('modal-close').click()">キャンセル</button>
@@ -219,6 +282,13 @@ function openQuickRecordModal(members) {
       </div>
     </form>
   `);
+
+  // 初回レンダリング
+  renderAttendance();
+
+  // 日付変更時に参戦グリッドを更新
+  document.getElementById('qr-date-start')?.addEventListener('change', renderAttendance);
+  document.getElementById('qr-date-end')?.addEventListener('change', renderAttendance);
 
   // 会場入力で都道府県を自動補完
   document.getElementById('qr-venue')?.addEventListener('blur', () => {
@@ -228,21 +298,6 @@ function openQuickRecordModal(members) {
       const pref = extractPrefecture(venue);
       if (pref) prefInput.value = pref;
     }
-  });
-
-  // メンバーボタンのトグル
-  const selectedMemberIds = new Set();
-  document.querySelectorAll('.qr-member-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const id = btn.dataset.memberId;
-      if (selectedMemberIds.has(id)) {
-        selectedMemberIds.delete(id);
-        btn.classList.remove('qr-member-btn-selected');
-      } else {
-        selectedMemberIds.add(id);
-        btn.classList.add('qr-member-btn-selected');
-      }
-    });
   });
 
   document.getElementById('qr-form')?.addEventListener('submit', e => {
@@ -269,16 +324,19 @@ function openQuickRecordModal(members) {
       memo: ''
     });
 
-    if (selectedMemberIds.size > 0) {
-      const dates = getDatesForLive(newLive);
-      selectedMemberIds.forEach(memberId => {
-        dates.forEach(d => setDayAttendance(newLive.id, d.dateStr, memberId, 'going'));
+    // 日程別に参戦を設定
+    const dates = calcDates(dateStart, dateEnd);
+    let totalGoing = 0;
+    dates.forEach(d => {
+      const selected = attendanceMap.get(d.dateStr) || new Set();
+      selected.forEach(memberId => {
+        setDayAttendance(newLive.id, d.dateStr, memberId, 'going');
+        totalGoing++;
       });
-    }
+    });
 
     closeModal();
-    const count = selectedMemberIds.size;
-    showToast(count > 0 ? `参戦記録を保存しました（${count}名）` : 'ライブを追加しました', 'success');
+    showToast(totalGoing > 0 ? `参戦記録を保存しました` : 'ライブを追加しました', 'success');
     renderHistory();
   });
 }

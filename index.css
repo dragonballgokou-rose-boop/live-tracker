@@ -2184,10 +2184,33 @@ a.stat-card:active {
   font-size: 12px;
   font-weight: 500;
   color: var(--text-primary);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+/* 同名ライブ区別用サブタイトル */
+.chart-live-sub {
+  font-size: 10px;
+  font-weight: 400;
+  color: var(--text-tertiary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* 日程別参戦のDayラベル */
+.qr-day-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  margin: 10px 0 4px 0;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.qr-day-label:first-child { margin-top: 0; }
 
 .chart-row-live {
   gap: 6px;
