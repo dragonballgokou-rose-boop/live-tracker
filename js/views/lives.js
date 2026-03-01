@@ -6,6 +6,8 @@ import { showModal, closeModal, showToast, showConfirm } from '../utils.js';
 
 const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
 
+let livesFilter = 'upcoming'; // 'upcoming' | 'past'
+
 export function renderLives() {
   const content = document.getElementById('page-content');
   const lives = getLives();
@@ -13,18 +15,32 @@ export function renderLives() {
   const now = new Date();
   now.setHours(0, 0, 0, 0);
 
-  // 新しい順にソート→年月グループ化
-  const sorted = [...lives].sort((a, b) =>
-    new Date(b.dateStart || b.date) - new Date(a.dateStart || a.date)
-  );
+  // フィルタリング & ソート
+  const upcoming = lives.filter(l => {
+    const last = new Date(l.dateEnd || l.dateStart || l.date);
+    last.setHours(0, 0, 0, 0);
+    return last >= now;
+  }).sort((a, b) => new Date(a.dateStart || a.date) - new Date(b.dateStart || b.date)); // 昇順（近い順）
+
+  const past = lives.filter(l => {
+    const last = new Date(l.dateEnd || l.dateStart || l.date);
+    last.setHours(0, 0, 0, 0);
+    return last < now;
+  }).sort((a, b) => new Date(b.dateStart || b.date) - new Date(a.dateStart || a.date)); // 降順（新しい順）
+
+  const filtered = livesFilter === 'upcoming' ? upcoming : past;
+
+  // 年月グループ化
   const groups = {};
-  sorted.forEach(live => {
+  filtered.forEach(live => {
     const d = new Date(live.dateStart || live.date);
     const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
     if (!groups[key]) groups[key] = [];
     groups[key].push(live);
   });
-  const sortedKeys = Object.keys(groups).sort().reverse();
+  const sortedKeys = livesFilter === 'upcoming'
+    ? Object.keys(groups).sort()          // 予定: 古い月から
+    : Object.keys(groups).sort().reverse(); // 終了: 新しい月から
 
   const timelineHtml = sortedKeys.map(key => {
     const [year, mon] = key.split('-');
@@ -102,21 +118,36 @@ export function renderLives() {
 
   content.innerHTML = `
     <div class="section-header">
-      <span style="color:var(--text-secondary);font-size:14px;">全 ${lives.length} 件</span>
+      <div class="live-filter-bar">
+        <button class="live-filter-btn${livesFilter === 'upcoming' ? ' active' : ''}" data-filter="upcoming">
+          予定 <span class="filter-count">${upcoming.length}</span>
+        </button>
+        <button class="live-filter-btn${livesFilter === 'past' ? ' active' : ''}" data-filter="past">
+          終了 <span class="filter-count">${past.length}</span>
+        </button>
+      </div>
       <button id="add-live-btn" class="btn btn-primary">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         ライブを追加
       </button>
     </div>
 
-    ${lives.length > 0 ? `<div class="history-timeline">${timelineHtml}</div>` : `
+    ${filtered.length > 0 ? `<div class="history-timeline">${timelineHtml}</div>` : `
       <div class="card empty-state">
         <div class="empty-state-icon"><svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div>
-        <p class="empty-state-text">まだライブが登録されていません</p>
-        <p style="color: var(--text-tertiary); font-size: 14px;">「ライブを追加」ボタンから最初のライブを登録しましょう！</p>
+        <p class="empty-state-text">${livesFilter === 'upcoming' ? '予定のライブがありません' : '終了したライブはありません'}</p>
+        ${livesFilter === 'upcoming' ? '<p style="color:var(--text-tertiary);font-size:14px;">「ライブを追加」ボタンから登録しましょう！</p>' : ''}
       </div>
     `}
   `;
+
+  // フィルターボタン
+  content.querySelectorAll('.live-filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      livesFilter = btn.dataset.filter;
+      renderLives();
+    });
+  });
 
   document.getElementById('add-live-btn')?.addEventListener('click', () => openLiveModal());
 

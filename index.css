@@ -2212,6 +2212,55 @@ a.stat-card:active {
 
 .qr-day-label:first-child { margin-top: 0; }
 
+/* ---- ライブ管理フィルターバー ---- */
+.live-filter-bar {
+  display: flex;
+  gap: 2px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-full);
+  padding: 3px;
+}
+
+.live-filter-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 18px;
+  border-radius: calc(var(--radius-full) - 1px);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  font-family: inherit;
+  white-space: nowrap;
+}
+
+.live-filter-btn:active { transform: scale(0.96); }
+
+.live-filter-btn.active {
+  background: var(--bg-card);
+  color: var(--text-primary);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+}
+
+.filter-count {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: var(--radius-full);
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--text-tertiary);
+}
+
+.live-filter-btn.active .filter-count {
+  background: rgba(139, 92, 246, 0.22);
+  color: var(--accent-purple-light);
+}
+
 /* ---- ライブ管理タイムライン: 編集・削除ボタン行 ---- */
 .lives-entry-actions {
   display: flex;
