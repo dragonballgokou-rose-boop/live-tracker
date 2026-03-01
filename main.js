@@ -7,6 +7,7 @@ import { renderDashboard } from './js/views/dashboard.js';
 import { renderTally } from './js/views/tally.js';
 import { renderLives } from './js/views/lives.js';
 import { renderMembers } from './js/views/members.js';
+import { renderChart } from './js/views/chart.js';
 import { exportData, importData, fetchFromGAS } from './js/store.js';
 import { showToast } from './js/utils.js';
 import { showLiveDetailsModal, showMemberDetailsModal } from './js/views/details.js';
@@ -19,7 +20,8 @@ const pageTitles = {
     '/': 'ダッシュボード',
     '/tally': '集計表',
     '/lives': 'ライブ管理',
-    '/members': 'メンバー管理'
+    '/members': 'メンバー管理',
+    '/chart': 'グラフ'
 };
 
 // ---------- Navigation ----------
@@ -108,6 +110,13 @@ const router = new Router([
         handler: () => {
             updateNav('/members');
             renderMembers();
+        }
+    },
+    {
+        path: '/chart',
+        handler: () => {
+            updateNav('/chart');
+            renderChart();
         }
     }
 ]);
