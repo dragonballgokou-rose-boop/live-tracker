@@ -220,6 +220,26 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('sidebar-close')?.addEventListener('click', closeSidebar);
     document.getElementById('sidebar-overlay')?.addEventListener('click', closeSidebar);
 
+    // Share
+    document.getElementById('share-btn')?.addEventListener('click', async () => {
+        const url = location.href;
+        const title = document.getElementById('page-title')?.textContent || 'LIVE TRACKER';
+        if (navigator.share) {
+            try {
+                await navigator.share({ title, url });
+            } catch (e) {
+                if (e.name !== 'AbortError') showToast('共有に失敗しました', 'error');
+            }
+        } else {
+            try {
+                await navigator.clipboard.writeText(url);
+                showToast('リンクをコピーしました', 'success');
+            } catch {
+                showToast('コピーに失敗しました', 'error');
+            }
+        }
+    });
+
     // Export
     document.getElementById('export-btn')?.addEventListener('click', () => {
         const data = exportData();
