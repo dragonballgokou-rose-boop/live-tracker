@@ -319,7 +319,8 @@ function buildTallyCards(lives, members) {
         <div class="tally-card-header" onclick="showLiveDetailsModal('${row.live.id}')">
           <div class="tally-card-title-wrap">
             <div style="display:flex;align-items:center;gap:4px;margin-bottom:2px;min-width:0;">
-              <span class="tally-card-name" style="margin-bottom:0;display:flex;align-items:center;gap:4px;">${liveIconHtml(row.live, 16)}${escapeHtml(row.live.name)}${dayBadge}</span>
+              <span class="tally-card-name" style="margin-bottom:0;display:flex;align-items:center;gap:4px;flex:1;min-width:0;">${liveIconHtml(row.live, 16)}<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(row.live.name)}</span></span>
+              ${dayBadge}
               ${statusBadge}
             </div>
             ${venuePart ? `<div class="tally-card-date">${venuePart}</div>` : ''}
