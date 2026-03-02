@@ -23,6 +23,12 @@ function fmtDate(dateStr) {
     return `${d.getMonth() + 1}/${d.getDate()}(${WEEKDAYS[d.getDay()]})`;
 }
 
+function liveIconHtml(live, size = 16) {
+    if (live.iconImg) return `<img src="${live.iconImg}" style="width:${size}px;height:${size}px;border-radius:3px;object-fit:cover;flex-shrink:0;vertical-align:middle;" />`;
+    if (live.icon) return `<span style="font-size:${Math.round(size * 0.85)}px;flex-shrink:0;line-height:1;">${live.icon}</span>`;
+    return '';
+}
+
 // ============================================
 // ライブ詳細モーダル
 // ============================================
@@ -43,7 +49,10 @@ export function showLiveDetailsModal(liveId) {
     let html = `<div style="font-size:14px;">`;
 
     // ── メタ情報 ──
-    html += `<div style="background:rgba(0,0,0,0.2);border:1px solid var(--border-color);border-radius:10px;padding:14px;margin-bottom:20px;display:flex;flex-direction:column;gap:8px;">`;
+    const metaBorderStyle = live.color ? `border-left:3px solid ${live.color};` : '';
+    html += `<div style="background:rgba(0,0,0,0.2);border:1px solid var(--border-color);${metaBorderStyle}border-radius:10px;padding:14px;margin-bottom:20px;display:flex;flex-direction:column;gap:8px;">`;
+    const iconHtmlStr = liveIconHtml(live, 28);
+    if (iconHtmlStr) html += `<div style="display:flex;align-items:center;gap:8px;">${iconHtmlStr}<span style="font-weight:600;font-size:15px;">${escapeHtml(live.name)}</span></div>`;
     if (live.artist) html += `<div style="display:flex;align-items:center;gap:8px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg><span style="color:var(--text-secondary);">${escapeHtml(live.artist)}</span></div>`;
     html += `<div style="display:flex;align-items:center;gap:8px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><span style="color:var(--text-secondary);">${formatDateRange(live)}</span>${isPast ? '<span class="badge badge-past" style="font-size:10px;">終了</span>' : '<span class="badge badge-upcoming" style="font-size:10px;">予定</span>'}</div>`;
     if (live.venue) html += `<div style="display:flex;align-items:center;gap:8px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg><span style="color:var(--text-secondary);">${escapeHtml(live.venue)}${pref ? `（${escapeHtml(pref)}）` : ''}</span></div>`;
@@ -151,9 +160,9 @@ function buildMemberCalHtml(memberId, year, month) {
             const isPast = lastD < now;
             const isGoing = getDayAttendanceStatus(live.id, ds, memberId) === 'going';
             // 参戦ライブは左に黄色ボーダーで強調
-            const goingStyle = isGoing ? 'border-left:2px solid #facc15;padding-left:2px;' : '';
-            return `<div class="cal-event${isPast ? ' cal-event-past' : ''}" data-live-id="${live.id}" style="${goingStyle}">
-                <span class="cal-event-name">${escapeHtml(live.name)}</span>
+            const goingStyle = isGoing ? 'border-left:2px solid #facc15;padding-left:2px;' : (live.color ? `border-left:2px solid ${live.color};padding-left:2px;` : '');
+            return `<div class="cal-event${isPast ? ' cal-event-past' : ''}" data-live-id="${live.id}" style="${goingStyle}${live.color && !isGoing ? `background:${live.color}20;` : ''}">
+                <span class="cal-event-name" style="display:flex;align-items:center;gap:2px;">${liveIconHtml(live, 10)}${escapeHtml(live.name)}</span>
             </div>`;
         }).join('');
 
@@ -271,9 +280,10 @@ export function showMemberDetailsModal(memberId) {
     function liveCard(live) {
         const goingDates = liveStatusMap[live.id].goingDates;
         const datesDisplay = goingDates.map(d => fmtDate(d)).join('・');
+        const cardBorder = live.color ? `border-left:3px solid ${live.color};` : '';
         return `
-            <div style="padding:12px;background:rgba(0,0,0,0.2);border:1px solid var(--border-color);border-radius:8px;">
-                <div style="font-weight:600;font-size:14px;margin-bottom:6px;">${escapeHtml(live.name)}</div>
+            <div style="padding:12px;background:rgba(0,0,0,0.2);border:1px solid var(--border-color);${cardBorder}border-radius:8px;">
+                <div style="font-weight:600;font-size:14px;margin-bottom:6px;display:flex;align-items:center;gap:6px;">${liveIconHtml(live, 18)}${escapeHtml(live.name)}</div>
                 <div style="font-size:12px;color:var(--text-secondary);display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
                     <span>
                         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>

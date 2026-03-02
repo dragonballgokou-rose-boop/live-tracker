@@ -94,8 +94,9 @@ export function renderHistory() {
           ? `<span class="badge badge-upcoming" style="font-size:10px;padding:1px 8px;">予定</span>`
           : '';
 
+      const entryBorderStyle = live.color ? `border-left:3px solid ${live.color};padding-left:10px;` : '';
       return `
-        <div class="history-entry${isPast ? ' history-entry-past' : ''}">
+        <div class="history-entry${isPast ? ' history-entry-past' : ''}" style="${entryBorderStyle}">
           <div class="history-entry-date">
             <span class="history-date-num">${startD.getDate()}</span>
             <span class="history-date-wd${isWeekend ? ' weekend' : ''}">${weekdays[startD.getDay()]}</span>
@@ -103,7 +104,7 @@ export function renderHistory() {
           </div>
           <div class="history-entry-body">
             <div class="history-entry-title" onclick="showLiveDetailsModal('${live.id}')">
-              ${escHtml(live.name)}${statusBadge ? `<span style="margin-left:4px;">${statusBadge}</span>` : ''}
+              ${liveIconHtml(live, 16)}${escHtml(live.name)}${statusBadge ? `<span style="margin-left:4px;">${statusBadge}</span>` : ''}
             </div>
             ${metaParts.length > 0 ? `<div class="history-entry-meta">${metaParts.join(' · ')}</div>` : ''}
             <div class="history-entry-members">
@@ -343,4 +344,10 @@ function escHtml(text) {
   const div = document.createElement('div');
   div.textContent = text ?? '';
   return div.innerHTML;
+}
+
+function liveIconHtml(live, size = 16) {
+  if (live.iconImg) return `<img src="${live.iconImg}" style="width:${size}px;height:${size}px;border-radius:3px;object-fit:cover;flex-shrink:0;vertical-align:middle;margin-right:4px;" />`;
+  if (live.icon) return `<span style="font-size:${Math.round(size * 0.85)}px;flex-shrink:0;line-height:1;margin-right:4px;">${live.icon}</span>`;
+  return '';
 }
