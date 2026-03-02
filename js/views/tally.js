@@ -7,6 +7,12 @@ import { formatDateRange, extractPrefecture } from './lives.js';
 
 let tallyStatusFilter = 'all'; // 'all' | 'upcoming' | 'past'
 
+function liveIconHtml(live, size = 16) {
+  if (live.iconImg) return `<img src="${live.iconImg}" style="width:${size}px;height:${size}px;border-radius:3px;object-fit:cover;flex-shrink:0;vertical-align:middle;" />`;
+  if (live.icon) return `<span style="font-size:${Math.round(size * 0.85)}px;flex-shrink:0;line-height:1;">${live.icon}</span>`;
+  return '';
+}
+
 export function renderTally() {
   const content = document.getElementById('page-content');
   const lives = getLives();
@@ -173,7 +179,7 @@ function buildTallyTable(lives, members) {
       if (row.isFirstDay) {
         label = `
                 <div style="display: flex; flex-direction: column; gap: 2px; cursor: pointer;" onclick="showLiveDetailsModal('${row.live.id}')" title="ライブ詳細を見る">
-                  <span style="font-weight: 600; font-size: 13px; text-decoration: underline; text-decoration-color: rgba(255,255,255,0.2);">${escapeHtml(row.live.name)}</span>
+                  <span style="font-weight: 600; font-size: 13px; text-decoration: underline; text-decoration-color: rgba(255,255,255,0.2); display:flex; align-items:center; gap:4px;">${liveIconHtml(row.live, 15)}${escapeHtml(row.live.name)}</span>
                   <span style="font-size: 11px; color: var(--text-tertiary);">
                     ${escapeHtml(row.live.artist || '')} · ${formatDateRange(row.live)}
                   </span>
@@ -199,7 +205,7 @@ function buildTallyTable(lives, members) {
       const dateStr = `${d.getMonth() + 1}/${d.getDate()}(${dayOfWeek})`;
       label = `
                 <div style="display: flex; flex-direction: column; gap: 2px; cursor: pointer;" onclick="showLiveDetailsModal('${row.live.id}')" title="ライブ詳細を見る">
-                  <span style="font-weight: 600; font-size: 13px; text-decoration: underline; text-decoration-color: rgba(255,255,255,0.2);">${escapeHtml(row.live.name)}</span>
+                  <span style="font-weight: 600; font-size: 13px; text-decoration: underline; text-decoration-color: rgba(255,255,255,0.2); display:flex; align-items:center; gap:4px;">${liveIconHtml(row.live, 15)}${escapeHtml(row.live.name)}</span>
                   <span style="font-size: 11px; color: var(--text-tertiary);">
                     ${dateStr} · ${escapeHtml(row.live.artist || '')}
                   </span>
@@ -303,14 +309,17 @@ function buildTallyCards(lives, members) {
       ? `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;vertical-align:-1px;margin-right:2px;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>${escapeHtml(row.live.venue)}${pref ? `（${pref}）` : ''}`
       : (pref ? `（${pref}）` : '');
 
+    const liveColor = row.live.color || '';
+    const cardBorderStyle = liveColor ? `border-left:3px solid ${liveColor};` : '';
     return `
       <div class="tally-card ${isPast ? 'tally-card-past' : ''}"
         data-live-name="${escapeAttr(row.live.name)}"
-        data-date="${row.dateStr}">
+        data-date="${row.dateStr}"
+        style="${cardBorderStyle}">
         <div class="tally-card-header" onclick="showLiveDetailsModal('${row.live.id}')">
           <div class="tally-card-title-wrap">
             <div style="display:flex;align-items:center;gap:4px;margin-bottom:2px;min-width:0;">
-              <span class="tally-card-name" style="margin-bottom:0;">${escapeHtml(row.live.name)}${dayBadge}</span>
+              <span class="tally-card-name" style="margin-bottom:0;display:flex;align-items:center;gap:4px;">${liveIconHtml(row.live, 16)}${escapeHtml(row.live.name)}${dayBadge}</span>
               ${statusBadge}
             </div>
             ${venuePart ? `<div class="tally-card-date">${venuePart}</div>` : ''}

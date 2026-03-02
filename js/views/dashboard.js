@@ -212,8 +212,8 @@ function renderDateSchedule(month, lives, members, now) {
             const goingMembers = members.filter(m => getDayAttendanceStatus(live.id, dateStr, m.id) === 'going');
             return `
               <div class="date-event">
-                <div class="date-event-info" style="cursor:pointer;" onclick="window.showLiveDetailsModal('${live.id}')">
-                  <span class="date-event-name">${escapeHtml(live.name)}${dayLabel ? ` <span class="date-event-day-label">${dayLabel}</span>` : ''}</span>
+                <div class="date-event-info" style="cursor:pointer;${live.color ? `border-left:2px solid ${live.color};padding-left:6px;` : ''}" onclick="window.showLiveDetailsModal('${live.id}')">
+                  <span class="date-event-name" style="display:flex;align-items:center;gap:4px;">${liveIconHtml(live, 14)}${escapeHtml(live.name)}${dayLabel ? ` <span class="date-event-day-label">${dayLabel}</span>` : ''}</span>
                   <span class="date-event-meta">${escapeHtml(live.artist || '')} · ${escapeHtml(live.venue || '')}</span>
                 </div>
                 <div class="date-event-members">
@@ -286,8 +286,9 @@ function renderDashboardCalendar(month, lives, members, now) {
           ? `<img src="${m.avatar}" style="width:6px;height:6px;border-radius:50%;object-fit:cover;" />`
           : `<span style="width:5px;height:5px;border-radius:50%;background:${m.color};display:inline-block;flex-shrink:0;"></span>`)
         .join('');
-      return `<div class="cal-event${isPast ? ' cal-event-past' : ''}" onclick="window.showLiveDetailsModal('${live.id}')" title="${escapeAttr(live.name)}">
-        <span class="cal-event-name">${escapeHtml(live.name)}</span>
+      const evBg = live.color ? `background:${live.color}28;border-left:2px solid ${live.color};` : '';
+      return `<div class="cal-event${isPast ? ' cal-event-past' : ''}" onclick="window.showLiveDetailsModal('${live.id}')" title="${escapeAttr(live.name)}" style="${evBg}">
+        <span class="cal-event-name" style="display:flex;align-items:center;gap:2px;">${liveIconHtml(live, 10)}${escapeHtml(live.name)}</span>
         ${goingDots ? `<div class="cal-member-dots">${goingDots}</div>` : ''}
       </div>`;
     }).join('');
@@ -361,7 +362,7 @@ function renderLiveCard(live) {
       </div>
       <div class="live-info">
         <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;min-width:0;">
-          <div class="live-name" style="text-decoration:underline;text-decoration-color:rgba(255,255,255,0.2);flex:1;min-width:0;">${escapeHtml(live.name)}</div>
+          <div class="live-name" style="text-decoration:underline;text-decoration-color:rgba(255,255,255,0.2);flex:1;min-width:0;display:flex;align-items:center;gap:6px;">${liveIconHtml(live, 18)}${escapeHtml(live.name)}</div>
           <span class="badge ${badgeClass}" style="flex-shrink:0;">${badgeText}</span>
         </div>
         <div class="live-meta">
@@ -387,4 +388,10 @@ function escapeHtml(text) {
 
 function escapeAttr(text) {
   return String(text ?? '').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function liveIconHtml(live, size = 14) {
+  if (live.iconImg) return `<img src="${live.iconImg}" style="width:${size}px;height:${size}px;border-radius:3px;object-fit:cover;flex-shrink:0;vertical-align:middle;" />`;
+  if (live.icon) return `<span style="font-size:${Math.round(size * 0.85)}px;flex-shrink:0;line-height:1;">${live.icon}</span>`;
+  return '';
 }
