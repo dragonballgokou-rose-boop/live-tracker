@@ -725,6 +725,8 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
   border-radius: var(--radius-full);
   vertical-align: middle;
   margin-left: 4px;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .tally-card-date {
