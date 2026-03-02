@@ -13,7 +13,8 @@ export class Router {
 
     resolve() {
         const hash = window.location.hash || '#/';
-        const path = hash.replace('#', '');
+        const fullPath = hash.replace('#', '');
+        const path = fullPath.split('?')[0];
 
         const route = this.routes.find(r => r.path === path) || this.routes[0];
 

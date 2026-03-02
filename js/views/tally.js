@@ -7,6 +7,25 @@ import { formatDateRange, extractPrefecture } from './lives.js';
 
 let tallyStatusFilter = 'all'; // 'all' | 'upcoming' | 'past'
 
+function getTallyUrlParams() {
+  const hash = window.location.hash || '';
+  const qIdx = hash.indexOf('?');
+  if (qIdx === -1) return {};
+  const p = new URLSearchParams(hash.slice(qIdx + 1));
+  return { status: p.get('status') || '', month: p.get('month') || '', search: p.get('search') || '' };
+}
+
+function updateTallyUrl() {
+  const search = document.getElementById('tally-filter-live')?.value || '';
+  const month  = document.getElementById('tally-filter-month')?.value  || '';
+  const p = new URLSearchParams();
+  if (tallyStatusFilter !== 'all') p.set('status', tallyStatusFilter);
+  if (month)  p.set('month',  month);
+  if (search) p.set('search', search);
+  const qs = p.toString();
+  history.replaceState(null, '', `#/tally${qs ? '?' + qs : ''}`);
+}
+
 function liveIconHtml(live, size = 16) {
   if (live.iconImg) return `<img src="${live.iconImg}" style="width:${size}px;height:${size}px;border-radius:3px;object-fit:cover;flex-shrink:0;vertical-align:middle;" />`;
   if (live.icon) return `<span style="font-size:${Math.round(size * 0.85)}px;flex-shrink:0;line-height:1;">${live.icon}</span>`;
@@ -17,6 +36,10 @@ export function renderTally() {
   const content = document.getElementById('page-content');
   const lives = getLives();
   const members = getMembers();
+
+  // URL params から初期フィルター状態を復元
+  const urlParams = getTallyUrlParams();
+  if (urlParams.status) tallyStatusFilter = urlParams.status;
 
   if (lives.length === 0 || members.length === 0) {
     content.innerHTML = `
@@ -58,8 +81,8 @@ export function renderTally() {
 
     <!-- Filter -->
     <div class="tally-filter-bar">
-      <input type="text" id="tally-filter-live" class="form-input" placeholder="ライブ名を検索" />
-      <input type="month" id="tally-filter-month" class="form-input" />
+      <input type="text" id="tally-filter-live" class="form-input" placeholder="ライブ名を検索" value="${urlParams.search || ''}" />
+      <input type="month" id="tally-filter-month" class="form-input" value="${urlParams.month || ''}" />
       <button id="tally-filter-clear" class="btn btn-secondary btn-sm">クリア</button>
     </div>
 
@@ -92,6 +115,9 @@ export function renderTally() {
   `;
 
   setupTallyEvents(members, filteredLives);
+
+  // URL paramsがある場合は初期フィルターを適用
+  if (urlParams.search || urlParams.month) applyFilters();
 }
 
 // ---- Desktop: Table layout ----
@@ -344,6 +370,7 @@ function setupTallyEvents(members, filteredLives) {
   document.querySelectorAll('[data-status-filter]').forEach(btn => {
     btn.addEventListener('click', () => {
       tallyStatusFilter = btn.dataset.statusFilter;
+      updateTallyUrl();
       renderTally();
     });
   });
@@ -415,12 +442,13 @@ function setupTallyEvents(members, filteredLives) {
   const filterMonth = document.getElementById('tally-filter-month');
   const filterClear = document.getElementById('tally-filter-clear');
 
-  filterLive.addEventListener('input', () => applyFilters());
-  filterMonth.addEventListener('change', () => applyFilters());
+  filterLive.addEventListener('input', () => { applyFilters(); updateTallyUrl(); });
+  filterMonth.addEventListener('change', () => { applyFilters(); updateTallyUrl(); });
   filterClear.addEventListener('click', () => {
     filterLive.value = '';
     filterMonth.value = '';
     applyFilters();
+    updateTallyUrl();
   });
 }
 
