@@ -106,3 +106,85 @@ export async function upsertUserProfile(userId, updates) {
         .upsert({ id: userId, ...updates, updated_at: new Date().toISOString() });
     if (error) throw error;
 }
+
+// -------- Room Management --------
+
+export async function createRoom(name, description = '') {
+    const user = await getCurrentUser();
+    if (!user) throw new Error('ログインが必要です');
+
+    // 1. ルームを作成（RLSポリシー: owner_id = auth.uid() で SELECT も可能）
+    const { data: room, error: roomError } = await supabase
+        .from('rooms')
+        .insert({ name: name.trim(), description: description.trim(), owner_id: user.id })
+        .select()
+        .single();
+
+    if (roomError) throw roomError;
+    if (!room) throw new Error('ルームの作成に失敗しました');
+
+    // 2. オーナーを room_members に追加
+    const { error: memberError } = await supabase
+        .from('room_members')
+        .insert({ room_id: room.id, user_id: user.id, role: 'owner' });
+
+    if (memberError) throw memberError;
+
+    return room;
+}
+
+export async function getUserRooms() {
+    const { data, error } = await supabase
+        .from('room_members')
+        .select('role, joined_at, rooms(id, name, description, invite_code, owner_id, plan, created_at)')
+        .order('joined_at', { ascending: false });
+
+    if (error) throw error;
+    return (data || []).map(m => ({ ...m.rooms, role: m.role }));
+}
+
+export async function joinRoomByCode(inviteCode) {
+    const user = await getCurrentUser();
+    if (!user) throw new Error('ログインが必要です');
+
+    // 招待コードからルームを検索
+    const { data: room, error: roomError } = await supabase
+        .from('rooms')
+        .select('id, name')
+        .eq('invite_code', inviteCode.trim().toUpperCase())
+        .single();
+
+    if (roomError || !room) throw new Error('招待コードが無効です');
+
+    // 既に参加済みかチェック
+    const { data: existing } = await supabase
+        .from('room_members')
+        .select('id')
+        .eq('room_id', room.id)
+        .eq('user_id', user.id)
+        .single();
+
+    if (existing) throw new Error('すでにこのルームに参加しています');
+
+    // ルームに参加
+    const { error: joinError } = await supabase
+        .from('room_members')
+        .insert({ room_id: room.id, user_id: user.id, role: 'member' });
+
+    if (joinError) throw joinError;
+
+    return room;
+}
+
+export async function leaveRoom(roomId) {
+    const user = await getCurrentUser();
+    if (!user) throw new Error('ログインが必要です');
+
+    const { error } = await supabase
+        .from('room_members')
+        .delete()
+        .eq('room_id', roomId)
+        .eq('user_id', user.id);
+
+    if (error) throw error;
+}

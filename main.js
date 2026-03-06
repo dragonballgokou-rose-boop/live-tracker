@@ -11,6 +11,9 @@ import { renderChart } from './js/views/chart.js';
 import { exportData, importData, fetchFromGAS } from './js/store.js';
 import { showToast } from './js/utils.js';
 import { showLiveDetailsModal, showMemberDetailsModal } from './js/views/details.js';
+import { renderAuth } from './js/views/auth.js';
+import { renderRooms } from './js/views/rooms.js';
+import { getCurrentUser, getCurrentRoom, onAuthStateChange } from './js/supabase.js';
 
 window.showLiveDetailsModal = showLiveDetailsModal;
 window.showMemberDetailsModal = showMemberDetailsModal;
@@ -195,12 +198,47 @@ const router = new Router([
     }
 ]);
 
+// ---------- Auth & Room Guard ----------
+async function checkAuthAndRoom() {
+    const user = await getCurrentUser();
+
+    if (!user) {
+        // 未ログイン → 認証画面を表示
+        renderAuth();
+        return false;
+    }
+
+    const room = getCurrentRoom();
+    if (!room) {
+        // ログイン済みだがルーム未選択 → ルーム選択画面
+        await renderRooms((selectedRoom) => {
+            // ルーム選択後にアプリを起動
+            initApp();
+        });
+        return false;
+    }
+
+    return true;
+}
+
+function initApp() {
+    // setCurrentRoom で localStorage に保存済みなのでリロードで正しく起動する
+    location.reload();
+}
+
 // ---------- Event Listeners ----------
 document.addEventListener('DOMContentLoaded', async () => {
     // Show App Loader initially
     const appLoader = document.getElementById('app-loader');
     if (appLoader) {
         appLoader.classList.remove('hidden');
+    }
+
+    // 認証 & ルームのチェック
+    const ready = await checkAuthAndRoom();
+    if (!ready) {
+        if (appLoader) appLoader.classList.add('hidden');
+        return;
     }
 
     // Try fetching from GAS on load (if GAS_URL is set)

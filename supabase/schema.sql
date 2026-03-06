@@ -121,9 +121,11 @@ returns boolean as $$
 $$ language sql security definer;
 
 -- Rooms ポリシー
-create policy "members can view their rooms"
+-- オーナー自身、またはルームメンバーが参照可能
+-- ※ ルーム作成直後はまだ room_members に未登録のため owner_id チェックが必要
+create policy "members or owners can view their rooms"
   on public.rooms for select
-  using (public.is_room_member(id));
+  using (owner_id = auth.uid() OR public.is_room_member(id));
 
 create policy "authenticated users can create rooms"
   on public.rooms for insert
