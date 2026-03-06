@@ -113,31 +113,32 @@ export async function createRoom(name, description = '') {
     const user = await getCurrentUser();
     if (!user) throw new Error('ログインが必要です');
 
-    // 1. ルームを INSERT（.select() を切り離して RLS の SELECT 依存を回避）
+    // UUID をクライアントで生成することで INSERT 後の ID を把握する
+    const roomId = crypto.randomUUID();
+
+    // 1. ルームを INSERT
     const { error: roomError } = await supabase
         .from('rooms')
-        .insert({ name: name.trim(), description: description.trim(), owner_id: user.id });
+        .insert({ id: roomId, name: name.trim(), description: description.trim(), owner_id: user.id });
 
     if (roomError) throw roomError;
 
-    // 2. 作成したルームを取得（owner_id で直接 SELECT）
+    // 2. オーナーを room_members に追加（SELECT の前に追加して RLS を通過させる）
+    const { error: memberError } = await supabase
+        .from('room_members')
+        .upsert({ room_id: roomId, user_id: user.id, role: 'owner' }, { onConflict: 'room_id,user_id' });
+
+    if (memberError) throw memberError;
+
+    // 3. ルームを取得（is_room_member が true になったので RLS を通過できる）
     const { data: room, error: fetchError } = await supabase
         .from('rooms')
         .select('*')
-        .eq('owner_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(1)
+        .eq('id', roomId)
         .single();
 
     if (fetchError) throw fetchError;
     if (!room) throw new Error('ルームの作成に失敗しました');
-
-    // 3. オーナーを room_members に追加（既存エントリがあれば無視）
-    const { error: memberError } = await supabase
-        .from('room_members')
-        .upsert({ room_id: room.id, user_id: user.id, role: 'owner' }, { onConflict: 'room_id,user_id' });
-
-    if (memberError) throw memberError;
 
     return room;
 }
