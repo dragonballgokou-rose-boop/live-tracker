@@ -1,6 +1,8 @@
 // ============================================
-// Store - localStorage CRUD Operations
+// Store - Data Layer (localStorage cache + Supabase sync)
 // ============================================
+
+import { supabase, getCurrentRoomId } from './supabase.js';
 
 const STORAGE_KEYS = {
     LIVES: 'livetracker_lives',
@@ -9,92 +11,269 @@ const STORAGE_KEYS = {
 };
 
 // ============================================
-// Cloud Sync (Google Apps Script)
+// Supabase Sync Helpers
 // ============================================
-// ユーザーがGAS URLを発行したらここに貼り付ける
-export const GAS_URL = 'https://script.google.com/macros/s/AKfycbzsvKE56LE0VycDxAfRM2tafOROFCcDLhKOJRl05j2QU_IqikHoqtUkqoBwGc0SKgtN/exec';
 
-let syncStatus = 'idle'; // 'idle' | 'syncing' | 'error'
+function isUUID(str) {
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+}
 
-export async function fetchFromGAS() {
-    if (!GAS_URL) return false;
+function liveFromDb(row) {
+    return {
+        id: row.id,
+        name: row.name,
+        artist: row.artist || '',
+        venue: row.venue || '',
+        prefecture: row.prefecture || '',
+        dateStart: row.date_start,
+        dateEnd: row.date_end || '',
+        memo: row.memo || '',
+        icon: row.icon || '🎵',
+        iconImg: row.icon_img || '',
+        color: row.color || '#8B5CF6',
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+    };
+}
+
+function liveToDb(live, roomId) {
+    return {
+        id: live.id,
+        room_id: roomId,
+        name: live.name,
+        artist: live.artist || null,
+        venue: live.venue || null,
+        prefecture: live.prefecture || null,
+        date_start: live.dateStart || live.date,
+        date_end: live.dateEnd || null,
+        memo: live.memo || null,
+        icon: live.icon || null,
+        icon_img: live.iconImg || null,
+        color: live.color || null,
+        updated_at: new Date().toISOString(),
+    };
+}
+
+function memberFromDb(row) {
+    return {
+        id: row.id,
+        name: row.name,
+        nickname: row.nickname || '',
+        color: row.color || '#8B5CF6',
+        avatar: row.avatar || '',
+        memo: row.memo || '',
+        createdAt: row.created_at,
+    };
+}
+
+function memberToDb(member, roomId) {
+    return {
+        id: member.id,
+        room_id: roomId,
+        name: member.name,
+        nickname: member.nickname || null,
+        color: member.color || null,
+        avatar: member.avatar || null,
+        memo: member.memo || null,
+    };
+}
+
+function attendanceFromDb(row) {
+    // Reconstruct the compound liveId key used by the app
+    const liveId = row.date_str ? `${row.live_id}_${row.date_str}` : row.live_id;
+    return {
+        id: row.id,
+        liveId,
+        memberId: row.member_id,
+        status: row.status || 'undecided',
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+    };
+}
+
+// Parse compound liveId (e.g. "uuid_2026-03-01") back to { liveId, dateStr }
+function parseLiveId(compoundId) {
+    const match = compoundId.match(/^(.+)_(\d{4}-\d{2}-\d{2})$/);
+    if (match) {
+        return { liveId: match[1], dateStr: match[2] };
+    }
+    return { liveId: compoundId, dateStr: '' };
+}
+
+// ============================================
+// Supabase fetch (replaces fetchFromGAS)
+// ============================================
+
+export async function fetchFromSupabase() {
+    const roomId = getCurrentRoomId();
+    if (!roomId) return false;
+
     try {
-        syncStatus = 'syncing';
         window.dispatchEvent(new CustomEvent('livetracker:sync-start'));
-        const response = await fetch(`${GAS_URL}?type=getAll`);
-        const result = await response.json();
 
-        if (result.success && result.data) {
-            if (result.data.lives) saveAll(STORAGE_KEYS.LIVES, result.data.lives);
-            if (result.data.members) saveAll(STORAGE_KEYS.MEMBERS, result.data.members);
-            if (result.data.attendance) saveAll(STORAGE_KEYS.ATTENDANCE, result.data.attendance);
-            syncStatus = 'idle';
-            window.dispatchEvent(new CustomEvent('livetracker:sync-success'));
-            return true;
+        const [livesRes, membersRes] = await Promise.all([
+            supabase.from('lives').select('*').eq('room_id', roomId).order('date_start'),
+            supabase.from('members').select('*').eq('room_id', roomId).order('created_at'),
+        ]);
+
+        if (livesRes.error) throw livesRes.error;
+        if (membersRes.error) throw membersRes.error;
+
+        const dbLives = livesRes.data || [];
+        const dbMembers = membersRes.data || [];
+
+        // If Supabase is empty but localStorage has data, migrate once
+        if (dbLives.length === 0 && dbMembers.length === 0) {
+            const localLives = getAll(STORAGE_KEYS.LIVES);
+            const localMembers = getAll(STORAGE_KEYS.MEMBERS);
+            if (localLives.length > 0 || localMembers.length > 0) {
+                await migrateLocalToSupabase(roomId, localLives, localMembers);
+                return fetchFromSupabase(); // re-fetch after migration
+            }
         }
-        syncStatus = 'error';
-        window.dispatchEvent(new CustomEvent('livetracker:sync-error'));
-        return false;
+
+        // Fetch attendance for this room's lives
+        const liveIds = dbLives.map(l => l.id);
+        let attendance = [];
+        if (liveIds.length > 0) {
+            const { data, error } = await supabase
+                .from('attendance')
+                .select('*')
+                .in('live_id', liveIds);
+            if (error) throw error;
+            attendance = (data || []).map(attendanceFromDb);
+        }
+
+        // Update localStorage cache
+        localStorage.setItem(STORAGE_KEYS.LIVES, JSON.stringify(dbLives.map(liveFromDb)));
+        localStorage.setItem(STORAGE_KEYS.MEMBERS, JSON.stringify(dbMembers.map(memberFromDb)));
+        localStorage.setItem(STORAGE_KEYS.ATTENDANCE, JSON.stringify(attendance));
+
+        window.dispatchEvent(new CustomEvent('livetracker:sync-success'));
+        return true;
     } catch (e) {
-        console.error('Fetch from GAS failed:', e);
-        syncStatus = 'error';
+        console.error('Fetch from Supabase failed:', e);
         window.dispatchEvent(new CustomEvent('livetracker:sync-error'));
         return false;
     }
 }
 
-// データの変更を検知してバックグラウンドで送信するためのタイマー
-let syncTimeout = null;
+// One-time migration of existing localStorage data to Supabase
+async function migrateLocalToSupabase(roomId, localLives, localMembers) {
+    const localAttendance = getAll(STORAGE_KEYS.ATTENDANCE);
+    const idMap = {}; // oldId → newId (Supabase UUID)
 
-export function triggerSync() {
-    if (!GAS_URL) return;
+    // Insert lives
+    for (const live of localLives) {
+        const dbLive = {
+            room_id: roomId,
+            name: live.name,
+            artist: live.artist || null,
+            venue: live.venue || null,
+            prefecture: live.prefecture || null,
+            date_start: live.dateStart || live.date,
+            date_end: live.dateEnd || null,
+            memo: live.memo || null,
+            icon: live.icon || null,
+            icon_img: live.iconImg || null,
+            color: live.color || null,
+        };
+        if (isUUID(live.id)) dbLive.id = live.id;
+        const { data, error } = await supabase.from('lives').insert(dbLive).select().single();
+        if (!error && data) idMap[live.id] = data.id;
+    }
 
-    // 短時間に複数回の更新があった場合、最後の1回だけ送信する（デバウンス処理）
-    if (syncTimeout) clearTimeout(syncTimeout);
+    // Insert members
+    for (const member of localMembers) {
+        const dbMember = {
+            room_id: roomId,
+            name: member.name,
+            nickname: member.nickname || null,
+            color: member.color || null,
+            avatar: member.avatar || null,
+            memo: member.memo || null,
+        };
+        if (isUUID(member.id)) dbMember.id = member.id;
+        const { data, error } = await supabase.from('members').insert(dbMember).select().single();
+        if (!error && data) idMap[member.id] = data.id;
+    }
 
-    // UI側のToast通知などに利用できるよう、必要であればイベントを発火可能
-    window.dispatchEvent(new CustomEvent('livetracker:sync-start'));
-
-    syncTimeout = setTimeout(async () => {
-        try {
-            const data = {
-                lives: getAll(STORAGE_KEYS.LIVES),
-                members: getAll(STORAGE_KEYS.MEMBERS),
-                attendance: getAll(STORAGE_KEYS.ATTENDANCE)
-            };
-
-            const response = await fetch(GAS_URL, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'text/plain', // GASのCORS制約回避のため text/plain を使用
-                },
-                body: JSON.stringify({
-                    action: 'updateAllData',
-                    data: data
-                })
-            });
-            const result = await response.json();
-            if (result.success) {
-                window.dispatchEvent(new CustomEvent('livetracker:sync-success'));
-            } else {
-                throw new Error(result.message || 'Sync failed');
-            }
-        } catch (e) {
-            console.error('Push to GAS failed:', e);
-            window.dispatchEvent(new CustomEvent('livetracker:sync-error'));
-        }
-    }, 1500); // 1.5秒間操作がなければ同期を実行
+    // Insert attendance
+    const attToInsert = [];
+    for (const att of localAttendance) {
+        const { liveId: rawLiveId, dateStr } = parseLiveId(att.liveId);
+        const actualLiveId = idMap[rawLiveId] || rawLiveId;
+        const actualMemberId = idMap[att.memberId] || att.memberId;
+        if (!isUUID(actualLiveId) || !isUUID(actualMemberId)) continue;
+        attToInsert.push({
+            live_id: actualLiveId,
+            member_id: actualMemberId,
+            date_str: dateStr,
+            status: att.status || 'undecided',
+        });
+    }
+    if (attToInsert.length > 0) {
+        await supabase.from('attendance').upsert(attToInsert, { onConflict: 'live_id,member_id,date_str' });
+    }
 }
 
 // ============================================
-// Local Store
+// Supabase write helpers (fire-and-forget)
+// ============================================
+
+async function syncLiveToSupabase(live) {
+    const roomId = getCurrentRoomId();
+    if (!roomId || !isUUID(live.id)) return;
+    const { error } = await supabase
+        .from('lives')
+        .upsert(liveToDb(live, roomId), { onConflict: 'id' });
+    if (error) console.error('Live sync error:', error);
+}
+
+async function syncMemberToSupabase(member) {
+    const roomId = getCurrentRoomId();
+    if (!roomId || !isUUID(member.id)) return;
+    const { error } = await supabase
+        .from('members')
+        .upsert(memberToDb(member, roomId), { onConflict: 'id' });
+    if (error) console.error('Member sync error:', error);
+}
+
+async function syncAttendanceToSupabase(compoundLiveId, memberId, status) {
+    const { liveId, dateStr } = parseLiveId(compoundLiveId);
+    if (!isUUID(liveId) || !isUUID(memberId)) return;
+    const { error } = await supabase.from('attendance').upsert({
+        live_id: liveId,
+        member_id: memberId,
+        date_str: dateStr,
+        status,
+    }, { onConflict: 'live_id,member_id,date_str' });
+    if (error) console.error('Attendance sync error:', error);
+}
+
+async function deleteSupabaseLive(id) {
+    if (!isUUID(id)) return;
+    const { error } = await supabase.from('lives').delete().eq('id', id);
+    if (error) console.error('Live delete error:', error);
+}
+
+async function deleteSupabaseMember(id) {
+    if (!isUUID(id)) return;
+    const { error } = await supabase.from('members').delete().eq('id', id);
+    if (error) console.error('Member delete error:', error);
+}
+
+// ============================================
+// Local Store (localStorage CRUD)
 // ============================================
 
 function generateId() {
+    // Use UUID for Supabase compatibility
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+        return crypto.randomUUID();
+    }
     return Date.now().toString(36) + Math.random().toString(36).substring(2, 9);
 }
-
-// ---------- Generic CRUD ----------
 
 function getAll(key) {
     try {
@@ -107,7 +286,6 @@ function getAll(key) {
 
 function saveAll(key, items) {
     localStorage.setItem(key, JSON.stringify(items));
-    triggerSync(); // ローカル保存後にクラウドへ非同期送信
 }
 
 function addItem(key, item) {
@@ -152,18 +330,23 @@ export function getLiveById(id) {
 }
 
 export function addLive(live) {
-    return addItem(STORAGE_KEYS.LIVES, live);
+    const newLive = addItem(STORAGE_KEYS.LIVES, live);
+    syncLiveToSupabase(newLive);
+    return newLive;
 }
 
 export function updateLive(id, updates) {
-    return updateItem(STORAGE_KEYS.LIVES, id, updates);
+    const updated = updateItem(STORAGE_KEYS.LIVES, id, updates);
+    if (updated) syncLiveToSupabase(updated);
+    return updated;
 }
 
 export function deleteLive(id) {
-    // 関連する参戦記録も削除
+    // Delete related attendance from localStorage and Supabase
     const attendance = getAll(STORAGE_KEYS.ATTENDANCE);
-    const filtered = attendance.filter(a => a.liveId !== id);
+    const filtered = attendance.filter(a => !a.liveId.startsWith(id));
     saveAll(STORAGE_KEYS.ATTENDANCE, filtered);
+    deleteSupabaseLive(id); // cascade deletes attendance in Supabase via FK
     return deleteItem(STORAGE_KEYS.LIVES, id);
 }
 
@@ -180,18 +363,23 @@ export function getMemberById(id) {
 }
 
 export function addMember(member) {
-    return addItem(STORAGE_KEYS.MEMBERS, member);
+    const newMember = addItem(STORAGE_KEYS.MEMBERS, member);
+    syncMemberToSupabase(newMember);
+    return newMember;
 }
 
 export function updateMember(id, updates) {
-    return updateItem(STORAGE_KEYS.MEMBERS, id, updates);
+    const updated = updateItem(STORAGE_KEYS.MEMBERS, id, updates);
+    if (updated) syncMemberToSupabase(updated);
+    return updated;
 }
 
 export function deleteMember(id) {
-    // 関連する参戦記録も削除
+    // Delete related attendance from localStorage and Supabase
     const attendance = getAll(STORAGE_KEYS.ATTENDANCE);
     const filtered = attendance.filter(a => a.memberId !== id);
     saveAll(STORAGE_KEYS.ATTENDANCE, filtered);
+    deleteSupabaseMember(id); // cascade deletes attendance in Supabase via FK
     return deleteItem(STORAGE_KEYS.MEMBERS, id);
 }
 
@@ -228,6 +416,7 @@ export function setAttendance(liveId, memberId, status) {
     }
 
     saveAll(STORAGE_KEYS.ATTENDANCE, attendance);
+    syncAttendanceToSupabase(liveId, memberId, status);
 }
 
 export function getAttendanceStatus(liveId, memberId) {
@@ -236,7 +425,7 @@ export function getAttendanceStatus(liveId, memberId) {
     return record ? record.status : null;
 }
 
-// ---------- Date-based Attendance (日付ごとの参戦管理) ----------
+// ---------- Date-based Attendance ----------
 
 export function getDatesForLive(live) {
     const start = new Date(live.dateStart || live.date);
@@ -281,14 +470,12 @@ export function getDayAttendanceStatus(liveId, dateStr, memberId) {
 export function getStats() {
     const lives = getLives();
     const members = getMembers();
-    const attendance = getAttendance();
     const now = new Date();
     now.setHours(0, 0, 0, 0);
 
     const upcomingLives = lives.filter(l => new Date(l.dateEnd || l.dateStart || l.date) >= now);
     const pastLives = lives.filter(l => new Date(l.dateEnd || l.dateStart || l.date) < now);
 
-    // 全メンバー×全ライブ×全日程 での「〇（going）」の数を正確にカウント
     let goingCount = 0;
     let totalPossibleSchedules = 0;
 
@@ -329,7 +516,7 @@ export function exportData() {
     return JSON.stringify(data, null, 2);
 }
 
-export function importData(jsonString) {
+export async function importData(jsonString) {
     try {
         const data = JSON.parse(jsonString);
         if (!data.lives || !data.members || !data.attendance) {
@@ -338,6 +525,12 @@ export function importData(jsonString) {
         saveAll(STORAGE_KEYS.LIVES, data.lives);
         saveAll(STORAGE_KEYS.MEMBERS, data.members);
         saveAll(STORAGE_KEYS.ATTENDANCE, data.attendance);
+
+        // Push imported data to Supabase
+        const roomId = getCurrentRoomId();
+        if (roomId) {
+            await migrateLocalToSupabase(roomId, data.lives, data.members);
+        }
         return true;
     } catch (e) {
         console.error('Import error:', e);

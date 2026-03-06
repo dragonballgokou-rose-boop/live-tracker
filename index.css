@@ -186,10 +186,7 @@ textarea {
 }
 
 .logo-accent {
-  background: var(--gradient-primary);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  /* gradient inherited from .header-logo-text */
 }
 
 .sidebar-close {
@@ -318,14 +315,17 @@ textarea {
   height: 34px;
   border-radius: 8px;
   flex-shrink: 0;
-  filter: drop-shadow(0 0 6px rgba(139, 92, 246, 0.4));
+  filter: drop-shadow(0 0 8px rgba(139, 92, 246, 0.7)) drop-shadow(0 0 18px rgba(236, 72, 153, 0.35));
 }
 
 .header-logo-text {
   font-size: 13px;
   font-weight: 800;
   letter-spacing: 1.5px;
-  color: var(--text-primary);
+  background: var(--gradient-primary);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 /* Header actions (right side) */
