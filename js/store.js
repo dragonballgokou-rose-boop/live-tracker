@@ -194,9 +194,30 @@ export async function fetchFromSupabase() {
         if (membersRes.error)    throw membersRes.error;
         if (attendanceRes.error) throw attendanceRes.error;
 
-        localStorage.setItem(STORAGE_KEYS.LIVES,      JSON.stringify(livesRes.data.map(rowToLive)));
-        localStorage.setItem(STORAGE_KEYS.MEMBERS,    JSON.stringify(membersRes.data.map(rowToMember)));
-        localStorage.setItem(STORAGE_KEYS.ATTENDANCE, JSON.stringify(attendanceRes.data.map(rowToAttendance)));
+        const remoteHasData =
+            livesRes.data.length > 0 ||
+            membersRes.data.length > 0 ||
+            attendanceRes.data.length > 0;
+
+        const localHasData =
+            getAll(STORAGE_KEYS.LIVES).length > 0 ||
+            getAll(STORAGE_KEYS.MEMBERS).length > 0 ||
+            getAll(STORAGE_KEYS.ATTENDANCE).length > 0;
+
+        if (!remoteHasData && localHasData) {
+            // Supabase が空でローカルにデータがある場合 → ローカルを Supabase へ push
+            await Promise.all([
+                syncCollectionToSupabase('lives',      getAll(STORAGE_KEYS.LIVES),      liveToRow),
+                syncCollectionToSupabase('members',    getAll(STORAGE_KEYS.MEMBERS),    memberToRow),
+                syncCollectionToSupabase('attendance', getAll(STORAGE_KEYS.ATTENDANCE), attendanceToRow),
+            ]);
+        } else if (remoteHasData) {
+            // Supabase にデータがある場合 → ローカルを上書き
+            localStorage.setItem(STORAGE_KEYS.LIVES,      JSON.stringify(livesRes.data.map(rowToLive)));
+            localStorage.setItem(STORAGE_KEYS.MEMBERS,    JSON.stringify(membersRes.data.map(rowToMember)));
+            localStorage.setItem(STORAGE_KEYS.ATTENDANCE, JSON.stringify(attendanceRes.data.map(rowToAttendance)));
+        }
+        // 両方空の場合は何もしない
 
         window.dispatchEvent(new CustomEvent('livetracker:sync-success'));
         return true;
