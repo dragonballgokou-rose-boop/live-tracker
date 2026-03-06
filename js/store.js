@@ -2,6 +2,8 @@
 // Store - localStorage CRUD Operations
 // ============================================
 
+import { supabase } from './supabase.js';
+
 const STORAGE_KEYS = {
     LIVES: 'livetracker_lives',
     MEMBERS: 'livetracker_members',
@@ -9,81 +11,200 @@ const STORAGE_KEYS = {
 };
 
 // ============================================
-// Cloud Sync (Google Apps Script)
+// Cloud Sync (Supabase)
 // ============================================
-// ユーザーがGAS URLを発行したらここに貼り付ける
-export const GAS_URL = 'https://script.google.com/macros/s/AKfycbzsvKE56LE0VycDxAfRM2tafOROFCcDLhKOJRl05j2QU_IqikHoqtUkqoBwGc0SKgtN/exec';
 
-let syncStatus = 'idle'; // 'idle' | 'syncing' | 'error'
+// ---------- データ変換ヘルパー ----------
 
-export async function fetchFromGAS() {
-    if (!GAS_URL) return false;
-    try {
-        syncStatus = 'syncing';
-        window.dispatchEvent(new CustomEvent('livetracker:sync-start'));
-        const response = await fetch(`${GAS_URL}?type=getAll`);
-        const result = await response.json();
+function liveToRow(live) {
+    return {
+        id:          live.id,
+        name:        live.name || '',
+        artist:      live.artist      ?? null,
+        venue:       live.venue       ?? null,
+        date_start:  live.dateStart   ?? null,
+        date_end:    live.dateEnd     ?? null,
+        date:        live.date        ?? null,
+        memo:        live.memo        ?? null,
+        icon:        live.icon        ?? null,
+        icon_img:    live.iconImg     ?? null,
+        color:       live.color       ?? null,
+        prefecture:  live.prefecture  ?? null,
+        created_at:  live.createdAt   ?? null,
+        updated_at:  live.updatedAt   ?? null,
+    };
+}
 
-        if (result.success && result.data) {
-            if (result.data.lives) saveAll(STORAGE_KEYS.LIVES, result.data.lives);
-            if (result.data.members) saveAll(STORAGE_KEYS.MEMBERS, result.data.members);
-            if (result.data.attendance) saveAll(STORAGE_KEYS.ATTENDANCE, result.data.attendance);
-            syncStatus = 'idle';
-            window.dispatchEvent(new CustomEvent('livetracker:sync-success'));
-            return true;
-        }
-        syncStatus = 'error';
-        window.dispatchEvent(new CustomEvent('livetracker:sync-error'));
-        return false;
-    } catch (e) {
-        console.error('Fetch from GAS failed:', e);
-        syncStatus = 'error';
-        window.dispatchEvent(new CustomEvent('livetracker:sync-error'));
-        return false;
+function rowToLive(row) {
+    return {
+        id:         row.id,
+        name:       row.name,
+        artist:     row.artist,
+        venue:      row.venue,
+        dateStart:  row.date_start,
+        dateEnd:    row.date_end,
+        date:       row.date,
+        memo:       row.memo,
+        icon:       row.icon,
+        iconImg:    row.icon_img,
+        color:      row.color,
+        prefecture: row.prefecture,
+        createdAt:  row.created_at,
+        updatedAt:  row.updated_at,
+    };
+}
+
+function memberToRow(member) {
+    return {
+        id:         member.id,
+        name:       member.name || '',
+        nickname:   member.nickname  ?? null,
+        color:      member.color     ?? null,
+        avatar:     member.avatar    ?? null,
+        created_at: member.createdAt ?? null,
+        updated_at: member.updatedAt ?? null,
+    };
+}
+
+function rowToMember(row) {
+    return {
+        id:        row.id,
+        name:      row.name,
+        nickname:  row.nickname,
+        color:     row.color,
+        avatar:    row.avatar,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+    };
+}
+
+function attendanceToRow(att) {
+    return {
+        id:         att.id,
+        live_id:    att.liveId,
+        member_id:  att.memberId,
+        status:     att.status,
+        created_at: att.createdAt ?? null,
+        updated_at: att.updatedAt ?? null,
+    };
+}
+
+function rowToAttendance(row) {
+    return {
+        id:        row.id,
+        liveId:    row.live_id,
+        memberId:  row.member_id,
+        status:    row.status,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+    };
+}
+
+// ---------- コレクション単位の同期 ----------
+
+async function syncCollectionToSupabase(tableName, localItems, toRow) {
+    if (!supabase) return;
+
+    // Supabase に現在存在する ID を取得
+    const { data: existing, error: fetchError } = await supabase
+        .from(tableName)
+        .select('id');
+    if (fetchError) throw fetchError;
+
+    const existingIds = new Set((existing || []).map(r => r.id));
+    const localIds    = new Set(localItems.map(i => i.id));
+
+    // 現在のデータを upsert
+    if (localItems.length > 0) {
+        const { error: upsertError } = await supabase
+            .from(tableName)
+            .upsert(localItems.map(toRow), { onConflict: 'id' });
+        if (upsertError) throw upsertError;
+    }
+
+    // ローカルに存在しない（削除された）レコードを Supabase からも削除
+    const toDelete = [...existingIds].filter(id => !localIds.has(id));
+    if (toDelete.length > 0) {
+        const { error: deleteError } = await supabase
+            .from(tableName)
+            .delete()
+            .in('id', toDelete);
+        if (deleteError) throw deleteError;
     }
 }
 
-// データの変更を検知してバックグラウンドで送信するためのタイマー
+// ---------- デバウンスされたバックグラウンド同期 ----------
+
 let syncTimeout = null;
+const dirtyKeys  = new Set();
 
 export function triggerSync() {
-    if (!GAS_URL) return;
+    if (!supabase) return;
 
-    // 短時間に複数回の更新があった場合、最後の1回だけ送信する（デバウンス処理）
-    if (syncTimeout) clearTimeout(syncTimeout);
-
-    // UI側のToast通知などに利用できるよう、必要であればイベントを発火可能
     window.dispatchEvent(new CustomEvent('livetracker:sync-start'));
 
-    syncTimeout = setTimeout(async () => {
-        try {
-            const data = {
-                lives: getAll(STORAGE_KEYS.LIVES),
-                members: getAll(STORAGE_KEYS.MEMBERS),
-                attendance: getAll(STORAGE_KEYS.ATTENDANCE)
-            };
+    if (syncTimeout) clearTimeout(syncTimeout);
 
-            const response = await fetch(GAS_URL, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'text/plain', // GASのCORS制約回避のため text/plain を使用
-                },
-                body: JSON.stringify({
-                    action: 'updateAllData',
-                    data: data
-                })
-            });
-            const result = await response.json();
-            if (result.success) {
-                window.dispatchEvent(new CustomEvent('livetracker:sync-success'));
-            } else {
-                throw new Error(result.message || 'Sync failed');
+    syncTimeout = setTimeout(async () => {
+        const keysToSync = [...dirtyKeys];
+        dirtyKeys.clear();
+
+        try {
+            const promises = [];
+
+            if (keysToSync.length === 0 || keysToSync.includes(STORAGE_KEYS.LIVES)) {
+                promises.push(
+                    syncCollectionToSupabase('lives', getAll(STORAGE_KEYS.LIVES), liveToRow)
+                );
             }
+            if (keysToSync.length === 0 || keysToSync.includes(STORAGE_KEYS.MEMBERS)) {
+                promises.push(
+                    syncCollectionToSupabase('members', getAll(STORAGE_KEYS.MEMBERS), memberToRow)
+                );
+            }
+            if (keysToSync.length === 0 || keysToSync.includes(STORAGE_KEYS.ATTENDANCE)) {
+                promises.push(
+                    syncCollectionToSupabase('attendance', getAll(STORAGE_KEYS.ATTENDANCE), attendanceToRow)
+                );
+            }
+
+            await Promise.all(promises);
+            window.dispatchEvent(new CustomEvent('livetracker:sync-success'));
         } catch (e) {
-            console.error('Push to GAS failed:', e);
+            console.error('Supabase への同期に失敗しました:', e);
             window.dispatchEvent(new CustomEvent('livetracker:sync-error'));
         }
-    }, 1500); // 1.5秒間操作がなければ同期を実行
+    }, 1500);
+}
+
+// ---------- 初回ロード時の取得 ----------
+
+export async function fetchFromSupabase() {
+    if (!supabase) return false;
+    try {
+        window.dispatchEvent(new CustomEvent('livetracker:sync-start'));
+
+        const [livesRes, membersRes, attendanceRes] = await Promise.all([
+            supabase.from('lives').select('*'),
+            supabase.from('members').select('*'),
+            supabase.from('attendance').select('*'),
+        ]);
+
+        if (livesRes.error)      throw livesRes.error;
+        if (membersRes.error)    throw membersRes.error;
+        if (attendanceRes.error) throw attendanceRes.error;
+
+        localStorage.setItem(STORAGE_KEYS.LIVES,      JSON.stringify(livesRes.data.map(rowToLive)));
+        localStorage.setItem(STORAGE_KEYS.MEMBERS,    JSON.stringify(membersRes.data.map(rowToMember)));
+        localStorage.setItem(STORAGE_KEYS.ATTENDANCE, JSON.stringify(attendanceRes.data.map(rowToAttendance)));
+
+        window.dispatchEvent(new CustomEvent('livetracker:sync-success'));
+        return true;
+    } catch (e) {
+        console.error('Supabase からの取得に失敗しました:', e);
+        window.dispatchEvent(new CustomEvent('livetracker:sync-error'));
+        return false;
+    }
 }
 
 // ============================================
@@ -107,7 +228,8 @@ function getAll(key) {
 
 function saveAll(key, items) {
     localStorage.setItem(key, JSON.stringify(items));
-    triggerSync(); // ローカル保存後にクラウドへ非同期送信
+    dirtyKeys.add(key);
+    triggerSync();
 }
 
 function addItem(key, item) {
@@ -288,7 +410,6 @@ export function getStats() {
     const upcomingLives = lives.filter(l => new Date(l.dateEnd || l.dateStart || l.date) >= now);
     const pastLives = lives.filter(l => new Date(l.dateEnd || l.dateStart || l.date) < now);
 
-    // 全メンバー×全ライブ×全日程 での「〇（going）」の数を正確にカウント
     let goingCount = 0;
     let totalPossibleSchedules = 0;
 

@@ -8,7 +8,7 @@ import { renderTally } from './js/views/tally.js';
 import { renderLives } from './js/views/lives.js';
 import { renderMembers } from './js/views/members.js';
 import { renderChart } from './js/views/chart.js';
-import { exportData, importData, fetchFromGAS } from './js/store.js';
+import { exportData, importData, fetchFromSupabase } from './js/store.js';
 import { showToast } from './js/utils.js';
 import { showLiveDetailsModal, showMemberDetailsModal } from './js/views/details.js';
 
@@ -139,7 +139,7 @@ function initPullToRefresh(router) {
 
         if (dy >= THRESHOLD) {
             showTopProgress(); // indeterminate while loading
-            await fetchFromGAS();
+            await fetchFromSupabase();
             router.currentRoute = null;
             router.resolve();
             hideTopProgress();
@@ -203,9 +203,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         appLoader.classList.remove('hidden');
     }
 
-    // Try fetching from GAS on load (if GAS_URL is set)
+    // Supabase から最新データを取得
     try {
-        await fetchFromGAS();
+        await fetchFromSupabase();
     } catch (e) {
         console.warn('Initial sync failed', e);
     }
