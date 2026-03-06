@@ -2901,13 +2901,17 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
 .auth-logo-img {
   display: block;
   margin: 0 auto 8px;
+  filter: drop-shadow(0 0 8px rgba(139, 92, 246, 0.7)) drop-shadow(0 0 18px rgba(236, 72, 153, 0.35));
 }
 
 .auth-logo-text {
   font-size: 22px;
   font-weight: 800;
   letter-spacing: 2px;
-  color: var(--text-primary);
+  background: var(--gradient-primary);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
   margin: 0;
 }
 
