@@ -113,20 +113,29 @@ export async function createRoom(name, description = '') {
     const user = await getCurrentUser();
     if (!user) throw new Error('ログインが必要です');
 
-    // 1. ルームを作成（RLSポリシー: owner_id = auth.uid() で SELECT も可能）
-    const { data: room, error: roomError } = await supabase
+    // 1. ルームを INSERT（.select() を切り離して RLS の SELECT 依存を回避）
+    const { error: roomError } = await supabase
         .from('rooms')
-        .insert({ name: name.trim(), description: description.trim(), owner_id: user.id })
-        .select()
-        .single();
+        .insert({ name: name.trim(), description: description.trim(), owner_id: user.id });
 
     if (roomError) throw roomError;
+
+    // 2. 作成したルームを取得（owner_id で直接 SELECT）
+    const { data: room, error: fetchError } = await supabase
+        .from('rooms')
+        .select('*')
+        .eq('owner_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+    if (fetchError) throw fetchError;
     if (!room) throw new Error('ルームの作成に失敗しました');
 
-    // 2. オーナーを room_members に追加
+    // 3. オーナーを room_members に追加（既存エントリがあれば無視）
     const { error: memberError } = await supabase
         .from('room_members')
-        .insert({ room_id: room.id, user_id: user.id, role: 'owner' });
+        .upsert({ room_id: room.id, user_id: user.id, role: 'owner' }, { onConflict: 'room_id,user_id' });
 
     if (memberError) throw memberError;
 
@@ -140,7 +149,10 @@ export async function getUserRooms() {
         .order('joined_at', { ascending: false });
 
     if (error) throw error;
-    return (data || []).map(m => ({ ...m.rooms, role: m.role }));
+    // m.rooms が null のエントリ（削除済みルーム等）を除外
+    return (data || [])
+        .map(m => (m.rooms ? { ...m.rooms, role: m.role } : null))
+        .filter(r => r && r.id);
 }
 
 export async function joinRoomByCode(inviteCode) {
