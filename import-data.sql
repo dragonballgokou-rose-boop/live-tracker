@@ -2,9 +2,9 @@
 -- Supabase SQL Editor にペーストして実行してください
 
 -- ===== テーブル再作成 =====
-DROP TABLE IF EXISTS attendance;
-DROP TABLE IF EXISTS members;
-DROP TABLE IF EXISTS lives;
+DROP TABLE IF EXISTS attendance CASCADE;
+DROP TABLE IF EXISTS members CASCADE;
+DROP TABLE IF EXISTS lives CASCADE;
 
 -- ============================================
 -- Live Tracker - Supabase Schema
