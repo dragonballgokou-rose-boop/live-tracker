@@ -83,7 +83,7 @@ function attendanceToRow(att) {
         id:         att.id,
         live_id:    att.liveId,
         member_id:  att.memberId,
-        status:     att.status,
+        status:     att.status === 'not_going' ? 'notgoing' : att.status,
         created_at: att.createdAt ?? null,
         updated_at: att.updatedAt ?? null,
     };
@@ -94,7 +94,7 @@ function rowToAttendance(row) {
         id:        row.id,
         liveId:    row.live_id,
         memberId:  row.member_id,
-        status:    row.status,
+        status:    row.status === 'notgoing' ? 'not_going' : row.status,
         createdAt: row.created_at,
         updatedAt: row.updated_at,
     };
