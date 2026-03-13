@@ -11,6 +11,7 @@ let livesFilter = 'upcoming'; // 'all' | 'upcoming' | 'past'
 let livesViewMode = 'tl';     // 'tl' | 'calendar'
 let livesCalendarDate = new Date();
 let activeFilterMemberIds = new Set();
+let activeTourFilterId = null; // null = 全て、string = ツアーIDで絞り込み
 
 // 折りたたみ状態（ツアーID→展開中かどうか）
 const tourExpandState = new Map();
@@ -66,9 +67,21 @@ export function renderLives() {
     .sort((a, b) => effectiveStart(b) - effectiveStart(a));
   const all = [...topLevel].sort((a, b) => effectiveStart(b) - effectiveStart(a));
 
-  let filtered = livesFilter === 'upcoming' ? upcoming
-               : livesFilter === 'past'     ? past
-               : all;
+  // ツアーフィルター適用時は子livesを直接表示
+  let filtered;
+  if (activeTourFilterId) {
+    const tourChildren = childrenByTour.get(activeTourFilterId) || [];
+    filtered = tourChildren.filter(l => {
+      const e = effectiveEnd(l); e.setHours(0,0,0,0);
+      if (livesFilter === 'upcoming') return e >= now;
+      if (livesFilter === 'past') return e < now;
+      return true;
+    }).sort((a, b) => effectiveStart(a) - effectiveStart(b));
+  } else {
+    filtered = livesFilter === 'upcoming' ? upcoming
+             : livesFilter === 'past'     ? past
+             : all;
+  }
 
   // メンバーフィルター（AND: 選択した全員が参戦しているライブ/ツアーのみ）
   if (activeFilterMemberIds.size > 0) {
@@ -248,8 +261,9 @@ export function renderLives() {
   // 年月グループ化（TL用）
   const groups = {};
   filtered.forEach(live => {
+    // ツアーフィルター適用中はツアー子items（parentIdあり）をそのままフラット表示
     const d = effectiveStart(live);
-    if (!d || d.getTime() === 0) { /* 日付なしツアーは先頭へ */
+    if (!d || d.getTime() === 0) {
       if (!groups['0000-00']) groups['0000-00'] = [];
       groups['0000-00'].push(live);
       return;
@@ -258,15 +272,16 @@ export function renderLives() {
     if (!groups[key]) groups[key] = [];
     groups[key].push(live);
   });
-  const sortedKeys = livesFilter === 'upcoming'
+  const sortedKeys = (livesFilter === 'upcoming' || activeTourFilterId)
     ? Object.keys(groups).sort()
     : Object.keys(groups).sort().reverse();
 
   const timelineHtml = sortedKeys.map(key => {
     const [year, mon] = key.split('-');
     const entries = groups[key].map(live => {
-      if (live.eventType === 'tour') return buildTourGroupHtml(live);
-      return buildEntryHtml(live, false);
+      // ツアーフィルター中は子として表示、通常モードはツアーグループ表示
+      if (!activeTourFilterId && live.eventType === 'tour') return buildTourGroupHtml(live);
+      return buildEntryHtml(live, !!activeTourFilterId);
     }).join('');
     const monthLabel = key === '0000-00' ? '未定' : `${year}年${parseInt(mon)}月`;
 
@@ -277,6 +292,23 @@ export function renderLives() {
       </div>
     `;
   }).join('');
+
+  // ツアーフィルターチップ
+  const tours = allLives.filter(l => l.eventType === 'tour');
+  const tourFilterHtml = tours.length > 0 ? `
+    <div class="history-filter" style="gap:6px;margin-bottom:4px;">
+      <span style="font-size:11px;color:var(--text-tertiary);align-self:center;flex-shrink:0;">ツアー:</span>
+      <button class="history-chip${!activeTourFilterId ? ' history-chip-active' : ''}" data-tour-filter="">すべて</button>
+      ${tours.map(t => {
+        const isActive = activeTourFilterId === t.id;
+        const tc = t.color || '#8B5CF6';
+        return `<button class="history-chip${isActive ? ' history-chip-active' : ''}" data-tour-filter="${t.id}"
+          ${isActive ? `style="background:${tc}22;border-color:${tc};color:${tc};"` : ''}>
+          ${getLiveIconHtml(t, 12)}${escapeHtml(t.name)}
+        </button>`;
+      }).join('')}
+    </div>
+  ` : '';
 
   // メンバーフィルターチップ
   const memberFilterHtml = members.length > 0 ? `
@@ -322,18 +354,23 @@ export function renderLives() {
         </div>
         ${viewToggleHtml}
       </div>
-      <div style="display:flex;gap:8px;">
+      <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;">
         <button id="add-record-btn" class="btn btn-secondary btn-sm">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
           参戦記録を追加
         </button>
+        <button id="add-tour-btn" class="btn btn-secondary btn-sm">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l19-9-9 19-2-8-8-2z"/></svg>
+          ツアーを作成
+        </button>
         <button id="add-live-btn" class="btn btn-primary">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          ライブ / ツアー追加
+          ライブを追加
         </button>
       </div>
     </div>
 
+    ${tourFilterHtml}
     ${memberFilterHtml}
 
     ${livesViewMode === 'calendar'
@@ -342,8 +379,8 @@ export function renderLives() {
         ? `<div class="history-timeline">${timelineHtml}</div>`
         : `<div class="card empty-state">
             <div class="empty-state-icon"><svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div>
-            <p class="empty-state-text">${activeFilterMemberIds.size > 0 ? '該当するライブがありません' : livesFilter === 'upcoming' ? '予定のライブがありません' : livesFilter === 'past' ? '終了したライブはありません' : 'まだライブが登録されていません'}</p>
-            ${livesFilter === 'upcoming' && activeFilterMemberIds.size === 0 ? '<p style="color:var(--text-tertiary);font-size:14px;">「ライブを追加」ボタンから登録しましょう！</p>' : ''}
+            <p class="empty-state-text">${activeTourFilterId ? 'このツアーの公演がありません' : activeFilterMemberIds.size > 0 ? '該当するライブがありません' : livesFilter === 'upcoming' ? '予定のライブがありません' : livesFilter === 'past' ? '終了したライブはありません' : 'まだライブが登録されていません'}</p>
+            ${livesFilter === 'upcoming' && activeFilterMemberIds.size === 0 && !activeTourFilterId ? '<p style="color:var(--text-tertiary);font-size:14px;">「ライブを追加」ボタンから登録しましょう！</p>' : ''}
           </div>`
     }
   `;
@@ -372,8 +409,17 @@ export function renderLives() {
     renderLivesCalendar(filtered, members, now, content);
   }
 
+  // ツアーフィルターチップ
+  content.querySelectorAll('[data-tour-filter]').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const tourId = chip.dataset.tourFilter;
+      activeTourFilterId = tourId || null;
+      renderLives();
+    });
+  });
+
   // メンバーフィルターチップ（複数選択 AND）
-  content.querySelectorAll('.history-chip').forEach(chip => {
+  content.querySelectorAll('.history-chip[data-member]').forEach(chip => {
     chip.addEventListener('click', () => {
       const memberId = chip.dataset.member;
       if (!memberId) {
@@ -388,6 +434,7 @@ export function renderLives() {
   });
 
   document.getElementById('add-record-btn')?.addEventListener('click', () => openQuickRecordModal(members));
+  document.getElementById('add-tour-btn')?.addEventListener('click', () => openTourModal());
   document.getElementById('add-live-btn')?.addEventListener('click', () => openLiveModal());
 
   window.showLiveDetailsModal = showLiveDetailsModal;
@@ -396,7 +443,9 @@ export function renderLives() {
   content.querySelectorAll('.edit-live-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const live = getLives().find(l => l.id === btn.dataset.id);
-      if (live) openLiveModal(live);
+      if (!live) return;
+      if (live.eventType === 'tour') openTourModal(live);
+      else openLiveModal(live);
     });
   });
 
@@ -487,7 +536,8 @@ function getLiveIconHtml(live, size = 22) {
     const def = EVENT_SVG_ICONS.find(i => i.id === live.icon.slice(4));
     if (def) {
       const color = live.color || 'currentColor';
-      return `<span style="width:${size}px;height:${size}px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;margin-right:5px;color:${color};">${def.svg}</span>`;
+      const svgWithSize = def.svg.replace('<svg ', `<svg width="${size}" height="${size}" `);
+      return `<span style="width:${size}px;height:${size}px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;margin-right:5px;color:${color};">${svgWithSize}</span>`;
     }
   }
   if (live.icon) return `<span style="margin-right:4px;">${live.icon}</span>`;
@@ -501,10 +551,197 @@ function getEventTypeBadge(live) {
   return '';
 }
 
+// ---- ツアー追加・編集モーダル ----
+function openTourModal(tour = null) {
+  const isEdit = !!tour;
+  const selIcon  = tour?.icon || '🗺️';
+  const selColor = tour?.color || '#C9B8F7';
+  const isSvgIcon = selIcon.startsWith('svg:');
+  const svgDef = isSvgIcon ? EVENT_SVG_ICONS.find(i => i.id === selIcon.slice(4)) : null;
+  const previewContent = tour?.iconImg
+    ? `<img id="live-icon-preview-img" src="${tour.iconImg}" style="width:100%;height:100%;object-fit:cover;" />`
+    : isSvgIcon && svgDef
+      ? `<span id="live-icon-preview-emoji" style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;color:${selColor};">${svgDef.svg}</span>`
+      : `<span id="live-icon-preview-emoji" style="font-size:28px;">${selIcon}</span>`;
+
+  showModal(isEdit ? 'ツアーを編集' : 'ツアーを作成', `
+    <form id="live-form">
+      <div class="form-group">
+        <label class="form-label" for="live-name">ツアー名 <span style="color: var(--accent-red)">*</span></label>
+        <input type="text" id="live-name" class="form-input" placeholder="例: SUMMER TOUR 2026" value="${isEdit ? escapeAttr(tour.name) : ''}" required />
+      </div>
+      <div class="form-row" style="gap:12px;align-items:flex-start;">
+        <div class="form-group" style="flex:0 0 auto;">
+          <label class="form-label">アイコン・カラー</label>
+          <div style="display:flex;gap:10px;align-items:flex-start;">
+            <div id="live-icon-preview" style="width:56px;height:56px;border-radius:8px;background:rgba(255,255,255,0.06);border:2px solid ${selColor};display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;font-size:28px;cursor:pointer;" title="クリックして画像を選択">
+              ${previewContent}
+            </div>
+            <div class="avatar-upload-actions" style="display:flex;flex-direction:column;gap:6px;">
+              <button type="button" class="btn btn-secondary btn-sm" id="live-icon-upload-btn">📁 画像を選択</button>
+              ${tour?.iconImg ? `<button type="button" class="btn btn-sm" id="live-icon-remove-btn" style="color:var(--accent-red);background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.3);">削除</button>` : ''}
+            </div>
+          </div>
+          <input type="file" id="live-icon-file-input" accept="image/*" style="display:none;" />
+          <input type="hidden" id="live-iconImg" value="${tour?.iconImg ? escapeAttr(tour.iconImg) : ''}" />
+        </div>
+        <div style="flex:1;min-width:0;">
+          <div class="form-group" style="margin-bottom:6px;">
+            <div class="live-icon-picker" id="live-icon-picker" style="max-height:74px;overflow-y:auto;">
+              ${LIVE_ICONS.map(ic => `<button type="button" class="live-icon-option${ic === selIcon ? ' selected' : ''}" data-icon="${ic}">${ic}</button>`).join('')}
+            </div>
+          </div>
+          <div class="form-group" style="margin-bottom:8px;">
+            <div class="svg-icon-picker" id="svg-icon-picker">
+              ${EVENT_SVG_ICONS.map(ic => `<button type="button" class="svg-icon-option${selIcon === 'svg:'+ic.id ? ' selected' : ''}" data-svg-icon="${ic.id}" title="${ic.label}">${ic.svg.replace('<svg ', `<svg width="18" height="18" `)}</button>`).join('')}
+            </div>
+          </div>
+          <input type="hidden" id="live-icon" value="${escapeAttr(selIcon)}" />
+          <div class="form-group" style="margin-bottom:0;">
+            <div class="color-picker" id="live-color-picker" style="grid-template-columns:repeat(10,26px);gap:5px;">
+              ${LIVE_COLORS.map(c => `<div class="color-option${c === selColor ? ' selected' : ''}" style="width:26px;height:26px;background:${c}" data-color="${c}"></div>`).join('')}
+            </div>
+            <input type="hidden" id="live-color" value="${escapeAttr(selColor)}" />
+          </div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="live-artist">アーティスト</label>
+        <input type="text" id="live-artist" class="form-input" placeholder="例: ONE OK ROCK" value="${isEdit ? escapeAttr(tour.artist || '') : ''}" />
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="live-memo">メモ</label>
+        <textarea id="live-memo" class="form-input" rows="2" placeholder="備考があれば入力">${isEdit ? escapeHtml(tour.memo || '') : ''}</textarea>
+      </div>
+      <input type="hidden" id="live-event-type" value="tour" />
+      <input type="hidden" id="live-date-start" value="" />
+      <input type="hidden" id="live-date-end" value="" />
+      <input type="hidden" id="live-pref" value="${isEdit ? escapeAttr(tour.prefecture || '') : ''}" />
+      <input type="hidden" id="live-venue" value="${isEdit ? escapeAttr(tour.venue || '') : ''}" />
+      <div class="form-actions">
+        <button type="button" class="btn btn-secondary" onclick="document.getElementById('modal-close').click()">キャンセル</button>
+        <button type="submit" class="btn btn-primary">${isEdit ? '更新' : 'ツアーを作成'}</button>
+      </div>
+    </form>
+  `);
+
+  setupIconColorPickers(tour);
+
+  document.getElementById('live-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const data = {
+      name: document.getElementById('live-name').value.trim(),
+      artist: document.getElementById('live-artist').value.trim(),
+      dateStart: '', dateEnd: '', venue: '', prefecture: '',
+      memo: document.getElementById('live-memo').value.trim(),
+      icon: document.getElementById('live-icon').value || '🗺️',
+      iconImg: document.getElementById('live-iconImg').value || '',
+      color: document.getElementById('live-color').value || '#C9B8F7',
+      eventType: 'tour',
+      parentId: null,
+    };
+    if (!data.name) { showToast('ツアー名は必須です', 'error'); return; }
+    if (isEdit) {
+      updateLive(tour.id, data);
+      showToast('ツアーを更新しました', 'success');
+    } else {
+      addLive(data);
+      showToast('ツアーを作成しました', 'success');
+    }
+    closeModal();
+    renderLives();
+  });
+}
+
+// アイコン・カラーピッカーの共通セットアップ
+function setupIconColorPickers(existingItem = null) {
+  document.getElementById('live-icon-upload-btn')?.addEventListener('click', () => {
+    document.getElementById('live-icon-file-input').click();
+  });
+  document.getElementById('live-icon-file-input')?.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    resizeLiveIconToBase64(file, 200, (base64) => {
+      document.getElementById('live-iconImg').value = base64;
+      const preview = document.getElementById('live-icon-preview');
+      preview.innerHTML = `<img id="live-icon-preview-img" src="${base64}" style="width:100%;height:100%;object-fit:cover;" />`;
+      if (!document.getElementById('live-icon-remove-btn')) {
+        const btn = document.createElement('button');
+        btn.type = 'button'; btn.id = 'live-icon-remove-btn'; btn.className = 'btn btn-sm';
+        btn.style.cssText = 'color:var(--accent-red);background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.3);';
+        btn.textContent = '削除';
+        btn.addEventListener('click', removeLiveIconFn);
+        document.querySelector('.avatar-upload-actions').appendChild(btn);
+      }
+    });
+  });
+  function removeLiveIconFn() {
+    document.getElementById('live-iconImg').value = '';
+    const icon = document.getElementById('live-icon').value;
+    const isSvg = icon.startsWith('svg:');
+    if (isSvg) {
+      const def = EVENT_SVG_ICONS.find(i => i.id === icon.slice(4));
+      const color = document.getElementById('live-color').value || '#C9B8F7';
+      document.getElementById('live-icon-preview').innerHTML = def
+        ? `<span id="live-icon-preview-emoji" style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;color:${color};">${def.svg.replace('<svg ', `<svg width="32" height="32" `)}</span>`
+        : `<span id="live-icon-preview-emoji" style="font-size:28px;">${icon}</span>`;
+    } else {
+      document.getElementById('live-icon-preview').innerHTML = `<span id="live-icon-preview-emoji" style="font-size:28px;">${icon}</span>`;
+    }
+    document.getElementById('live-icon-remove-btn')?.remove();
+  }
+  document.getElementById('live-icon-remove-btn')?.addEventListener('click', removeLiveIconFn);
+  document.getElementById('live-icon-preview')?.addEventListener('click', () => {
+    document.getElementById('live-icon-file-input').click();
+  });
+  document.querySelectorAll('.live-icon-option').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.live-icon-option').forEach(b => b.classList.remove('selected'));
+      document.querySelectorAll('.svg-icon-option').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      document.getElementById('live-icon').value = btn.dataset.icon;
+      if (!document.getElementById('live-iconImg').value) {
+        const el = document.getElementById('live-icon-preview-emoji');
+        if (el) { el.textContent = btn.dataset.icon; el.style.color = ''; }
+        else document.getElementById('live-icon-preview').innerHTML = `<span id="live-icon-preview-emoji" style="font-size:28px;">${btn.dataset.icon}</span>`;
+      }
+    });
+  });
+  document.querySelectorAll('.svg-icon-option').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.live-icon-option').forEach(b => b.classList.remove('selected'));
+      document.querySelectorAll('.svg-icon-option').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      const svgId = btn.dataset.svgIcon;
+      document.getElementById('live-icon').value = 'svg:' + svgId;
+      if (!document.getElementById('live-iconImg').value) {
+        const color = document.getElementById('live-color').value || '#C9B8F7';
+        const def = EVENT_SVG_ICONS.find(i => i.id === svgId);
+        if (def) {
+          document.getElementById('live-icon-preview').innerHTML = `<span id="live-icon-preview-emoji" style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;color:${color};">${def.svg.replace('<svg ', `<svg width="32" height="32" `)}</span>`;
+        }
+      }
+    });
+  });
+  document.querySelectorAll('#live-color-picker .color-option').forEach(opt => {
+    opt.addEventListener('click', () => {
+      document.querySelectorAll('#live-color-picker .color-option').forEach(o => o.classList.remove('selected'));
+      opt.classList.add('selected');
+      document.getElementById('live-color').value = opt.dataset.color;
+      document.getElementById('live-icon-preview').style.borderColor = opt.dataset.color;
+      const iconVal = document.getElementById('live-icon').value;
+      if (iconVal.startsWith('svg:') && !document.getElementById('live-iconImg').value) {
+        const el = document.getElementById('live-icon-preview-emoji');
+        if (el) el.style.color = opt.dataset.color;
+      }
+    });
+  });
+}
+
 // ---- ライブ追加・編集モーダル ----
 function openLiveModal(live = null, defaultParentId = null, parentTour = null) {
   const isEdit = !!live;
-  const selEventType = live?.eventType || (defaultParentId ? 'live' : 'live');
+  const selEventType = live?.eventType || 'live';
   const selIcon  = live?.icon || (selEventType === 'event' ? 'svg:flag' : '🎵');
   const selColor = live?.color || (parentTour?.color || '#C9B8F7');
   const selParentId = live?.parentId || defaultParentId || '';
@@ -522,20 +759,30 @@ function openLiveModal(live = null, defaultParentId = null, parentTour = null) {
       : `<span id="live-icon-preview-emoji" style="font-size:28px;">${selIcon}</span>`;
 
   const title = isEdit
-    ? (selEventType === 'tour' ? 'ツアーを編集' : selEventType === 'event' ? 'イベントを編集' : 'ライブを編集')
-    : (defaultParentId ? `公演を追加（${parentTour?.name || 'ツアー'}）` : 'ライブ / イベントを追加');
+    ? (selEventType === 'event' ? 'イベントを編集' : 'ライブを編集')
+    : (defaultParentId ? `公演を追加（${parentTour?.name || 'ツアー'}）` : 'ライブを追加');
+
+  // ツアー選択オプション
+  const tourOptions = tours.length > 0
+    ? `<select id="live-parent-id" class="form-input">
+        <option value="">─ ツアーなし（単独） ─</option>
+        ${tours.map(t => `<option value="${escapeAttr(t.id)}"${selParentId === t.id ? ' selected' : ''}>${escapeHtml(t.name)}</option>`).join('')}
+      </select>`
+    : `<div style="color:var(--text-tertiary);font-size:13px;padding:6px 0;">
+        ツアーがまだありません。<button type="button" id="create-tour-link" class="btn btn-sm btn-secondary" style="margin-left:6px;">ツアーを作成</button>
+      </div>
+      <input type="hidden" id="live-parent-id" value="${escapeAttr(selParentId)}" />`;
 
   showModal(title, `
     <form id="live-form">
-      <!-- 種別タブ -->
+      <!-- 種別タブ（ライブ / イベント） -->
       <div class="form-group" style="margin-bottom:12px;">
         <label class="form-label" style="margin-bottom:6px;">種別</label>
         <div class="event-type-tabs" id="event-type-tabs">
-          <button type="button" class="event-type-tab${selEventType === 'live'  ? ' active' : ''}" data-type="live">🎵 ライブ</button>
-          <button type="button" class="event-type-tab${selEventType === 'tour'  ? ' active' : ''}" data-type="tour">🗺️ ツアー</button>
+          <button type="button" class="event-type-tab${selEventType !== 'event' ? ' active' : ''}" data-type="live">🎵 ライブ</button>
           <button type="button" class="event-type-tab${selEventType === 'event' ? ' active' : ''}" data-type="event">🎪 イベント</button>
         </div>
-        <input type="hidden" id="live-event-type" value="${escapeAttr(selEventType)}" />
+        <input type="hidden" id="live-event-type" value="${selEventType === 'event' ? 'event' : 'live'}" />
       </div>
       <div class="form-group">
         <label class="form-label" for="live-name">名前 <span style="color: var(--accent-red)">*</span></label>
@@ -558,20 +805,17 @@ function openLiveModal(live = null, defaultParentId = null, parentTour = null) {
           <input type="hidden" id="live-iconImg" value="${live?.iconImg ? escapeAttr(live.iconImg) : ''}" />
         </div>
         <div style="flex:1;min-width:0;">
-          <!-- 絵文字ピッカー -->
           <div class="form-group" style="margin-bottom:6px;">
             <div class="live-icon-picker" id="live-icon-picker" style="max-height:74px;overflow-y:auto;">
               ${LIVE_ICONS.map(ic => `<button type="button" class="live-icon-option${ic === selIcon ? ' selected' : ''}" data-icon="${ic}">${ic}</button>`).join('')}
             </div>
           </div>
-          <!-- SVGアイコンピッカー -->
           <div class="form-group" style="margin-bottom:8px;">
             <div class="svg-icon-picker" id="svg-icon-picker">
-              ${EVENT_SVG_ICONS.map(ic => `<button type="button" class="svg-icon-option${selIcon === 'svg:'+ic.id ? ' selected' : ''}" data-svg-icon="${ic.id}" title="${ic.label}">${ic.svg}</button>`).join('')}
+              ${EVENT_SVG_ICONS.map(ic => `<button type="button" class="svg-icon-option${selIcon === 'svg:'+ic.id ? ' selected' : ''}" data-svg-icon="${ic.id}" title="${ic.label}">${ic.svg.replace('<svg ', `<svg width="18" height="18" `)}</button>`).join('')}
             </div>
           </div>
           <input type="hidden" id="live-icon" value="${escapeAttr(selIcon)}" />
-          <!-- カラーピッカー -->
           <div class="form-group" style="margin-bottom:0;">
             <div class="color-picker" id="live-color-picker" style="grid-template-columns:repeat(10,26px);gap:5px;">
               ${LIVE_COLORS.map(c => `<div class="color-option${c === selColor ? ' selected' : ''}" style="width:26px;height:26px;background:${c}" data-color="${c}"></div>`).join('')}
@@ -585,40 +829,33 @@ function openLiveModal(live = null, defaultParentId = null, parentTour = null) {
         <label class="form-label" for="live-artist">アーティスト</label>
         <input type="text" id="live-artist" class="form-input" placeholder="例: ONE OK ROCK" value="${isEdit ? escapeAttr(live.artist || '') : ''}" />
       </div>
-      <!-- 日付（ツアーは任意） -->
-      <div id="live-dates-section">
-        <div class="form-group">
-          <label class="form-label" for="live-date-start">開始日 <span id="date-required-mark" style="color: var(--accent-red);">${selEventType === 'tour' ? '' : '*'}</span> <span id="date-optional-hint" style="font-size:11px;color:var(--text-tertiary);">${selEventType === 'tour' ? '（任意）' : ''}</span></label>
-          <input type="date" id="live-date-start" class="form-input" value="${isEdit ? toDateInputValue(live.dateStart || live.date) : ''}" ${selEventType !== 'tour' ? 'required' : ''} />
-        </div>
-        <div class="form-group">
-          <label class="form-label" for="live-date-end">終了日 <span style="color: var(--text-tertiary); font-size: 12px;">(複数日の場合)</span></label>
-          <input type="date" id="live-date-end" class="form-input" value="${isEdit ? toDateInputValue(live.dateEnd) : ''}" />
-        </div>
+      <!-- 日付 -->
+      <div class="form-group">
+        <label class="form-label" for="live-date-start">開始日 <span style="color: var(--accent-red);">*</span></label>
+        <input type="date" id="live-date-start" class="form-input" value="${isEdit ? toDateInputValue(live.dateStart || live.date) : ''}" required />
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="live-date-end">終了日 <span style="color: var(--text-tertiary); font-size: 12px;">(複数日の場合)</span></label>
+        <input type="date" id="live-date-end" class="form-input" value="${isEdit ? toDateInputValue(live.dateEnd) : ''}" />
       </div>
       <!-- 会場 -->
-      <div id="live-venue-section">
-        <div class="form-row">
-          <div class="form-group" style="flex: 2;">
-            <label class="form-label" for="live-venue">会場</label>
-            <input type="text" id="live-venue" class="form-input" placeholder="例: 幕張メッセ" value="${isEdit ? escapeAttr(live.venue || '') : ''}" />
-          </div>
-          <div class="form-group" style="flex: 1;">
-            <label class="form-label" for="live-pref">都道府県 <span style="color: var(--text-tertiary); font-size: 11px;">（自動検出）</span></label>
-            <input type="text" id="live-pref" class="form-input" placeholder="例: 神奈川" value="${isEdit ? escapeAttr(live.prefecture || '') : ''}" />
-          </div>
+      <div class="form-row">
+        <div class="form-group" style="flex: 2;">
+          <label class="form-label" for="live-venue">会場</label>
+          <input type="text" id="live-venue" class="form-input" placeholder="例: 幕張メッセ" value="${isEdit ? escapeAttr(live.venue || '') : ''}" />
+        </div>
+        <div class="form-group" style="flex: 1;">
+          <label class="form-label" for="live-pref">都道府県 <span style="color: var(--text-tertiary); font-size: 11px;">（自動検出）</span></label>
+          <input type="text" id="live-pref" class="form-input" placeholder="例: 神奈川" value="${isEdit ? escapeAttr(live.prefecture || '') : ''}" />
         </div>
       </div>
-      <!-- 親ツアー選択（ライブ/イベントのみ・ツアーが存在する場合） -->
-      <div id="live-parent-section" style="${selEventType === 'tour' ? 'display:none;' : ''}">
-        ${tours.length > 0 ? `
-        <div class="form-group">
-          <label class="form-label" for="live-parent-id">ツアーに追加 <span style="font-size:11px;color:var(--text-tertiary);">（任意）</span></label>
-          <select id="live-parent-id" class="form-input">
-            <option value="">─ ツアーなし（単独） ─</option>
-            ${tours.map(t => `<option value="${escapeAttr(t.id)}"${selParentId === t.id ? ' selected' : ''}>${escapeHtml(t.name)}</option>`).join('')}
-          </select>
-        </div>` : `<input type="hidden" id="live-parent-id" value="${escapeAttr(selParentId)}" />`}
+      <!-- ツアー選択 -->
+      <div class="form-group" id="live-parent-section">
+        <label class="form-label" for="live-parent-id">
+          ツアー
+          <span style="font-size:11px;color:var(--text-tertiary);margin-left:4px;">（任意）</span>
+        </label>
+        ${tourOptions}
       </div>
       <!-- メモ -->
       <div class="form-group">
@@ -634,110 +871,28 @@ function openLiveModal(live = null, defaultParentId = null, parentTour = null) {
   `);
 
   if (isEdit) setupAttendanceToggles();
+  setupIconColorPickers(live);
 
-  // 種別タブ切替
+  // 種別タブ切替（ライブ / イベント）
   document.querySelectorAll('.event-type-tab').forEach(tab => {
     tab.addEventListener('click', () => {
       document.querySelectorAll('.event-type-tab').forEach(t => t.classList.remove('active'));
       tab.classList.add('active');
-      const type = tab.dataset.type;
-      document.getElementById('live-event-type').value = type;
-      // ツアーの場合：日付任意・会場非表示・親ツアー非表示
-      const isTour = type === 'tour';
-      const dateReqMark = document.getElementById('date-required-mark');
-      const dateOptHint = document.getElementById('date-optional-hint');
-      const dateStart = document.getElementById('live-date-start');
-      if (dateReqMark) dateReqMark.textContent = isTour ? '' : '*';
-      if (dateOptHint) dateOptHint.textContent = isTour ? '（任意）' : '';
-      if (dateStart) dateStart.required = !isTour;
-      const parentSection = document.getElementById('live-parent-section');
-      if (parentSection) parentSection.style.display = isTour ? 'none' : '';
+      document.getElementById('live-event-type').value = tab.dataset.type;
     });
   });
 
-  // アイコン画像アップロード
-  document.getElementById('live-icon-upload-btn')?.addEventListener('click', () => {
-    document.getElementById('live-icon-file-input').click();
+  // 会場入力で都道府県を自動検出
+  document.getElementById('live-venue')?.addEventListener('blur', () => {
+    const venue = document.getElementById('live-venue').value;
+    const prefInput = document.getElementById('live-pref');
+    if (venue && !prefInput.value) { const pref = extractPrefecture(venue); if (pref) prefInput.value = pref; }
   });
 
-  document.getElementById('live-icon-file-input')?.addEventListener('change', (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    resizeLiveIconToBase64(file, 200, (base64) => {
-      document.getElementById('live-iconImg').value = base64;
-      const preview = document.getElementById('live-icon-preview');
-      preview.innerHTML = `<img id="live-icon-preview-img" src="${base64}" style="width:100%;height:100%;object-fit:cover;" />`;
-      if (!document.getElementById('live-icon-remove-btn')) {
-        const btn = document.createElement('button');
-        btn.type = 'button'; btn.id = 'live-icon-remove-btn'; btn.className = 'btn btn-sm';
-        btn.style.cssText = 'color:var(--accent-red);background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.3);';
-        btn.textContent = '削除';
-        btn.addEventListener('click', removeLiveIcon);
-        document.querySelector('.avatar-upload-actions').appendChild(btn);
-      }
-    });
-  });
-
-  function removeLiveIcon() {
-    document.getElementById('live-iconImg').value = '';
-    const icon = document.getElementById('live-icon').value;
-    document.getElementById('live-icon-preview').innerHTML = `<span id="live-icon-preview-emoji" style="font-size:28px;">${icon}</span>`;
-    document.getElementById('live-icon-remove-btn')?.remove();
-  }
-  document.getElementById('live-icon-remove-btn')?.addEventListener('click', removeLiveIcon);
-
-  // 絵文字アイコンピッカー
-  document.querySelectorAll('.live-icon-option').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.live-icon-option').forEach(b => b.classList.remove('selected'));
-      document.querySelectorAll('.svg-icon-option').forEach(b => b.classList.remove('selected'));
-      btn.classList.add('selected');
-      document.getElementById('live-icon').value = btn.dataset.icon;
-      if (!document.getElementById('live-iconImg').value) {
-        const el = document.getElementById('live-icon-preview-emoji');
-        if (el) { el.textContent = btn.dataset.icon; el.style.color = ''; }
-        else document.getElementById('live-icon-preview').innerHTML = `<span id="live-icon-preview-emoji" style="font-size:28px;">${btn.dataset.icon}</span>`;
-      }
-    });
-  });
-
-  // SVGアイコンピッカー
-  document.querySelectorAll('.svg-icon-option').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.live-icon-option').forEach(b => b.classList.remove('selected'));
-      document.querySelectorAll('.svg-icon-option').forEach(b => b.classList.remove('selected'));
-      btn.classList.add('selected');
-      const svgId = btn.dataset.svgIcon;
-      document.getElementById('live-icon').value = 'svg:' + svgId;
-      if (!document.getElementById('live-iconImg').value) {
-        const color = document.getElementById('live-color').value || '#C9B8F7';
-        const def = EVENT_SVG_ICONS.find(i => i.id === svgId);
-        if (def) {
-          document.getElementById('live-icon-preview').innerHTML = `<span id="live-icon-preview-emoji" style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;color:${color};">${def.svg}</span>`;
-        }
-      }
-    });
-  });
-
-  // カラーピッカー（プレビュー枠のボーダーも連動・SVGアイコンの色も更新）
-  document.querySelectorAll('#live-color-picker .color-option').forEach(opt => {
-    opt.addEventListener('click', () => {
-      document.querySelectorAll('#live-color-picker .color-option').forEach(o => o.classList.remove('selected'));
-      opt.classList.add('selected');
-      document.getElementById('live-color').value = opt.dataset.color;
-      document.getElementById('live-icon-preview').style.borderColor = opt.dataset.color;
-      // SVGアイコン選択中なら色も更新
-      const iconVal = document.getElementById('live-icon').value;
-      if (iconVal.startsWith('svg:') && !document.getElementById('live-iconImg').value) {
-        const el = document.getElementById('live-icon-preview-emoji');
-        if (el) el.style.color = opt.dataset.color;
-      }
-    });
-  });
-
-  // プレビューをクリックしても画像選択できる
-  document.getElementById('live-icon-preview')?.addEventListener('click', () => {
-    document.getElementById('live-icon-file-input').click();
+  // ツアーなしの場合「ツアーを作成」ボタン
+  document.getElementById('create-tour-link')?.addEventListener('click', () => {
+    closeModal();
+    openTourModal();
   });
 
   document.getElementById('live-form').addEventListener('submit', (e) => {
@@ -762,20 +917,13 @@ function openLiveModal(live = null, defaultParentId = null, parentTour = null) {
       parentId: parentId || null,
     };
 
-    if (!data.name) {
-      showToast('名前は必須です', 'error');
-      return;
-    }
-    if (eventType !== 'tour' && !data.dateStart) {
-      showToast('開始日は必須です', 'error');
-      return;
-    }
+    if (!data.name) { showToast('名前は必須です', 'error'); return; }
+    if (!data.dateStart) { showToast('開始日は必須です', 'error'); return; }
     if (data.dateEnd && data.dateStart && data.dateEnd < data.dateStart) {
-      showToast('終了日は開始日以降にしてください', 'error');
-      return;
+      showToast('終了日は開始日以降にしてください', 'error'); return;
     }
 
-    const typeLabel = eventType === 'tour' ? 'ツアー' : eventType === 'event' ? 'イベント' : 'ライブ';
+    const typeLabel = eventType === 'event' ? 'イベント' : 'ライブ';
     if (isEdit) {
       updateLive(live.id, data);
       showToast(`${typeLabel}を更新しました`, 'success');

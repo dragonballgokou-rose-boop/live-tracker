@@ -20,9 +20,15 @@ create table if not exists lives (
   icon_img    text,
   color       text,
   prefecture  text,
+  event_type  text,
+  parent_id   text,
   created_at  timestamptz,
   updated_at  timestamptz
 );
+
+-- カラム追加（既存テーブルへのマイグレーション）
+alter table lives add column if not exists event_type text;
+alter table lives add column if not exists parent_id  text;
 
 create table if not exists members (
   id          text primary key,
