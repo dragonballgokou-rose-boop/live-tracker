@@ -3076,3 +3076,170 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
   gap: 8px;
   flex-wrap: wrap;
 }
+/* ============================================================ */
+/* ツアーグループ / イベントタイプ / SVGアイコンピッカー         */
+/* ============================================================ */
+
+/* ---- イベントタイプタブ ---- */
+.event-type-tabs {
+  display: flex;
+  gap: 6px;
+}
+
+.event-type-tab {
+  flex: 1;
+  padding: 6px 4px;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--border-color);
+  background: rgba(255,255,255,0.04);
+  color: var(--text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  text-align: center;
+}
+
+.event-type-tab:hover {
+  background: rgba(255,255,255,0.08);
+  color: var(--text-primary);
+}
+
+.event-type-tab.active {
+  border-color: var(--accent-purple);
+  background: rgba(139,92,246,0.15);
+  color: var(--accent-purple);
+  font-weight: 600;
+}
+
+/* ---- イベントタイプバッジ ---- */
+.badge-event-type {
+  display: inline-block;
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 10px;
+  font-weight: 600;
+  vertical-align: middle;
+}
+
+.badge-event-tour {
+  background: rgba(99,102,241,0.18);
+  color: #818CF8;
+  border: 1px solid rgba(99,102,241,0.35);
+}
+
+.badge-event-event {
+  background: rgba(236,72,153,0.18);
+  color: #F472B6;
+  border: 1px solid rgba(236,72,153,0.35);
+}
+
+/* ---- SVGアイコンピッカー ---- */
+.svg-icon-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.svg-icon-option {
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+  background: rgba(255,255,255,0.04);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  transition: all var(--transition-fast);
+  padding: 6px;
+}
+
+.svg-icon-option svg {
+  width: 18px;
+  height: 18px;
+}
+
+.svg-icon-option:hover {
+  background: rgba(255,255,255,0.10);
+  color: var(--text-primary);
+}
+
+.svg-icon-option.selected {
+  border-color: var(--accent-purple);
+  background: rgba(139,92,246,0.18);
+  color: var(--accent-purple);
+  box-shadow: 0 0 0 2px rgba(139,92,246,0.4);
+}
+
+/* ---- ツアーグループ ---- */
+.tour-group {
+  border: 1.5px solid var(--tour-color, var(--border-color));
+  border-radius: var(--radius-md);
+  background: rgba(255,255,255,0.025);
+  margin-bottom: 10px;
+  overflow: hidden;
+}
+
+.tour-group-past {
+  opacity: 0.75;
+}
+
+.tour-group-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  cursor: pointer;
+  user-select: none;
+  background: rgba(255,255,255,0.03);
+  border-bottom: 1px solid transparent;
+  transition: background var(--transition-fast);
+}
+
+.tour-group-header:hover {
+  background: rgba(255,255,255,0.06);
+}
+
+.tour-expand-icon {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+  transition: transform 0.15s;
+}
+
+.tour-children {
+  border-top: 1px solid rgba(255,255,255,0.06);
+}
+
+.tour-children-hidden {
+  display: none;
+}
+
+.tour-child-entry {
+  display: flex;
+  gap: 0;
+  align-items: flex-start;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  padding: 4px 0 4px 16px;
+  transition: background var(--transition-fast);
+}
+
+.tour-child-entry:last-child {
+  border-bottom: none;
+}
+
+.tour-child-entry:hover {
+  background: rgba(255,255,255,0.03);
+}
+
+.tour-children .btn.add-tour-child-btn {
+  margin: 8px 12px;
+  width: calc(100% - 24px);
+  justify-content: center;
+  opacity: 0.7;
+}
+
+.tour-children .btn.add-tour-child-btn:hover {
+  opacity: 1;
+}

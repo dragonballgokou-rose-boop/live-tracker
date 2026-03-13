@@ -31,6 +31,8 @@ function liveFromDb(row) {
         icon: row.icon || '🎵',
         iconImg: row.icon_img || '',
         color: row.color || '#8B5CF6',
+        eventType: row.event_type || 'live',
+        parentId: row.parent_id || null,
         createdAt: row.created_at,
         updatedAt: row.updated_at,
     };
@@ -44,12 +46,14 @@ function liveToDb(live, roomId) {
         artist: live.artist || null,
         venue: live.venue || null,
         prefecture: live.prefecture || null,
-        date_start: live.dateStart || live.date,
+        date_start: live.dateStart || live.date || null,
         date_end: live.dateEnd || null,
         memo: live.memo || null,
         icon: live.icon || null,
         icon_img: live.iconImg || null,
         color: live.color || null,
+        event_type: live.eventType || 'live',
+        parent_id: live.parentId || null,
         updated_at: new Date().toISOString(),
     };
 }
@@ -171,12 +175,14 @@ async function migrateLocalToSupabase(roomId, localLives, localMembers) {
             artist: live.artist || null,
             venue: live.venue || null,
             prefecture: live.prefecture || null,
-            date_start: live.dateStart || live.date,
+            date_start: live.dateStart || live.date || null,
             date_end: live.dateEnd || null,
             memo: live.memo || null,
             icon: live.icon || null,
             icon_img: live.iconImg || null,
             color: live.color || null,
+            event_type: live.eventType || 'live',
+            parent_id: live.parentId || null,
         };
         if (isUUID(live.id)) dbLive.id = live.id;
         const { data, error } = await supabase.from('lives').insert(dbLive).select().single();
@@ -428,6 +434,7 @@ export function getAttendanceStatus(liveId, memberId) {
 // ---------- Date-based Attendance ----------
 
 export function getDatesForLive(live) {
+    if (!live.dateStart && !live.date) return [];
     const start = new Date(live.dateStart || live.date);
     const end = live.dateEnd ? new Date(live.dateEnd) : new Date(start);
     start.setHours(0, 0, 0, 0);

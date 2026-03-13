@@ -52,17 +52,26 @@ create table public.lives (
   artist      text,
   venue       text,
   prefecture  text,
-  date_start  date        not null,
+  date_start  date,                        -- ツアーは任意
   date_end    date,
   tour_name   text,
   memo        text,
-  icon        text,
+  icon        text,                        -- 絵文字 or "svg:iconId"
   icon_img    text,
   color       text,
+  event_type  text        default 'live'   -- 'live' | 'tour' | 'event'
+              check (event_type in ('live', 'tour', 'event')),
+  parent_id   uuid        references public.lives(id) on delete set null,  -- ツアー親
   created_by  uuid        references auth.users(id),
   created_at  timestamptz default now(),
   updated_at  timestamptz default now()
 );
+
+-- -------- Migration (既存DBへの適用) --------
+-- 上記スキーマが未適用の場合は以下を SQL Editor で実行してください:
+-- ALTER TABLE public.lives ALTER COLUMN date_start DROP NOT NULL;
+-- ALTER TABLE public.lives ADD COLUMN IF NOT EXISTS event_type text DEFAULT 'live' CHECK (event_type IN ('live', 'tour', 'event'));
+-- ALTER TABLE public.lives ADD COLUMN IF NOT EXISTS parent_id uuid REFERENCES public.lives(id) ON DELETE SET NULL;
 
 -- Members (room スコープ - 推しメンなど)
 create table public.members (
