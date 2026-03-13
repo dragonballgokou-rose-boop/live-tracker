@@ -5,3 +5,4 @@ mobile/.expo/
 mobile/expo-env.d.ts
 .env
 .env.local
+.env.*.local

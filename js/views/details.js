@@ -206,15 +206,20 @@ export function showMemberDetailsModal(memberId) {
     const liveStatusMap = {};
     let goingDaysCount = 0;
     let totalDays = 0;
+    let pastGoingDaysCount = 0;
+    let totalPastDays = 0;
 
     lives.forEach(live => {
         const dates = getDatesForLive(live);
         const goingDates = [];
         dates.forEach(d => {
+            const isPastDay = new Date(d.dateStr + 'T00:00:00') < now;
             totalDays++;
+            if (isPastDay) totalPastDays++;
             if (getDayAttendanceStatus(live.id, d.dateStr, memberId) === 'going') {
                 goingDates.push(d.dateStr);
                 goingDaysCount++;
+                if (isPastDay) pastGoingDaysCount++;
             }
         });
         liveStatusMap[live.id] = { goingDates };
@@ -231,7 +236,7 @@ export function showMemberDetailsModal(memberId) {
         .filter(l => { const d = new Date(l.dateEnd || l.dateStart || l.date); d.setHours(0,0,0,0); return d < now; })
         .sort((a, b) => new Date(b.dateStart || b.date) - new Date(a.dateStart || a.date)); // 新しい順
 
-    const rate = totalDays > 0 ? Math.round((goingDaysCount / totalDays) * 100) : 0;
+    const rate = totalPastDays > 0 ? Math.round((pastGoingDaysCount / totalPastDays) * 100) : 0;
 
     let html = `<div class="member-details-modal">`;
 
@@ -256,6 +261,7 @@ export function showMemberDetailsModal(memberId) {
             <div style="background:rgba(255,255,255,0.05);border:1px solid var(--border-color);border-radius:8px;padding:12px;flex:1;text-align:center;">
                 <div style="font-size:12px;color:var(--text-secondary);margin-bottom:4px;">参戦率（過去）</div>
                 <div style="font-size:20px;font-weight:bold;color:var(--accent-blue);">${rate}%</div>
+                ${totalPastDays > 0 ? `<div style="font-size:10px;color:var(--text-tertiary);margin-top:2px;">${pastGoingDaysCount} / ${totalPastDays}回</div>` : ''}
             </div>
         </div>
     `;

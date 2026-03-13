@@ -186,10 +186,7 @@ textarea {
 }
 
 .logo-accent {
-  background: var(--gradient-primary);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  /* gradient inherited from .header-logo-text */
 }
 
 .sidebar-close {
@@ -318,14 +315,17 @@ textarea {
   height: 34px;
   border-radius: 8px;
   flex-shrink: 0;
-  filter: drop-shadow(0 0 6px rgba(139, 92, 246, 0.4));
+  filter: drop-shadow(0 0 8px rgba(139, 92, 246, 0.7)) drop-shadow(0 0 18px rgba(236, 72, 153, 0.35));
 }
 
 .header-logo-text {
   font-size: 13px;
   font-weight: 800;
   letter-spacing: 1.5px;
-  color: var(--text-primary);
+  background: var(--gradient-primary);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 /* Header actions (right side) */
@@ -824,13 +824,11 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
 .tally-card-status-dot[data-status="not_going"] {
   background: var(--accent-red);
   color: white;
-  opacity: 0.75;
 }
 
 .tally-card-status-dot[data-status="undecided"] {
   background: var(--accent-amber);
   color: #1a1a2e;
-  opacity: 0.65;
 }
 
 .tally-card-member-name {
@@ -975,15 +973,15 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
 }
 
 .tally-cell[data-status="not_going"] {
-  background: rgba(248, 113, 113, 0.1);
-  color: rgba(248, 113, 113, 0.5);
-  border: 1px solid rgba(248, 113, 113, 0.15);
+  background: rgba(248, 113, 113, 0.15);
+  color: rgba(248, 113, 113, 1);
+  border: 1px solid rgba(248, 113, 113, 0.4);
 }
 
 .tally-cell[data-status="undecided"] {
-  background: rgba(251, 191, 36, 0.08);
-  color: rgba(251, 191, 36, 0.5);
-  border: 1px solid rgba(251, 191, 36, 0.15);
+  background: rgba(251, 191, 36, 0.12);
+  color: rgba(251, 191, 36, 1);
+  border: 1px solid rgba(251, 191, 36, 0.4);
 }
 
 /* Tally Day-based Row Expansion */
@@ -2866,4 +2864,380 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
 
 .confirm-delete .form-actions {
   justify-content: center;
+}
+
+/* ============================================
+   Auth & Rooms Screen
+   ============================================ */
+
+.auth-container,
+.rooms-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+  background: var(--bg-primary);
+}
+
+.auth-card,
+.rooms-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  padding: 32px 24px;
+  width: 100%;
+  max-width: 420px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+.auth-logo {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.auth-logo-img {
+  display: block;
+  margin: 0 auto 8px;
+  filter: drop-shadow(0 0 8px rgba(139, 92, 246, 0.7)) drop-shadow(0 0 18px rgba(236, 72, 153, 0.35));
+}
+
+.auth-logo-text {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  background: var(--gradient-primary);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin: 0;
+}
+
+.auth-tagline {
+  color: var(--text-tertiary);
+  font-size: 13px;
+  margin: 4px 0 0;
+}
+
+.auth-oauth-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.btn-oauth {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 11px 16px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+  border: none;
+}
+
+.btn-oauth:hover { opacity: 0.85; }
+
+.btn-oauth-google {
+  background: #fff;
+  color: #333;
+}
+
+.btn-oauth-discord {
+  background: #5865F2;
+  color: #fff;
+}
+
+.auth-divider {
+  text-align: center;
+  position: relative;
+  margin: 16px 0;
+  color: var(--text-tertiary);
+  font-size: 12px;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 42%;
+  height: 1px;
+  background: var(--border-color);
+}
+
+.auth-divider::before { left: 0; }
+.auth-divider::after { right: 0; }
+
+.auth-tabs {
+  display: flex;
+  background: rgba(255,255,255,0.04);
+  border-radius: 8px;
+  padding: 3px;
+  margin-bottom: 16px;
+  gap: 3px;
+}
+
+.auth-tab {
+  flex: 1;
+  padding: 7px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  transition: all 0.15s;
+}
+
+.auth-tab.active {
+  background: var(--accent-purple);
+  color: #fff;
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.auth-note {
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-tertiary);
+  margin-top: 12px;
+}
+
+/* Rooms screen */
+.rooms-header {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.rooms-list-section {
+  margin-bottom: 20px;
+}
+
+.rooms-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.room-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  margin-bottom: 8px;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.room-item:hover {
+  background: rgba(255,255,255,0.04);
+  border-color: var(--accent-purple);
+}
+
+.room-item-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.room-item-name {
+  font-weight: 600;
+  font-size: 15px;
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.room-item-desc {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.room-item-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+/* ============================================================ */
+/* ツアーグループ / イベントタイプ / SVGアイコンピッカー         */
+/* ============================================================ */
+
+/* ---- イベントタイプタブ ---- */
+.event-type-tabs {
+  display: flex;
+  gap: 6px;
+}
+
+.event-type-tab {
+  flex: 1;
+  padding: 6px 4px;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--border-color);
+  background: rgba(255,255,255,0.04);
+  color: var(--text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  text-align: center;
+}
+
+.event-type-tab:hover {
+  background: rgba(255,255,255,0.08);
+  color: var(--text-primary);
+}
+
+.event-type-tab.active {
+  border-color: var(--accent-purple);
+  background: rgba(139,92,246,0.15);
+  color: var(--accent-purple);
+  font-weight: 600;
+}
+
+/* ---- イベントタイプバッジ ---- */
+.badge-event-type {
+  display: inline-block;
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 10px;
+  font-weight: 600;
+  vertical-align: middle;
+}
+
+.badge-event-tour {
+  background: rgba(99,102,241,0.18);
+  color: #818CF8;
+  border: 1px solid rgba(99,102,241,0.35);
+}
+
+.badge-event-event {
+  background: rgba(236,72,153,0.18);
+  color: #F472B6;
+  border: 1px solid rgba(236,72,153,0.35);
+}
+
+/* ---- SVGアイコンピッカー ---- */
+.svg-icon-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.svg-icon-option {
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+  background: rgba(255,255,255,0.04);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  transition: all var(--transition-fast);
+  padding: 6px;
+}
+
+.svg-icon-option svg {
+  width: 18px;
+  height: 18px;
+}
+
+.svg-icon-option:hover {
+  background: rgba(255,255,255,0.10);
+  color: var(--text-primary);
+}
+
+.svg-icon-option.selected {
+  border-color: var(--accent-purple);
+  background: rgba(139,92,246,0.18);
+  color: var(--accent-purple);
+  box-shadow: 0 0 0 2px rgba(139,92,246,0.4);
+}
+
+/* ---- ツアーグループ ---- */
+.tour-group {
+  border: 1.5px solid var(--tour-color, var(--border-color));
+  border-radius: var(--radius-md);
+  background: rgba(255,255,255,0.025);
+  margin-bottom: 10px;
+  overflow: hidden;
+}
+
+.tour-group-past {
+  opacity: 0.75;
+}
+
+.tour-group-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  cursor: pointer;
+  user-select: none;
+  background: rgba(255,255,255,0.03);
+  border-bottom: 1px solid transparent;
+  transition: background var(--transition-fast);
+}
+
+.tour-group-header:hover {
+  background: rgba(255,255,255,0.06);
+}
+
+.tour-expand-icon {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+  transition: transform 0.15s;
+}
+
+.tour-children {
+  border-top: 1px solid rgba(255,255,255,0.06);
+}
+
+.tour-children-hidden {
+  display: none;
+}
+
+.tour-child-entry {
+  display: flex;
+  gap: 0;
+  align-items: flex-start;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  padding: 4px 0 4px 16px;
+  transition: background var(--transition-fast);
+}
+
+.tour-child-entry:last-child {
+  border-bottom: none;
+}
+
+.tour-child-entry:hover {
+  background: rgba(255,255,255,0.03);
+}
+
+.tour-children .btn.add-tour-child-btn {
+  margin: 8px 12px;
+  width: calc(100% - 24px);
+  justify-content: center;
+  opacity: 0.7;
+}
+
+.tour-children .btn.add-tour-child-btn:hover {
+  opacity: 1;
 }
