@@ -11,9 +11,6 @@ import { renderChart } from './js/views/chart.js';
 import { exportData, importData, fetchFromSupabase } from './js/store.js';
 import { showToast } from './js/utils.js';
 import { showLiveDetailsModal, showMemberDetailsModal } from './js/views/details.js';
-import { renderAuth } from './js/views/auth.js';
-import { renderRooms } from './js/views/rooms.js';
-import { getCurrentUser, getCurrentRoom, onAuthStateChange } from './js/supabase.js';
 
 window.showLiveDetailsModal = showLiveDetailsModal;
 window.showMemberDetailsModal = showMemberDetailsModal;
@@ -198,34 +195,6 @@ const router = new Router([
     }
 ]);
 
-// ---------- Auth & Room Guard ----------
-async function checkAuthAndRoom() {
-    const user = await getCurrentUser();
-
-    if (!user) {
-        // 未ログイン → 認証画面を表示
-        renderAuth();
-        return false;
-    }
-
-    const room = getCurrentRoom();
-    if (!room) {
-        // ログイン済みだがルーム未選択 → ルーム選択画面
-        await renderRooms((selectedRoom) => {
-            // ルーム選択後にアプリを起動
-            initApp();
-        });
-        return false;
-    }
-
-    return true;
-}
-
-function initApp() {
-    // setCurrentRoom で localStorage に保存済みなのでリロードで正しく起動する
-    location.reload();
-}
-
 // ---------- Event Listeners ----------
 document.addEventListener('DOMContentLoaded', async () => {
     // Show App Loader initially
@@ -234,18 +203,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         appLoader.classList.remove('hidden');
     }
 
-    // 認証 & ルームのチェック
-    const ready = await checkAuthAndRoom();
-    if (!ready) {
-        if (appLoader) appLoader.classList.add('hidden');
-        return;
-    }
-
-    // Fetch latest data from Supabase on load
+    // Supabase から最新データを取得
     try {
         await fetchFromSupabase();
     } catch (e) {
-        console.warn('Initial Supabase fetch failed', e);
+        console.warn('Initial sync failed', e);
     }
 
     // Hide loader
@@ -307,9 +269,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!file) return;
 
         const reader = new FileReader();
-        reader.onload = async (ev) => {
+        reader.onload = (ev) => {
             try {
-                await importData(ev.target.result);
+                importData(ev.target.result);
                 showToast('データをインポートしました', 'success');
                 // Re-render current page
                 router.currentRoute = null;

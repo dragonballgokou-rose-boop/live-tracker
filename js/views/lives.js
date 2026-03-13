@@ -549,7 +549,7 @@ function openLiveModal(live = null, defaultParentId = null, parentTour = null) {
             <div id="live-icon-preview" style="width:56px;height:56px;border-radius:8px;background:rgba(255,255,255,0.06);border:2px solid ${selColor};display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;font-size:28px;cursor:pointer;" title="クリックして画像を選択">
               ${previewContent}
             </div>
-            <div style="display:flex;flex-direction:column;gap:6px;" class="avatar-upload-actions">
+            <div class="avatar-upload-actions" style="display:flex;flex-direction:column;gap:6px;">
               <button type="button" class="btn btn-secondary btn-sm" id="live-icon-upload-btn">📁 画像を選択</button>
               ${live?.iconImg ? `<button type="button" class="btn btn-sm" id="live-icon-remove-btn" style="color:var(--accent-red);background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.3);">削除</button>` : ''}
             </div>
