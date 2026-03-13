@@ -486,7 +486,7 @@ export function getStats() {
     let goingCount = 0;
     let totalPossibleSchedules = 0;
 
-    lives.forEach(live => {
+    lives.filter(l => l.eventType !== 'tour').forEach(live => {
         const dates = getDatesForLive(live);
         totalPossibleSchedules += dates.length;
         dates.forEach(d => {

@@ -53,7 +53,7 @@ export function renderMembers() {
     const now = new Date();
     now.setHours(0, 0, 0, 0);
 
-    lives.forEach(live => {
+    lives.filter(l => l.eventType !== 'tour').forEach(live => {
       const dates = getDatesForLive(live);
       totalPossibleSchedules += dates.length;
       dates.forEach(d => {

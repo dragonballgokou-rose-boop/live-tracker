@@ -71,7 +71,7 @@ create table public.lives (
 -- 上記スキーマが未適用の場合は以下を SQL Editor で実行してください:
 -- ALTER TABLE public.lives ALTER COLUMN date_start DROP NOT NULL;
 -- ALTER TABLE public.lives ADD COLUMN IF NOT EXISTS event_type text DEFAULT 'live' CHECK (event_type IN ('live', 'tour', 'event'));
--- ALTER TABLE public.lives ADD COLUMN IF NOT EXISTS parent_id uuid REFERENCES public.lives(id) ON DELETE SET NULL;
+-- ALTER TABLE public.lives ADD COLUMN IF NOT EXISTS parent_id text REFERENCES public.lives(id) ON DELETE SET NULL;
 
 -- Members (room スコープ - 推しメンなど)
 create table public.members (
