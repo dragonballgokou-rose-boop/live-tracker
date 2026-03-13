@@ -329,7 +329,7 @@ export function renderLives() {
         </button>
         <button id="add-live-btn" class="btn btn-primary">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          ライブを追加
+          ライブ / ツアー追加
         </button>
       </div>
     </div>
@@ -529,6 +529,7 @@ function openLiveModal(live = null, defaultParentId = null, parentTour = null) {
     <form id="live-form">
       <!-- 種別タブ -->
       <div class="form-group" style="margin-bottom:12px;">
+        <label class="form-label" style="margin-bottom:6px;">種別</label>
         <div class="event-type-tabs" id="event-type-tabs">
           <button type="button" class="event-type-tab${selEventType === 'live'  ? ' active' : ''}" data-type="live">🎵 ライブ</button>
           <button type="button" class="event-type-tab${selEventType === 'tour'  ? ' active' : ''}" data-type="tour">🗺️ ツアー</button>

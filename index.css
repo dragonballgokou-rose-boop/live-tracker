@@ -824,13 +824,11 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
 .tally-card-status-dot[data-status="not_going"] {
   background: var(--accent-red);
   color: white;
-  opacity: 0.75;
 }
 
 .tally-card-status-dot[data-status="undecided"] {
   background: var(--accent-amber);
   color: #1a1a2e;
-  opacity: 0.65;
 }
 
 .tally-card-member-name {
@@ -975,15 +973,15 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
 }
 
 .tally-cell[data-status="not_going"] {
-  background: rgba(248, 113, 113, 0.1);
-  color: rgba(248, 113, 113, 0.5);
-  border: 1px solid rgba(248, 113, 113, 0.15);
+  background: rgba(248, 113, 113, 0.15);
+  color: rgba(248, 113, 113, 1);
+  border: 1px solid rgba(248, 113, 113, 0.4);
 }
 
 .tally-cell[data-status="undecided"] {
-  background: rgba(251, 191, 36, 0.08);
-  color: rgba(251, 191, 36, 0.5);
-  border: 1px solid rgba(251, 191, 36, 0.15);
+  background: rgba(251, 191, 36, 0.12);
+  color: rgba(251, 191, 36, 1);
+  border: 1px solid rgba(251, 191, 36, 0.4);
 }
 
 /* Tally Day-based Row Expansion */
