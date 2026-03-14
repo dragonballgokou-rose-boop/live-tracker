@@ -213,7 +213,7 @@ function renderDateSchedule(month, lives, members, now) {
             return `
               <div class="date-event">
                 <div class="date-event-info" style="cursor:pointer;${live.color ? `border-left:2px solid ${live.color};padding-left:6px;` : ''}" onclick="window.showLiveDetailsModal('${live.id}')">
-                  <span class="date-event-name" style="display:flex;align-items:center;gap:4px;">${liveIconHtml(live, 14)}${escapeHtml(live.name)}${getEventTypeBadgeExport(live)}${dayLabel ? ` <span class="date-event-day-label">${dayLabel}</span>` : ''}</span>
+                  <span class="date-event-name" style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;">${liveIconHtml(live, 14)}<span style="flex:1;min-width:0;">${escapeHtml(live.name)}</span>${getEventTypeBadgeExport(live)}${dayLabel ? ` <span class="date-event-day-label">${dayLabel}</span>` : ''}</span>
                   <span class="date-event-meta">${escapeHtml(live.artist || '')} · ${escapeHtml(live.venue || '')}</span>
                 </div>
                 <div class="date-event-members">
