@@ -264,7 +264,7 @@ export function renderLives() {
         metaParts.push(tp.join('　'));
       }
     }
-    // 複数日で日ごとに異なる時間の場合、別ラインで各日の時間を表示
+    // 複数日で日ごとに異なる時間の場合、連続する同じ時間をまとめて1行ずつ表示
     let perDayTimesHtml = '';
     {
       const liveDates2 = getDatesForLive(live);
@@ -274,15 +274,32 @@ export function renderLives() {
           dt.openTime === first.openTime && dt.startTime === first.startTime
         );
         if (!allSame) {
-          const items = live.dayTimes.map((dt, i) => {
+          // 連続する同じ時間のDayをグループ化
+          const groups = [];
+          let i = 0;
+          while (i < live.dayTimes.length) {
+            const cur = live.dayTimes[i];
+            let j = i + 1;
+            while (
+              j < live.dayTimes.length &&
+              live.dayTimes[j].openTime === cur.openTime &&
+              live.dayTimes[j].startTime === cur.startTime
+            ) j++;
+            groups.push({ start: i, end: j - 1, dt: cur });
+            i = j;
+          }
+          const lines = groups.map(g => {
             const tp = [];
-            if (dt.openTime)  tp.push(`開場 ${escapeHtml(dt.openTime)}`);
-            if (dt.startTime) tp.push(`開演 ${escapeHtml(dt.startTime)}`);
+            if (g.dt.openTime)  tp.push(`開場 ${escapeHtml(g.dt.openTime)}`);
+            if (g.dt.startTime) tp.push(`開演 ${escapeHtml(g.dt.startTime)}`);
             if (!tp.length) return '';
-            return `<span style="white-space:nowrap;">Day${i + 1} ${tp.join(' ')}</span>`;
+            const dayLabel = g.start === g.end
+              ? `Day${g.start + 1}`
+              : `Day${g.start + 1}〜${g.end + 1}`;
+            return `<div style="white-space:nowrap;">${dayLabel} ${tp.join(' ')}</div>`;
           }).filter(Boolean);
-          if (items.length > 0) {
-            perDayTimesHtml = `<div style="font-size:11px;color:var(--text-tertiary);margin-bottom:4px;display:flex;flex-wrap:wrap;gap:6px;">${items.join('')}</div>`;
+          if (lines.length > 0) {
+            perDayTimesHtml = `<div style="font-size:11px;color:var(--text-tertiary);margin-bottom:4px;">${lines.join('')}</div>`;
           }
         }
       }
@@ -379,16 +396,15 @@ export function renderLives() {
     const isExpanded = tourExpandState.get(tour.id) !== false;
     const iconHtml  = getLiveIconHtml(tour, 18);
 
-    // 日付範囲：このスライスの最初〜最後
-    const childStart = children.length > 0 ? effectiveStart(children[0]) : null;
-    const childEnd   = children.length > 0 ? effectiveEnd(children[children.length - 1]) : null;
-    let dateRange = '';
-    if (childStart) {
-      const fmt = d => `${d.getMonth()+1}/${d.getDate()}`;
-      dateRange = childEnd && childEnd.getTime() !== childStart.getTime()
-        ? `${fmt(childStart)}〜${fmt(childEnd)}`
-        : fmt(childStart);
-    }
+    // 日付範囲：各公演の日程を列挙（例: 6/13（土）~14（日）, 6/24（水）~25（木））
+    const fmtD = (d, showMonth = true) =>
+      `${showMonth ? `${d.getMonth()+1}/` : ''}${d.getDate()}（${WEEKDAYS[d.getDay()]}）`;
+    const dateRange = children.map(c => {
+      const cs = new Date(effectiveStart(c)); cs.setHours(0,0,0,0);
+      const ce = new Date(effectiveEnd(c));   ce.setHours(0,0,0,0);
+      if (cs.getTime() === ce.getTime()) return fmtD(cs);
+      return `${fmtD(cs)}~${fmtD(ce, ce.getMonth() !== cs.getMonth())}`;
+    }).join(', ');
 
     // 全公演数（月をまたぐ場合も含めた合計）
     const totalCount = allTourChildren.length;
