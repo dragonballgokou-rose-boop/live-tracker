@@ -238,6 +238,7 @@ export function renderLives() {
       const pref = live.prefecture || extractPrefecture(live.venue);
       metaParts.push(pref ? `${escapeHtml(live.venue)}（${pref}）` : escapeHtml(live.venue));
     }
+    let inlineTimePart = '';
     {
       // 時間表示（単日 or 全日程同一時間の場合にインライン表示）
       const liveDates = getDatesForLive(live);
@@ -261,7 +262,7 @@ export function renderLives() {
         const tp = [];
         if (openTime)  tp.push(`開場 ${escapeHtml(openTime)}`);
         if (startTime) tp.push(`開演 ${escapeHtml(startTime)}`);
-        metaParts.push(tp.join('　'));
+        inlineTimePart = tp.join('　');
       }
     }
     // 複数日で日ごとに異なる時間の場合、連続する同じ時間をまとめて1行ずつ表示
@@ -340,6 +341,7 @@ export function renderLives() {
               <span style="margin-left:2px;">${statusBadge}</span>
             </div>
             ${metaParts.length > 0 ? `<div class="history-entry-meta">${metaParts.join(' · ')}</div>` : ''}
+            ${inlineTimePart ? `<div class="history-entry-meta">${inlineTimePart}</div>` : ''}
             ${perDayTimesHtml}
             ${goingChips ? `<div class="history-entry-members">${goingChips}</div>` : ''}
             <div class="lives-entry-actions">
@@ -370,6 +372,7 @@ export function renderLives() {
             <span style="margin-left:2px;">${statusBadge}</span>
           </div>
           ${metaParts.length > 0 ? `<div class="history-entry-meta">${metaParts.join(' · ')}</div>` : ''}
+          ${inlineTimePart ? `<div class="history-entry-meta">${inlineTimePart}</div>` : ''}
           ${perDayTimesHtml}
           ${goingChips ? `<div class="history-entry-members">${goingChips}</div>` : ''}
           <div class="lives-entry-actions">
@@ -396,15 +399,18 @@ export function renderLives() {
     const isExpanded = tourExpandState.get(tour.id) !== false;
     const iconHtml  = getLiveIconHtml(tour, 18);
 
-    // 日付範囲：各公演の日程を列挙（例: 6/13（土）~14（日）, 6/24（水）~25（木））
+    // 日付範囲：各公演の日程を列挙（1公演1行）
     const fmtD = (d, showMonth = true) =>
       `${showMonth ? `${d.getMonth()+1}/` : ''}${d.getDate()}（${WEEKDAYS[d.getDay()]}）`;
-    const dateRange = children.map(c => {
+    const dateRanges = children.map(c => {
       const cs = new Date(effectiveStart(c)); cs.setHours(0,0,0,0);
       const ce = new Date(effectiveEnd(c));   ce.setHours(0,0,0,0);
-      if (cs.getTime() === ce.getTime()) return fmtD(cs);
-      return `${fmtD(cs)}~${fmtD(ce, ce.getMonth() !== cs.getMonth())}`;
-    }).join(', ');
+      const pref = c.prefecture || extractPrefecture(c.venue || '');
+      const dateStr = cs.getTime() === ce.getTime()
+        ? fmtD(cs)
+        : `${fmtD(cs)}~${fmtD(ce, ce.getMonth() !== cs.getMonth())}`;
+      return pref ? `${escapeHtml(pref)} · ${dateStr}` : dateStr;
+    });
 
     // 全公演数（月をまたぐ場合も含めた合計）
     const totalCount = allTourChildren.length;
@@ -412,9 +418,8 @@ export function renderLives() {
       ? `${children.length}/${totalCount}公演`
       : `${children.length}公演`;
 
-    const metaParts = [];
-    if (tour.artist) metaParts.push(escapeHtml(tour.artist));
-    if (dateRange) metaParts.push(dateRange);
+    const artistMeta = tour.artist ? `<div class="tour-group-meta-row"><span class="tour-group-meta">${escapeHtml(tour.artist)}</span></div>` : '';
+    const datesMeta = dateRanges.map(r => `<div class="tour-group-meta-row"><span class="tour-group-meta">${r}</span></div>`).join('');
 
     const childrenHtml = children.map(c => buildEntryHtml(c, true)).join('');
     const addChildBtn = `<button class="btn btn-sm btn-secondary add-tour-child-btn" data-tour-id="${tour.id}">
@@ -432,7 +437,7 @@ export function renderLives() {
               <span class="tour-group-name">${escapeHtml(tour.name)}</span>
               <span class="tour-group-count">${countLabel}</span>
             </div>
-            ${metaParts.length > 0 ? `<div class="tour-group-meta-row"><span class="tour-group-meta">${metaParts.join(' · ')}</span></div>` : ''}
+            ${artistMeta}${datesMeta}
           </div>
           <div class="tour-group-actions">
             <button class="btn btn-sm btn-secondary edit-live-btn" data-id="${tour.id}">
