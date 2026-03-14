@@ -2385,6 +2385,30 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
   color: var(--accent-purple-light);
 }
 
+.live-type-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 18px;
+  border-radius: calc(var(--radius-full) - 1px);
+  font-size: 13px;
+  font-weight: 500;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  font-family: inherit;
+  white-space: nowrap;
+}
+
+.live-type-btn:active { transform: scale(0.96); }
+
+.live-type-btn.active {
+  background: var(--bg-card);
+  color: var(--text-primary);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+}
+
 /* ---- ライブ管理タイムライン: 編集・削除ボタン行 ---- */
 .lives-entry-actions {
   display: flex;
