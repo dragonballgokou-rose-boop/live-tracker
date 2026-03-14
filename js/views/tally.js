@@ -3,7 +3,7 @@
 // ============================================
 import { getLives, getMembers, getDatesForLive, setDayAttendance, getDayAttendanceStatus } from '../store.js';
 import { showToast } from '../utils.js';
-import { formatDateRange, extractPrefecture } from './lives.js';
+import { formatDateRange, extractPrefecture, getLiveIconHtml } from './lives.js';
 
 let tallyStatusFilter = 'all'; // 'all' | 'upcoming' | 'past'
 
@@ -27,9 +27,7 @@ function updateTallyUrl() {
 }
 
 function liveIconHtml(live, size = 16) {
-  if (live.iconImg) return `<img src="${live.iconImg}" style="width:${size}px;height:${size}px;border-radius:3px;object-fit:cover;flex-shrink:0;vertical-align:middle;" />`;
-  if (live.icon) return `<span style="font-size:${Math.round(size * 0.85)}px;flex-shrink:0;line-height:1;">${live.icon}</span>`;
-  return '';
+  return getLiveIconHtml(live, size);
 }
 
 export function renderTally() {
