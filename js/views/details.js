@@ -54,6 +54,18 @@ export function showLiveDetailsModal(liveId) {
     if (live.artist) html += `<div style="display:flex;align-items:center;gap:8px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg><span style="color:var(--text-secondary);">${escapeHtml(live.artist)}</span></div>`;
     html += `<div style="display:flex;align-items:center;gap:8px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><span style="color:var(--text-secondary);">${formatDateRange(live)}</span>${isPast ? '<span class="badge badge-past" style="font-size:10px;">終了</span>' : '<span class="badge badge-upcoming" style="font-size:10px;">予定</span>'}</div>`;
     if (live.venue) html += `<div style="display:flex;align-items:center;gap:8px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg><span style="color:var(--text-secondary);">${escapeHtml(live.venue)}${pref ? `（${escapeHtml(pref)}）` : ''}</span></div>`;
+    // 時間表示（単日 or 全日共通の場合のみここに表示）
+    if (dates.length === 1) {
+        const dt = (live.dayTimes || []).find(t => t.date === dates[0].dateStr);
+        const openTime  = dt?.openTime  || live.openTime  || '';
+        const startTime = dt?.startTime || live.startTime || '';
+        if (openTime || startTime) {
+            const parts = [];
+            if (openTime)  parts.push(`開場 ${escapeHtml(openTime)}`);
+            if (startTime) parts.push(`開演 ${escapeHtml(startTime)}`);
+            html += `<div style="display:flex;align-items:center;gap:8px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><span style="color:var(--text-secondary);">${parts.join('　')}</span></div>`;
+        }
+    }
     if (live.memo) html += `<div style="margin-top:4px;padding:8px;background:rgba(255,255,255,0.04);border-radius:6px;font-size:12px;color:var(--text-tertiary);white-space:pre-wrap;">${escapeHtml(live.memo)}</div>`;
     html += `</div>`;
 
@@ -66,9 +78,18 @@ export function showLiveDetailsModal(liveId) {
         dates.forEach(dateObj => {
             const dateStr = dateObj.dateStr;
             const d = dateObj.date;
+            const dateLabel = `${d.getMonth() + 1}/${d.getDate()}(${WEEKDAYS[d.getDay()]})`;
+            // 当日の時間（dayTimesから取得、なければトップレベル）
+            const dt = (live.dayTimes || []).find(t => t.date === dateStr);
+            const openTime  = dt?.openTime  || (dates.length === 1 ? live.openTime  : '') || '';
+            const startTime = dt?.startTime || (dates.length === 1 ? live.startTime : '') || '';
+            const timeParts = [];
+            if (openTime)  timeParts.push(`開場 ${openTime}`);
+            if (startTime) timeParts.push(`開演 ${startTime}`);
+            const timeStr = timeParts.length > 0 ? `　<span style="font-size:11px;font-weight:400;color:var(--text-tertiary);">${timeParts.join('　')}</span>` : '';
             const dayLabel = dates.length > 1
-                ? `Day${dateObj.dayNum}　${d.getMonth() + 1}/${d.getDate()}(${WEEKDAYS[d.getDay()]})`
-                : `${d.getMonth() + 1}/${d.getDate()}(${WEEKDAYS[d.getDay()]})`;
+                ? `Day${dateObj.dayNum}　${dateLabel}${timeStr}`
+                : `${dateLabel}${timeStr}`;
 
             const going = [];
             const notGoing = [];

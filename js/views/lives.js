@@ -7,6 +7,64 @@ import { showLiveDetailsModal, showMemberDetailsModal } from './details.js';
 
 const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
 
+// ---- 日程ごとの開場・開演時間セクション ----
+function getDateRange(dateStart, dateEnd) {
+  if (!dateStart) return [];
+  const start = new Date(dateStart);
+  const end = dateEnd ? new Date(dateEnd) : new Date(dateStart);
+  start.setHours(0, 0, 0, 0);
+  end.setHours(0, 0, 0, 0);
+  const dates = [];
+  const cur = new Date(start);
+  while (cur <= end) {
+    const y = cur.getFullYear();
+    const m = String(cur.getMonth() + 1).padStart(2, '0');
+    const d = String(cur.getDate()).padStart(2, '0');
+    dates.push(`${y}-${m}-${d}`);
+    cur.setDate(cur.getDate() + 1);
+  }
+  return dates;
+}
+
+function renderDayTimesSection(dateStart, dateEnd, existingDayTimes) {
+  const section = document.getElementById('live-day-times-section');
+  if (!section) return;
+  const dates = getDateRange(dateStart, dateEnd);
+  if (dates.length === 0) {
+    section.innerHTML = '<p style="font-size:12px;color:var(--text-tertiary);margin:4px 0 0;">先に開始日を入力してください</p>';
+    return;
+  }
+  // 既存値をdateをキーにしたマップに
+  const existingMap = {};
+  (existingDayTimes || []).forEach(dt => { existingMap[dt.date] = dt; });
+
+  const multiDay = dates.length > 1;
+  section.innerHTML = dates.map((dateStr, i) => {
+    const d = new Date(dateStr);
+    const dateLabel = `${d.getMonth() + 1}/${d.getDate()}(${WEEKDAYS[d.getDay()]})`;
+    const dayLabel = multiDay ? `Day${i + 1}　${dateLabel}` : dateLabel;
+    const existing = existingMap[dateStr] || {};
+    const openVal = existing.openTime || '';
+    const startVal = existing.startTime || '';
+    return `<div class="day-time-row" data-date="${dateStr}" style="padding:10px 0;border-bottom:1px solid var(--border-color);">
+      <div style="font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:8px;">${dayLabel}</div>
+      <div style="display:flex;gap:12px;">
+        <div style="flex:1;">
+          <label style="font-size:11px;color:var(--text-tertiary);display:block;margin-bottom:4px;">開場</label>
+          <input type="time" class="form-input day-time-open" value="${openVal}" style="width:100%;box-sizing:border-box;" />
+        </div>
+        <div style="flex:1;">
+          <label style="font-size:11px;color:var(--text-tertiary);display:block;margin-bottom:4px;">開演</label>
+          <input type="time" class="form-input day-time-start" value="${startVal}" style="width:100%;box-sizing:border-box;" />
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+  // 最後のrowのborder-bottomを消す
+  const rows = section.querySelectorAll('.day-time-row');
+  if (rows.length > 0) rows[rows.length - 1].style.borderBottom = 'none';
+}
+
 let livesFilter = 'upcoming'; // 'all' | 'upcoming' | 'past'
 let livesViewMode = 'tl';     // 'tl' | 'calendar'
 let livesCalendarDate = new Date();
@@ -122,11 +180,21 @@ export function renderLives() {
       const pref = live.prefecture || extractPrefecture(live.venue);
       metaParts.push(pref ? `${escapeHtml(live.venue)}（${pref}）` : escapeHtml(live.venue));
     }
-    if (live.openTime || live.startTime) {
-      const timeParts = [];
-      if (live.openTime) timeParts.push(`開場 ${escapeHtml(live.openTime)}`);
-      if (live.startTime) timeParts.push(`開演 ${escapeHtml(live.startTime)}`);
-      metaParts.push(timeParts.join('　'));
+    {
+      // 時間は単日のみインライン表示（複数日は詳細で確認）
+      const liveDates = getDatesForLive(live);
+      if (liveDates.length === 1) {
+        const dateStr = liveDates[0].dateStr;
+        const dt = (live.dayTimes || []).find(t => t.date === dateStr);
+        const openTime  = dt?.openTime  || live.openTime  || '';
+        const startTime = dt?.startTime || live.startTime || '';
+        if (openTime || startTime) {
+          const tp = [];
+          if (openTime)  tp.push(`開場 ${escapeHtml(openTime)}`);
+          if (startTime) tp.push(`開演 ${escapeHtml(startTime)}`);
+          metaParts.push(tp.join('　'));
+        }
+      }
     }
 
     const statusBadge = isOngoing
@@ -883,14 +951,10 @@ function openLiveModal(live = null, defaultParentId = null, parentTour = null) {
         <label class="form-label" for="live-date-end">終了日 <span style="color: var(--text-tertiary); font-size: 12px;">(複数日の場合)</span></label>
         <input type="date" id="live-date-end" class="form-input" value="${isEdit ? toDateInputValue(live.dateEnd) : ''}" />
       </div>
-      <!-- 開場・開演時間 -->
+      <!-- 開場・開演時間（日程ごと）-->
       <div class="form-group">
-        <label class="form-label" for="live-open-time">開場時間</label>
-        <input type="time" id="live-open-time" class="form-input" value="${isEdit ? escapeAttr(live.openTime || '') : ''}" />
-      </div>
-      <div class="form-group">
-        <label class="form-label" for="live-start-time">開演時間</label>
-        <input type="time" id="live-start-time" class="form-input" value="${isEdit ? escapeAttr(live.startTime || '') : ''}" />
+        <label class="form-label">開場・開演時間</label>
+        <div id="live-day-times-section"></div>
       </div>
       <!-- 会場 -->
       <div class="form-row">
@@ -936,6 +1000,36 @@ function openLiveModal(live = null, defaultParentId = null, parentTour = null) {
     });
   });
 
+  // 日程ごとの時間セクション初期描画とイベント設定
+  {
+    const initDayTimes = isEdit ? (live.dayTimes || (live.openTime || live.startTime
+      ? [{ date: live.dateStart || live.date || '', openTime: live.openTime || '', startTime: live.startTime || '' }]
+      : [])) : [];
+    renderDayTimesSection(
+      document.getElementById('live-date-start').value,
+      document.getElementById('live-date-end').value,
+      initDayTimes
+    );
+    const refreshDayTimes = () => {
+      // 現在入力済みの値を保持して再描画
+      const currentVals = {};
+      document.querySelectorAll('#live-day-times-section .day-time-row').forEach(row => {
+        currentVals[row.dataset.date] = {
+          date: row.dataset.date,
+          openTime: row.querySelector('.day-time-open')?.value || '',
+          startTime: row.querySelector('.day-time-start')?.value || '',
+        };
+      });
+      renderDayTimesSection(
+        document.getElementById('live-date-start').value,
+        document.getElementById('live-date-end').value,
+        Object.values(currentVals)
+      );
+    };
+    document.getElementById('live-date-start')?.addEventListener('change', refreshDayTimes);
+    document.getElementById('live-date-end')?.addEventListener('change', refreshDayTimes);
+  }
+
   // 会場入力で都道府県を自動検出
   document.getElementById('live-venue')?.addEventListener('blur', () => {
     const venue = document.getElementById('live-venue').value;
@@ -956,6 +1050,17 @@ function openLiveModal(live = null, defaultParentId = null, parentTour = null) {
     const dateEnd = document.getElementById('live-date-end').value;
     const parentId = document.getElementById('live-parent-id')?.value || '';
 
+    // 日程ごとの時間を収集
+    const dayTimesData = [];
+    document.querySelectorAll('#live-day-times-section .day-time-row').forEach(row => {
+      const date = row.dataset.date;
+      const openTime = row.querySelector('.day-time-open')?.value || '';
+      const startTime = row.querySelector('.day-time-start')?.value || '';
+      if (date) dayTimesData.push({ date, openTime, startTime });
+    });
+    // 後方互換: 1日目の値をトップレベルにも保持
+    const firstDay = dayTimesData[0] || {};
+
     const data = {
       name: document.getElementById('live-name').value.trim(),
       artist: document.getElementById('live-artist').value.trim(),
@@ -963,8 +1068,9 @@ function openLiveModal(live = null, defaultParentId = null, parentTour = null) {
       dateEnd: dateEnd || '',
       venue: document.getElementById('live-venue').value.trim(),
       prefecture: document.getElementById('live-pref').value.trim(),
-      openTime: document.getElementById('live-open-time').value || '',
-      startTime: document.getElementById('live-start-time').value || '',
+      openTime: firstDay.openTime || '',
+      startTime: firstDay.startTime || '',
+      dayTimes: dayTimesData,
       memo: document.getElementById('live-memo').value.trim(),
       icon: document.getElementById('live-icon').value || '🎵',
       iconImg: document.getElementById('live-iconImg').value || '',
