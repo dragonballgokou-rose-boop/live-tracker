@@ -139,7 +139,8 @@ export function showLiveDetailsModal(liveId) {
     }
 
     html += `</div>`;
-    showModal(`ライブ詳細：${live.name}`, html);
+    const detailTitle = live.eventType === 'event' ? `イベント詳細：${live.name}` : `ライブ詳細：${live.name}`;
+    showModal(detailTitle, html);
 }
 
 // ============================================

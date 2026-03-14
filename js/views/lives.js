@@ -26,7 +26,7 @@ function getDateRange(dateStart, dateEnd) {
   return dates;
 }
 
-function renderDayTimesSection(dateStart, dateEnd, existingDayTimes) {
+function renderDayTimesSection(dateStart, dateEnd, existingDayTimes, applyAllChecked = false) {
   const section = document.getElementById('live-day-times-section');
   if (!section) return;
   const dates = getDateRange(dateStart, dateEnd);
@@ -39,7 +39,38 @@ function renderDayTimesSection(dateStart, dateEnd, existingDayTimes) {
   (existingDayTimes || []).forEach(dt => { existingMap[dt.date] = dt; });
 
   const multiDay = dates.length > 1;
-  section.innerHTML = dates.map((dateStr, i) => {
+  const firstExisting = existingMap[dates[0]] || {};
+
+  let html = '';
+
+  if (multiDay) {
+    const commonOpen = firstExisting.openTime || '';
+    const commonStart = firstExisting.startTime || '';
+    html += `
+      <div style="margin-bottom:8px;">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:var(--text-secondary);user-select:none;">
+          <input type="checkbox" id="day-times-apply-all" ${applyAllChecked ? 'checked' : ''} style="cursor:pointer;width:14px;height:14px;" />
+          全日程に同じ時間を設定
+        </label>
+      </div>
+      <div id="day-times-common-row" style="${applyAllChecked ? '' : 'display:none;'}padding:10px 0;border-bottom:${applyAllChecked ? 'none' : '1px solid var(--border-color)'};">
+        <div style="font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:8px;">全日程共通</div>
+        <div style="display:flex;gap:12px;">
+          <div style="flex:1;">
+            <label style="font-size:11px;color:var(--text-tertiary);display:block;margin-bottom:4px;">開場</label>
+            <input type="time" class="form-input" id="day-times-common-open" value="${commonOpen}" style="width:100%;box-sizing:border-box;" />
+          </div>
+          <div style="flex:1;">
+            <label style="font-size:11px;color:var(--text-tertiary);display:block;margin-bottom:4px;">開演</label>
+            <input type="time" class="form-input" id="day-times-common-start" value="${commonStart}" style="width:100%;box-sizing:border-box;" />
+          </div>
+        </div>
+      </div>
+      <div id="day-times-per-day" style="${applyAllChecked ? 'display:none;' : ''}">
+    `;
+  }
+
+  html += dates.map((dateStr, i) => {
     const d = new Date(dateStr);
     const dateLabel = `${d.getMonth() + 1}/${d.getDate()}(${WEEKDAYS[d.getDay()]})`;
     const dayLabel = multiDay ? `Day${i + 1}　${dateLabel}` : dateLabel;
@@ -60,6 +91,24 @@ function renderDayTimesSection(dateStart, dateEnd, existingDayTimes) {
       </div>
     </div>`;
   }).join('');
+
+  if (multiDay) html += `</div>`; // day-times-per-day を閉じる
+
+  section.innerHTML = html;
+
+  // チェックボックスの切り替えイベント
+  if (multiDay) {
+    const checkbox = document.getElementById('day-times-apply-all');
+    const commonRow = document.getElementById('day-times-common-row');
+    const perDayDiv = document.getElementById('day-times-per-day');
+    checkbox?.addEventListener('change', () => {
+      const checked = checkbox.checked;
+      commonRow.style.display = checked ? '' : 'none';
+      commonRow.style.borderBottom = checked ? 'none' : '1px solid var(--border-color)';
+      perDayDiv.style.display = checked ? 'none' : '';
+    });
+  }
+
   // 最後のrowのborder-bottomを消す
   const rows = section.querySelectorAll('.day-time-row');
   if (rows.length > 0) rows[rows.length - 1].style.borderBottom = 'none';
@@ -1005,25 +1054,43 @@ function openLiveModal(live = null, defaultParentId = null, parentTour = null) {
     const initDayTimes = isEdit ? (live.dayTimes || (live.openTime || live.startTime
       ? [{ date: live.dateStart || live.date || '', openTime: live.openTime || '', startTime: live.startTime || '' }]
       : [])) : [];
+    // 全日程が同じ時間の場合は「全日程に同じ時間を設定」を自動チェック
+    const initApplyAll = initDayTimes.length > 1 && initDayTimes.every(dt =>
+      dt.openTime === initDayTimes[0].openTime && dt.startTime === initDayTimes[0].startTime
+    );
     renderDayTimesSection(
       document.getElementById('live-date-start').value,
       document.getElementById('live-date-end').value,
-      initDayTimes
+      initDayTimes,
+      initApplyAll
     );
     const refreshDayTimes = () => {
       // 現在入力済みの値を保持して再描画
+      const applyAll = document.getElementById('day-times-apply-all')?.checked || false;
       const currentVals = {};
-      document.querySelectorAll('#live-day-times-section .day-time-row').forEach(row => {
-        currentVals[row.dataset.date] = {
-          date: row.dataset.date,
-          openTime: row.querySelector('.day-time-open')?.value || '',
-          startTime: row.querySelector('.day-time-start')?.value || '',
-        };
-      });
+      if (applyAll) {
+        const commonOpen = document.getElementById('day-times-common-open')?.value || '';
+        const commonStart = document.getElementById('day-times-common-start')?.value || '';
+        getDateRange(
+          document.getElementById('live-date-start').value,
+          document.getElementById('live-date-end').value
+        ).forEach(dateStr => {
+          currentVals[dateStr] = { date: dateStr, openTime: commonOpen, startTime: commonStart };
+        });
+      } else {
+        document.querySelectorAll('#live-day-times-section .day-time-row').forEach(row => {
+          currentVals[row.dataset.date] = {
+            date: row.dataset.date,
+            openTime: row.querySelector('.day-time-open')?.value || '',
+            startTime: row.querySelector('.day-time-start')?.value || '',
+          };
+        });
+      }
       renderDayTimesSection(
         document.getElementById('live-date-start').value,
         document.getElementById('live-date-end').value,
-        Object.values(currentVals)
+        Object.values(currentVals),
+        applyAll
       );
     };
     document.getElementById('live-date-start')?.addEventListener('change', refreshDayTimes);
@@ -1052,12 +1119,21 @@ function openLiveModal(live = null, defaultParentId = null, parentTour = null) {
 
     // 日程ごとの時間を収集
     const dayTimesData = [];
-    document.querySelectorAll('#live-day-times-section .day-time-row').forEach(row => {
-      const date = row.dataset.date;
-      const openTime = row.querySelector('.day-time-open')?.value || '';
-      const startTime = row.querySelector('.day-time-start')?.value || '';
-      if (date) dayTimesData.push({ date, openTime, startTime });
-    });
+    const applyAll = document.getElementById('day-times-apply-all')?.checked || false;
+    if (applyAll) {
+      const commonOpen = document.getElementById('day-times-common-open')?.value || '';
+      const commonStart = document.getElementById('day-times-common-start')?.value || '';
+      getDateRange(dateStart, dateEnd).forEach(dateStr => {
+        dayTimesData.push({ date: dateStr, openTime: commonOpen, startTime: commonStart });
+      });
+    } else {
+      document.querySelectorAll('#live-day-times-section .day-time-row').forEach(row => {
+        const date = row.dataset.date;
+        const openTime = row.querySelector('.day-time-open')?.value || '';
+        const startTime = row.querySelector('.day-time-start')?.value || '';
+        if (date) dayTimesData.push({ date, openTime, startTime });
+      });
+    }
     // 後方互換: 1日目の値をトップレベルにも保持
     const firstDay = dayTimesData[0] || {};
 
