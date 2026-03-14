@@ -300,7 +300,10 @@ function resizeImageToBase64(file, maxSize, callback) {
       canvas.height = Math.round(img.height * scale);
       const ctx = canvas.getContext('2d');
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      callback(canvas.toDataURL('image/jpeg', 0.82));
+      const mimeType = ['image/jpeg', 'image/png', 'image/webp'].includes(file.type)
+        ? file.type
+        : 'image/jpeg';
+      callback(canvas.toDataURL(mimeType, 0.82));
     };
     img.src = e.target.result;
   };

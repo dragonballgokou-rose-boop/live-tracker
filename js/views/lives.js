@@ -1473,7 +1473,10 @@ function resizeLiveIconToBase64(file, maxSize, callback) {
       canvas.width = Math.round(img.width * scale);
       canvas.height = Math.round(img.height * scale);
       canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-      callback(canvas.toDataURL('image/jpeg', 0.82));
+      const mimeType = ['image/jpeg', 'image/png', 'image/webp'].includes(file.type)
+        ? file.type
+        : 'image/jpeg';
+      callback(canvas.toDataURL(mimeType, 0.82));
     };
     img.src = e.target.result;
   };
