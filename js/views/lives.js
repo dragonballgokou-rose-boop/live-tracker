@@ -793,6 +793,8 @@ function getEventTypeBadge(live) {
   return '';
 }
 
+export function getEventTypeBadgeExport(live) { return getEventTypeBadge(live); }
+
 // ---- ツアー追加・編集モーダル ----
 function openTourModal(tour = null) {
   const isEdit = !!tour;
