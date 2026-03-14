@@ -2159,9 +2159,8 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
   font-size: 11px;
   color: var(--text-tertiary);
   margin-bottom: 6px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  word-break: break-word;
 }
 
 .history-entry-members {
