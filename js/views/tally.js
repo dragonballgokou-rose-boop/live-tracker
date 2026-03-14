@@ -3,7 +3,7 @@
 // ============================================
 import { getLives, getMembers, getDatesForLive, setDayAttendance, getDayAttendanceStatus } from '../store.js';
 import { showToast } from '../utils.js';
-import { formatDateRange, extractPrefecture, getLiveIconHtml } from './lives.js';
+import { formatDateRange, extractPrefecture, getLiveIconHtml, getEventTypeBadgeExport } from './lives.js';
 
 let tallyStatusFilter = 'all'; // 'all' | 'upcoming' | 'past'
 
@@ -203,7 +203,7 @@ function buildTallyTable(lives, members) {
       if (row.isFirstDay) {
         label = `
                 <div style="display: flex; flex-direction: column; gap: 2px; cursor: pointer;" onclick="showLiveDetailsModal('${row.live.id}')" title="ライブ詳細を見る">
-                  <span style="font-weight: 600; font-size: 13px; text-decoration: underline; text-decoration-color: rgba(255,255,255,0.2); display:flex; align-items:center; gap:4px;">${liveIconHtml(row.live, 15)}${escapeHtml(row.live.name)}</span>
+                  <span style="font-weight: 600; font-size: 13px; text-decoration: underline; text-decoration-color: rgba(255,255,255,0.2); display:flex; align-items:center; gap:4px;">${liveIconHtml(row.live, 15)}${escapeHtml(row.live.name)}${getEventTypeBadgeExport(row.live)}</span>
                   <span style="font-size: 11px; color: var(--text-tertiary);">
                     ${escapeHtml(row.live.artist || '')} · ${formatDateRange(row.live)}
                   </span>
@@ -229,7 +229,7 @@ function buildTallyTable(lives, members) {
       const dateStr = `${d.getMonth() + 1}/${d.getDate()}(${dayOfWeek})`;
       label = `
                 <div style="display: flex; flex-direction: column; gap: 2px; cursor: pointer;" onclick="showLiveDetailsModal('${row.live.id}')" title="ライブ詳細を見る">
-                  <span style="font-weight: 600; font-size: 13px; text-decoration: underline; text-decoration-color: rgba(255,255,255,0.2); display:flex; align-items:center; gap:4px;">${liveIconHtml(row.live, 15)}${escapeHtml(row.live.name)}</span>
+                  <span style="font-weight: 600; font-size: 13px; text-decoration: underline; text-decoration-color: rgba(255,255,255,0.2); display:flex; align-items:center; gap:4px;">${liveIconHtml(row.live, 15)}${escapeHtml(row.live.name)}${getEventTypeBadgeExport(row.live)}</span>
                   <span style="font-size: 11px; color: var(--text-tertiary);">
                     ${dateStr} · ${escapeHtml(row.live.artist || '')}
                   </span>
@@ -344,6 +344,7 @@ function buildTallyCards(lives, members) {
           <div class="tally-card-title-wrap">
             <div style="display:flex;align-items:center;gap:4px;margin-bottom:2px;min-width:0;">
               <span class="tally-card-name" style="margin-bottom:0;display:flex;align-items:center;gap:4px;flex:1;min-width:0;">${liveIconHtml(row.live, 16)}<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(row.live.name)}</span></span>
+              ${getEventTypeBadgeExport(row.live)}
               ${dayBadge}
               ${statusBadge}
             </div>

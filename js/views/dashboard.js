@@ -2,7 +2,7 @@
 // Dashboard View
 // ============================================
 import { getLives, getMembers, getStats, getDayAttendanceStatus, getDatesForLive } from '../store.js';
-import { formatDateRange, getLiveIconHtml } from './lives.js';
+import { formatDateRange, getLiveIconHtml, getEventTypeBadgeExport } from './lives.js';
 import { showLiveDetailsModal, showMemberDetailsModal } from './details.js';
 import { isJapaneseHoliday, memberAvatarHtml } from '../utils.js';
 
@@ -213,7 +213,7 @@ function renderDateSchedule(month, lives, members, now) {
             return `
               <div class="date-event">
                 <div class="date-event-info" style="cursor:pointer;${live.color ? `border-left:2px solid ${live.color};padding-left:6px;` : ''}" onclick="window.showLiveDetailsModal('${live.id}')">
-                  <span class="date-event-name" style="display:flex;align-items:center;gap:4px;">${liveIconHtml(live, 14)}${escapeHtml(live.name)}${dayLabel ? ` <span class="date-event-day-label">${dayLabel}</span>` : ''}</span>
+                  <span class="date-event-name" style="display:flex;align-items:center;gap:4px;">${liveIconHtml(live, 14)}${escapeHtml(live.name)}${getEventTypeBadgeExport(live)}${dayLabel ? ` <span class="date-event-day-label">${dayLabel}</span>` : ''}</span>
                   <span class="date-event-meta">${escapeHtml(live.artist || '')} · ${escapeHtml(live.venue || '')}</span>
                 </div>
                 <div class="date-event-members">
@@ -362,7 +362,7 @@ function renderLiveCard(live) {
       </div>
       <div class="live-info">
         <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;min-width:0;">
-          <div class="live-name" style="text-decoration:underline;text-decoration-color:rgba(255,255,255,0.2);flex:1;min-width:0;display:flex;align-items:center;gap:6px;">${liveIconHtml(live, 18)}${escapeHtml(live.name)}</div>
+          <div class="live-name" style="text-decoration:underline;text-decoration-color:rgba(255,255,255,0.2);flex:1;min-width:0;display:flex;align-items:center;gap:6px;">${liveIconHtml(live, 18)}${escapeHtml(live.name)}${getEventTypeBadgeExport(live)}</div>
           <span class="badge ${badgeClass}" style="flex-shrink:0;">${badgeText}</span>
         </div>
         <div class="live-meta">
