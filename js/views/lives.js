@@ -207,38 +207,43 @@ export function renderLives() {
     const liveColor = tour.color || '#8B5CF6';
     const children  = childrenByTour.get(tour.id) || [];
     const isPast    = tourEffectiveEnd(tour) < now;
-    const isExpanded = tourExpandState.get(tour.id) !== false; // デフォルト展開
-    const iconHtml  = getLiveIconHtml(tour, 20);
+    const isExpanded = tourExpandState.get(tour.id) !== false;
+    const iconHtml  = getLiveIconHtml(tour, 18);
 
-    // ツアーの日付範囲表示
+    // 日付範囲（子livesの最初〜最後 or tour自身の日付）
     const childStart = children.length > 0 ? effectiveStart(children[0]) : null;
     const childEnd   = children.length > 0 ? effectiveEnd(children[children.length - 1]) : null;
     const tourStart  = tour.dateStart ? new Date(tour.dateStart) : childStart;
     const tourEnd    = tour.dateEnd ? new Date(tour.dateEnd) : childEnd;
-    let dateRangeHtml = '';
+    let dateRange = '';
     if (tourStart) {
-      const s = `${tourStart.getMonth()+1}/${tourStart.getDate()}`;
-      const e = tourEnd && tourEnd.getTime() !== tourStart.getTime() ? `〜${tourEnd.getMonth()+1}/${tourEnd.getDate()}` : '';
-      dateRangeHtml = `<span style="font-size:11px;color:var(--text-tertiary);margin-left:6px;">${s}${e}</span>`;
+      const fmt = d => `${d.getMonth()+1}/${d.getDate()}`;
+      dateRange = tourEnd && tourEnd.getTime() !== tourStart.getTime()
+        ? `${fmt(tourStart)}〜${fmt(tourEnd)}`
+        : fmt(tourStart);
     }
 
+    const metaParts = [];
+    if (tour.artist) metaParts.push(escapeHtml(tour.artist));
+    if (dateRange) metaParts.push(dateRange);
+
     const childrenHtml = children.map(c => buildEntryHtml(c, true)).join('');
-    const addChildBtn = `<button class="btn btn-sm btn-secondary add-tour-child-btn" data-tour-id="${tour.id}" style="font-size:11px;padding:3px 10px;margin-top:6px;">
-      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    const addChildBtn = `<button class="btn btn-sm btn-secondary add-tour-child-btn" data-tour-id="${tour.id}">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
       公演を追加
     </button>`;
 
     return `
       <div class="tour-group${isPast ? ' tour-group-past' : ''}" style="--tour-color:${liveColor};" data-tour-id="${tour.id}">
         <div class="tour-group-header" data-toggle-tour="${tour.id}">
-          <div style="display:flex;align-items:center;gap:6px;flex:1;min-width:0;">
-            <span class="tour-expand-icon">${isExpanded ? '▾' : '▸'}</span>
-            <span style="display:flex;align-items:center;gap:4px;font-weight:600;font-size:14px;color:${liveColor};">
-              ${iconHtml}${escapeHtml(tour.name)}
-            </span>
-            ${dateRangeHtml}
-            <span class="badge-event-type badge-event-tour" style="font-size:10px;padding:1px 6px;">ツアー</span>
-            <span style="font-size:11px;color:var(--text-tertiary);">${children.length}公演</span>
+          <span class="tour-expand-icon">${isExpanded ? '▾' : '▸'}</span>
+          <div class="tour-group-title-area" style="min-width:0;">
+            <div class="tour-group-name-row">
+              ${iconHtml}
+              <span class="tour-group-name">${escapeHtml(tour.name)}</span>
+              <span class="tour-group-count">${children.length}公演</span>
+            </div>
+            ${metaParts.length > 0 ? `<div class="tour-group-meta-row"><span class="tour-group-meta">${metaParts.join(' · ')}</span></div>` : ''}
           </div>
           <div class="lives-entry-actions" style="flex-shrink:0;">
             <button class="btn btn-sm btn-secondary edit-live-btn" data-id="${tour.id}">
@@ -554,14 +559,14 @@ function getEventTypeBadge(live) {
 // ---- ツアー追加・編集モーダル ----
 function openTourModal(tour = null) {
   const isEdit = !!tour;
-  const selIcon  = tour?.icon || '🗺️';
+  const selIcon  = tour?.icon || 'svg:map-pin';
   const selColor = tour?.color || '#C9B8F7';
   const isSvgIcon = selIcon.startsWith('svg:');
   const svgDef = isSvgIcon ? EVENT_SVG_ICONS.find(i => i.id === selIcon.slice(4)) : null;
   const previewContent = tour?.iconImg
     ? `<img id="live-icon-preview-img" src="${tour.iconImg}" style="width:100%;height:100%;object-fit:cover;" />`
     : isSvgIcon && svgDef
-      ? `<span id="live-icon-preview-emoji" style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;color:${selColor};">${svgDef.svg}</span>`
+      ? `<span id="live-icon-preview-emoji" style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;color:${selColor};">${svgDef.svg.replace('<svg ', '<svg width="32" height="32" ')}</span>`
       : `<span id="live-icon-preview-emoji" style="font-size:28px;">${selIcon}</span>`;
 
   showModal(isEdit ? 'ツアーを編集' : 'ツアーを作成', `
@@ -634,7 +639,7 @@ function openTourModal(tour = null) {
       artist: document.getElementById('live-artist').value.trim(),
       dateStart: '', dateEnd: '', venue: '', prefecture: '',
       memo: document.getElementById('live-memo').value.trim(),
-      icon: document.getElementById('live-icon').value || '🗺️',
+      icon: document.getElementById('live-icon').value || 'svg:map-pin',
       iconImg: document.getElementById('live-iconImg').value || '',
       color: document.getElementById('live-color').value || '#C9B8F7',
       eventType: 'tour',
@@ -755,7 +760,7 @@ function openLiveModal(live = null, defaultParentId = null, parentTour = null) {
   const previewContent = live?.iconImg
     ? `<img id="live-icon-preview-img" src="${live.iconImg}" style="width:100%;height:100%;object-fit:cover;" />`
     : isSvgIcon && svgDef
-      ? `<span id="live-icon-preview-emoji" style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;color:${selColor};">${svgDef.svg}</span>`
+      ? `<span id="live-icon-preview-emoji" style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;color:${selColor};">${svgDef.svg.replace('<svg ', '<svg width="32" height="32" ')}</span>`
       : `<span id="live-icon-preview-emoji" style="font-size:28px;">${selIcon}</span>`;
 
   const title = isEdit
