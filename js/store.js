@@ -32,12 +32,19 @@ function liveToRow(live) {
         prefecture:  live.prefecture  ?? null,
         event_type:  live.eventType   ?? null,
         parent_id:   live.parentId    ?? null,
+        open_time:   live.openTime    ?? null,
+        start_time:  live.startTime   ?? null,
+        day_times:   live.dayTimes    ? JSON.stringify(live.dayTimes) : null,
         created_at:  live.createdAt   ?? null,
         updated_at:  live.updatedAt   ?? null,
     };
 }
 
 function rowToLive(row) {
+    let dayTimes = null;
+    if (row.day_times) {
+        try { dayTimes = JSON.parse(row.day_times); } catch { dayTimes = null; }
+    }
     return {
         id:         row.id,
         name:       row.name,
@@ -53,6 +60,9 @@ function rowToLive(row) {
         prefecture: row.prefecture,
         eventType:  row.event_type,
         parentId:   row.parent_id,
+        openTime:   row.open_time,
+        startTime:  row.start_time,
+        dayTimes,
         createdAt:  row.created_at,
         updatedAt:  row.updated_at,
     };

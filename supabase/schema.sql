@@ -22,13 +22,19 @@ create table if not exists lives (
   prefecture  text,
   event_type  text,
   parent_id   text,
+  open_time   text,
+  start_time  text,
+  day_times   text,
   created_at  timestamptz,
   updated_at  timestamptz
 );
 
 -- カラム追加（既存テーブルへのマイグレーション）
-alter table lives add column if not exists event_type text;
-alter table lives add column if not exists parent_id  text;
+alter table lives add column if not exists event_type  text;
+alter table lives add column if not exists parent_id   text;
+alter table lives add column if not exists open_time   text;
+alter table lives add column if not exists start_time  text;
+alter table lives add column if not exists day_times   text;
 
 create table if not exists members (
   id          text primary key,
