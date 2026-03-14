@@ -3172,42 +3172,92 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
 
 /* ---- ツアーグループ ---- */
 .tour-group {
-  border: 1.5px solid var(--tour-color, var(--border-color));
+  border: 1px solid rgba(255,255,255,0.1);
+  border-left: 3px solid var(--tour-color, var(--border-color));
   border-radius: var(--radius-md);
-  background: rgba(255,255,255,0.025);
+  background: rgba(255,255,255,0.03);
   margin-bottom: 10px;
   overflow: hidden;
 }
 
 .tour-group-past {
-  opacity: 0.75;
+  opacity: 0.65;
 }
 
 .tour-group-header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 12px;
+  gap: 10px;
+  padding: 10px 12px 10px 10px;
   cursor: pointer;
   user-select: none;
-  background: rgba(255,255,255,0.03);
-  border-bottom: 1px solid transparent;
+  background: linear-gradient(135deg, rgba(255,255,255,0.04) 0%, transparent 100%);
   transition: background var(--transition-fast);
 }
 
 .tour-group-header:hover {
-  background: rgba(255,255,255,0.06);
+  background: linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 100%);
 }
 
 .tour-expand-icon {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--text-tertiary);
   flex-shrink: 0;
+  width: 14px;
+  text-align: center;
   transition: transform 0.15s;
 }
 
+.tour-group-title-area {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.tour-group-name-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: nowrap;
+  min-width: 0;
+}
+
+.tour-group-name {
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--tour-color, var(--text-primary));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tour-group-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.tour-group-meta {
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+.tour-group-count {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--tour-color, var(--text-secondary));
+  background: color-mix(in srgb, var(--tour-color, #8B5CF6) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--tour-color, #8B5CF6) 25%, transparent);
+  border-radius: 10px;
+  padding: 0px 7px;
+}
+
 .tour-children {
-  border-top: 1px solid rgba(255,255,255,0.06);
+  border-top: 1px solid rgba(255,255,255,0.07);
+  background: rgba(0,0,0,0.12);
 }
 
 .tour-children-hidden {
@@ -3219,7 +3269,7 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
   gap: 0;
   align-items: flex-start;
   border-bottom: 1px solid rgba(255,255,255,0.04);
-  padding: 4px 0 4px 16px;
+  padding: 6px 0 6px 12px;
   transition: background var(--transition-fast);
 }
 
@@ -3235,9 +3285,11 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
   margin: 8px 12px;
   width: calc(100% - 24px);
   justify-content: center;
-  opacity: 0.7;
+  opacity: 0.6;
+  border-style: dashed;
 }
 
 .tour-children .btn.add-tour-child-btn:hover {
   opacity: 1;
+  border-style: solid;
 }
