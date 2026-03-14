@@ -264,7 +264,7 @@ export function renderLives() {
         metaParts.push(tp.join('　'));
       }
     }
-    // 複数日で日ごとに異なる時間の場合、別ラインで各日の時間を表示
+    // 複数日で日ごとに異なる時間の場合、連続する同じ時間をまとめて1行ずつ表示
     let perDayTimesHtml = '';
     {
       const liveDates2 = getDatesForLive(live);
@@ -274,15 +274,32 @@ export function renderLives() {
           dt.openTime === first.openTime && dt.startTime === first.startTime
         );
         if (!allSame) {
-          const items = live.dayTimes.map((dt, i) => {
+          // 連続する同じ時間のDayをグループ化
+          const groups = [];
+          let i = 0;
+          while (i < live.dayTimes.length) {
+            const cur = live.dayTimes[i];
+            let j = i + 1;
+            while (
+              j < live.dayTimes.length &&
+              live.dayTimes[j].openTime === cur.openTime &&
+              live.dayTimes[j].startTime === cur.startTime
+            ) j++;
+            groups.push({ start: i, end: j - 1, dt: cur });
+            i = j;
+          }
+          const lines = groups.map(g => {
             const tp = [];
-            if (dt.openTime)  tp.push(`開場 ${escapeHtml(dt.openTime)}`);
-            if (dt.startTime) tp.push(`開演 ${escapeHtml(dt.startTime)}`);
+            if (g.dt.openTime)  tp.push(`開場 ${escapeHtml(g.dt.openTime)}`);
+            if (g.dt.startTime) tp.push(`開演 ${escapeHtml(g.dt.startTime)}`);
             if (!tp.length) return '';
-            return `<span style="white-space:nowrap;">Day${i + 1} ${tp.join(' ')}</span>`;
+            const dayLabel = g.start === g.end
+              ? `Day${g.start + 1}`
+              : `Day${g.start + 1}〜${g.end + 1}`;
+            return `<div style="white-space:nowrap;">${dayLabel} ${tp.join(' ')}</div>`;
           }).filter(Boolean);
-          if (items.length > 0) {
-            perDayTimesHtml = `<div style="font-size:11px;color:var(--text-tertiary);margin-bottom:4px;display:flex;flex-wrap:wrap;gap:6px;">${items.join('')}</div>`;
+          if (lines.length > 0) {
+            perDayTimesHtml = `<div style="font-size:11px;color:var(--text-tertiary);margin-bottom:4px;">${lines.join('')}</div>`;
           }
         }
       }
