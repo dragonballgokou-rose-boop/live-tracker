@@ -115,6 +115,7 @@ function renderDayTimesSection(dateStart, dateEnd, existingDayTimes, applyAllChe
 }
 
 let livesFilter = 'upcoming'; // 'all' | 'upcoming' | 'past'
+let livesTypeFilter = 'all';  // 'all' | 'live' | 'event'
 let livesViewMode = 'tl';     // 'tl' | 'calendar'
 let livesCalendarDate = new Date();
 let activeFilterMemberIds = new Set();
@@ -205,6 +206,14 @@ export function renderLives() {
     });
   }
 
+  // タイプフィルター（すべて/ライブ/イベント）
+  if (livesTypeFilter !== 'all') {
+    filtered = filtered.filter(l => {
+      if (livesTypeFilter === 'event') return l.eventType === 'event';
+      return l.eventType !== 'event'; // 'live': イベント以外
+    });
+  }
+
   // カウント（ツアー自体は除いて子livesを数える）
   const countLives = l => l.eventType !== 'tour';
   const upcomingCount = allLives.filter(l => countLives(l) && (() => { const e = new Date(l.dateEnd || l.dateStart || l.date || 0); e.setHours(0,0,0,0); return e >= now; })()).length;
@@ -230,18 +239,51 @@ export function renderLives() {
       metaParts.push(pref ? `${escapeHtml(live.venue)}（${pref}）` : escapeHtml(live.venue));
     }
     {
-      // 時間は単日のみインライン表示（複数日は詳細で確認）
+      // 時間表示（単日 or 全日程同一時間の場合にインライン表示）
       const liveDates = getDatesForLive(live);
+      let openTime = '';
+      let startTime = '';
       if (liveDates.length === 1) {
-        const dateStr = liveDates[0].dateStr;
-        const dt = (live.dayTimes || []).find(t => t.date === dateStr);
-        const openTime  = dt?.openTime  || live.openTime  || '';
-        const startTime = dt?.startTime || live.startTime || '';
-        if (openTime || startTime) {
-          const tp = [];
-          if (openTime)  tp.push(`開場 ${escapeHtml(openTime)}`);
-          if (startTime) tp.push(`開演 ${escapeHtml(startTime)}`);
-          metaParts.push(tp.join('　'));
+        const dt = (live.dayTimes || []).find(t => t.date === liveDates[0].dateStr);
+        openTime  = dt?.openTime  || live.openTime  || '';
+        startTime = dt?.startTime || live.startTime || '';
+      } else if (liveDates.length > 1 && live.dayTimes?.length > 0) {
+        const first = live.dayTimes[0];
+        const allSame = live.dayTimes.every(dt =>
+          dt.openTime === first.openTime && dt.startTime === first.startTime
+        );
+        if (allSame) {
+          openTime  = first.openTime  || '';
+          startTime = first.startTime || '';
+        }
+      }
+      if (openTime || startTime) {
+        const tp = [];
+        if (openTime)  tp.push(`開場 ${escapeHtml(openTime)}`);
+        if (startTime) tp.push(`開演 ${escapeHtml(startTime)}`);
+        metaParts.push(tp.join('　'));
+      }
+    }
+    // 複数日で日ごとに異なる時間の場合、別ラインで各日の時間を表示
+    let perDayTimesHtml = '';
+    {
+      const liveDates2 = getDatesForLive(live);
+      if (liveDates2.length > 1 && live.dayTimes?.length > 0) {
+        const first = live.dayTimes[0];
+        const allSame = live.dayTimes.every(dt =>
+          dt.openTime === first.openTime && dt.startTime === first.startTime
+        );
+        if (!allSame) {
+          const items = live.dayTimes.map((dt, i) => {
+            const tp = [];
+            if (dt.openTime)  tp.push(`開場 ${escapeHtml(dt.openTime)}`);
+            if (dt.startTime) tp.push(`開演 ${escapeHtml(dt.startTime)}`);
+            if (!tp.length) return '';
+            return `<span style="white-space:nowrap;">Day${i + 1} ${tp.join(' ')}</span>`;
+          }).filter(Boolean);
+          if (items.length > 0) {
+            perDayTimesHtml = `<div style="font-size:11px;color:var(--text-tertiary);margin-bottom:4px;display:flex;flex-wrap:wrap;gap:6px;">${items.join('')}</div>`;
+          }
         }
       }
     }
@@ -281,6 +323,7 @@ export function renderLives() {
               <span style="margin-left:2px;">${statusBadge}</span>
             </div>
             ${metaParts.length > 0 ? `<div class="history-entry-meta">${metaParts.join(' · ')}</div>` : ''}
+            ${perDayTimesHtml}
             ${goingChips ? `<div class="history-entry-members">${goingChips}</div>` : ''}
             <div class="lives-entry-actions">
               <button class="btn btn-sm btn-secondary edit-live-btn" data-id="${live.id}" style="font-size:11px;padding:2px 8px;">
@@ -310,6 +353,7 @@ export function renderLives() {
             <span style="margin-left:2px;">${statusBadge}</span>
           </div>
           ${metaParts.length > 0 ? `<div class="history-entry-meta">${metaParts.join(' · ')}</div>` : ''}
+          ${perDayTimesHtml}
           ${goingChips ? `<div class="history-entry-members">${goingChips}</div>` : ''}
           <div class="lives-entry-actions">
             <button class="btn btn-sm btn-secondary edit-live-btn" data-id="${live.id}">
@@ -500,19 +544,26 @@ export function renderLives() {
   const allNonTourCount = allLives.filter(l => l.eventType !== 'tour').length;
   content.innerHTML = `
     <div class="section-header">
-      <div style="display:flex;align-items:center;gap:8px;">
-        <div class="live-filter-bar">
-          <button class="live-filter-btn${livesFilter === 'all' ? ' active' : ''}" data-filter="all">
-            全て <span class="filter-count">${allNonTourCount}</span>
-          </button>
-          <button class="live-filter-btn${livesFilter === 'upcoming' ? ' active' : ''}" data-filter="upcoming">
-            予定 <span class="filter-count">${upcomingCount}</span>
-          </button>
-          <button class="live-filter-btn${livesFilter === 'past' ? ' active' : ''}" data-filter="past">
-            終了 <span class="filter-count">${pastCount}</span>
-          </button>
+      <div style="display:flex;flex-direction:column;gap:6px;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div class="live-filter-bar">
+            <button class="live-filter-btn${livesFilter === 'all' ? ' active' : ''}" data-filter="all">
+              全て <span class="filter-count">${allNonTourCount}</span>
+            </button>
+            <button class="live-filter-btn${livesFilter === 'upcoming' ? ' active' : ''}" data-filter="upcoming">
+              予定 <span class="filter-count">${upcomingCount}</span>
+            </button>
+            <button class="live-filter-btn${livesFilter === 'past' ? ' active' : ''}" data-filter="past">
+              終了 <span class="filter-count">${pastCount}</span>
+            </button>
+          </div>
+          ${viewToggleHtml}
         </div>
-        ${viewToggleHtml}
+        <div class="live-filter-bar">
+          <button class="live-type-btn${livesTypeFilter === 'all' ? ' active' : ''}" data-type="all">すべて</button>
+          <button class="live-type-btn${livesTypeFilter === 'live' ? ' active' : ''}" data-type="live">ライブ</button>
+          <button class="live-type-btn${livesTypeFilter === 'event' ? ' active' : ''}" data-type="event">イベント</button>
+        </div>
       </div>
       <div style="display:flex;flex-direction:column;gap:6px;">
         <div style="display:flex;gap:6px;">
@@ -551,6 +602,14 @@ export function renderLives() {
   content.querySelectorAll('.live-filter-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       livesFilter = btn.dataset.filter;
+      renderLives();
+    });
+  });
+
+  // タイプフィルターボタン（すべて/ライブ/イベント）
+  content.querySelectorAll('.live-type-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      livesTypeFilter = btn.dataset.type;
       renderLives();
     });
   });
