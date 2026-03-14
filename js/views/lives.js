@@ -405,8 +405,11 @@ export function renderLives() {
     const dateRanges = children.map(c => {
       const cs = new Date(effectiveStart(c)); cs.setHours(0,0,0,0);
       const ce = new Date(effectiveEnd(c));   ce.setHours(0,0,0,0);
-      if (cs.getTime() === ce.getTime()) return fmtD(cs);
-      return `${fmtD(cs)}~${fmtD(ce, ce.getMonth() !== cs.getMonth())}`;
+      const pref = c.prefecture || extractPrefecture(c.venue || '');
+      const dateStr = cs.getTime() === ce.getTime()
+        ? fmtD(cs)
+        : `${fmtD(cs)}~${fmtD(ce, ce.getMonth() !== cs.getMonth())}`;
+      return pref ? `${escapeHtml(pref)} · ${dateStr}` : dateStr;
     });
 
     // 全公演数（月をまたぐ場合も含めた合計）
