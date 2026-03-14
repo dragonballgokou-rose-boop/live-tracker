@@ -2,7 +2,7 @@
 // Dashboard View
 // ============================================
 import { getLives, getMembers, getStats, getDayAttendanceStatus, getDatesForLive } from '../store.js';
-import { formatDateRange } from './lives.js';
+import { formatDateRange, getLiveIconHtml } from './lives.js';
 import { showLiveDetailsModal, showMemberDetailsModal } from './details.js';
 import { isJapaneseHoliday, memberAvatarHtml } from '../utils.js';
 
@@ -391,7 +391,5 @@ function escapeAttr(text) {
 }
 
 function liveIconHtml(live, size = 14) {
-  if (live.iconImg) return `<img src="${live.iconImg}" style="width:${size}px;height:${size}px;border-radius:3px;object-fit:cover;flex-shrink:0;vertical-align:middle;" />`;
-  if (live.icon) return `<span style="font-size:${Math.round(size * 0.85)}px;flex-shrink:0;line-height:1;">${live.icon}</span>`;
-  return '';
+  return getLiveIconHtml(live, size);
 }
