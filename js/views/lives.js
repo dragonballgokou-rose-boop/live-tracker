@@ -238,6 +238,7 @@ export function renderLives() {
       const pref = live.prefecture || extractPrefecture(live.venue);
       metaParts.push(pref ? `${escapeHtml(live.venue)}（${pref}）` : escapeHtml(live.venue));
     }
+    let inlineTimePart = '';
     {
       // 時間表示（単日 or 全日程同一時間の場合にインライン表示）
       const liveDates = getDatesForLive(live);
@@ -261,7 +262,7 @@ export function renderLives() {
         const tp = [];
         if (openTime)  tp.push(`開場 ${escapeHtml(openTime)}`);
         if (startTime) tp.push(`開演 ${escapeHtml(startTime)}`);
-        metaParts.push(tp.join('　'));
+        inlineTimePart = tp.join('　');
       }
     }
     // 複数日で日ごとに異なる時間の場合、連続する同じ時間をまとめて1行ずつ表示
@@ -340,6 +341,7 @@ export function renderLives() {
               <span style="margin-left:2px;">${statusBadge}</span>
             </div>
             ${metaParts.length > 0 ? `<div class="history-entry-meta">${metaParts.join(' · ')}</div>` : ''}
+            ${inlineTimePart ? `<div class="history-entry-meta">${inlineTimePart}</div>` : ''}
             ${perDayTimesHtml}
             ${goingChips ? `<div class="history-entry-members">${goingChips}</div>` : ''}
             <div class="lives-entry-actions">
@@ -370,6 +372,7 @@ export function renderLives() {
             <span style="margin-left:2px;">${statusBadge}</span>
           </div>
           ${metaParts.length > 0 ? `<div class="history-entry-meta">${metaParts.join(' · ')}</div>` : ''}
+          ${inlineTimePart ? `<div class="history-entry-meta">${inlineTimePart}</div>` : ''}
           ${perDayTimesHtml}
           ${goingChips ? `<div class="history-entry-members">${goingChips}</div>` : ''}
           <div class="lives-entry-actions">
