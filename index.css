@@ -3142,6 +3142,8 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
   border-radius: 10px;
   font-weight: 600;
   vertical-align: middle;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .badge-event-tour {
