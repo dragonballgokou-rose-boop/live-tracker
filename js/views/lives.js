@@ -396,16 +396,15 @@ export function renderLives() {
     const isExpanded = tourExpandState.get(tour.id) !== false;
     const iconHtml  = getLiveIconHtml(tour, 18);
 
-    // 日付範囲：このスライスの最初〜最後
-    const childStart = children.length > 0 ? effectiveStart(children[0]) : null;
-    const childEnd   = children.length > 0 ? effectiveEnd(children[children.length - 1]) : null;
-    let dateRange = '';
-    if (childStart) {
-      const fmt = d => `${d.getMonth()+1}/${d.getDate()}`;
-      dateRange = childEnd && childEnd.getTime() !== childStart.getTime()
-        ? `${fmt(childStart)}〜${fmt(childEnd)}`
-        : fmt(childStart);
-    }
+    // 日付範囲：各公演の日程を列挙（例: 6/13（土）~14（日）, 6/24（水）~25（木））
+    const fmtD = (d, showMonth = true) =>
+      `${showMonth ? `${d.getMonth()+1}/` : ''}${d.getDate()}（${WEEKDAYS[d.getDay()]}）`;
+    const dateRange = children.map(c => {
+      const cs = new Date(effectiveStart(c)); cs.setHours(0,0,0,0);
+      const ce = new Date(effectiveEnd(c));   ce.setHours(0,0,0,0);
+      if (cs.getTime() === ce.getTime()) return fmtD(cs);
+      return `${fmtD(cs)}~${fmtD(ce, ce.getMonth() !== cs.getMonth())}`;
+    }).join(', ');
 
     // 全公演数（月をまたぐ場合も含めた合計）
     const totalCount = allTourChildren.length;
