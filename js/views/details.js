@@ -1,6 +1,6 @@
 import { getLiveById, getMemberById, getMembers, getLives, getDatesForLive, getDayAttendanceStatus } from '../store.js';
 import { showModal, memberAvatarHtml, isJapaneseHoliday } from '../utils.js';
-import { formatDateRange, extractPrefecture } from './lives.js';
+import { formatDateRange, extractPrefecture, getLiveIconHtml } from './lives.js';
 
 const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
 
@@ -24,9 +24,7 @@ function fmtDate(dateStr) {
 }
 
 function liveIconHtml(live, size = 16) {
-    if (live.iconImg) return `<img src="${live.iconImg}" style="width:${size}px;height:${size}px;border-radius:3px;object-fit:cover;flex-shrink:0;vertical-align:middle;" />`;
-    if (live.icon) return `<span style="font-size:${Math.round(size * 0.85)}px;flex-shrink:0;line-height:1;">${live.icon}</span>`;
-    return '';
+    return getLiveIconHtml(live, size);
 }
 
 // ============================================

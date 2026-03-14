@@ -202,26 +202,32 @@ export function renderLives() {
       </div>`;
   }
 
-  // ツアーエントリHTML（子livesを内包）
-  function buildTourGroupHtml(tour) {
+  // ツアーエントリHTML（子livesを内包）- childrenを明示的に受け取る
+  function buildTourGroupHtml(tour, children) {
     const liveColor = tour.color || '#8B5CF6';
-    const children  = childrenByTour.get(tour.id) || [];
-    const isPast    = tourEffectiveEnd(tour) < now;
+    const allTourChildren = childrenByTour.get(tour.id) || [];
+    // このスライスの最終日で過去判定
+    const sliceLastD = children.length > 0 ? effectiveEnd(children[children.length - 1]) : tourEffectiveEnd(tour);
+    const isPast    = sliceLastD < now;
     const isExpanded = tourExpandState.get(tour.id) !== false;
     const iconHtml  = getLiveIconHtml(tour, 18);
 
-    // 日付範囲（子livesの最初〜最後 or tour自身の日付）
+    // 日付範囲：このスライスの最初〜最後
     const childStart = children.length > 0 ? effectiveStart(children[0]) : null;
     const childEnd   = children.length > 0 ? effectiveEnd(children[children.length - 1]) : null;
-    const tourStart  = tour.dateStart ? new Date(tour.dateStart) : childStart;
-    const tourEnd    = tour.dateEnd ? new Date(tour.dateEnd) : childEnd;
     let dateRange = '';
-    if (tourStart) {
+    if (childStart) {
       const fmt = d => `${d.getMonth()+1}/${d.getDate()}`;
-      dateRange = tourEnd && tourEnd.getTime() !== tourStart.getTime()
-        ? `${fmt(tourStart)}〜${fmt(tourEnd)}`
-        : fmt(tourStart);
+      dateRange = childEnd && childEnd.getTime() !== childStart.getTime()
+        ? `${fmt(childStart)}〜${fmt(childEnd)}`
+        : fmt(childStart);
     }
+
+    // 全公演数（月をまたぐ場合も含めた合計）
+    const totalCount = allTourChildren.length;
+    const countLabel = totalCount !== children.length
+      ? `${children.length}/${totalCount}公演`
+      : `${children.length}公演`;
 
     const metaParts = [];
     if (tour.artist) metaParts.push(escapeHtml(tour.artist));
@@ -241,7 +247,7 @@ export function renderLives() {
             <div class="tour-group-name-row">
               ${iconHtml}
               <span class="tour-group-name">${escapeHtml(tour.name)}</span>
-              <span class="tour-group-count">${children.length}公演</span>
+              <span class="tour-group-count">${countLabel}</span>
             </div>
             ${metaParts.length > 0 ? `<div class="tour-group-meta-row"><span class="tour-group-meta">${metaParts.join(' · ')}</span></div>` : ''}
           </div>
@@ -264,29 +270,55 @@ export function renderLives() {
   }
 
   // 年月グループ化（TL用）
+  // ツアーは子livesを月ごとに分割して配置 → 同じツアーが複数月にまたがる場合も正確に表示
+  // groups[key] = Array<{ type:'live', live } | { type:'tour', tour, children, sortDate }>
   const groups = {};
+  const dateKey = d => (!d || d.getTime() === 0)
+    ? '0000-00'
+    : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+
   filtered.forEach(live => {
-    // ツアーフィルター適用中はツアー子items（parentIdあり）をそのままフラット表示
-    const d = effectiveStart(live);
-    if (!d || d.getTime() === 0) {
-      if (!groups['0000-00']) groups['0000-00'] = [];
-      groups['0000-00'].push(live);
-      return;
+    if (!activeTourFilterId && live.eventType === 'tour') {
+      // ツアー：子livesを月ごとに振り分け
+      const tourChildren = childrenByTour.get(live.id) || [];
+      if (tourChildren.length === 0) {
+        // 子なしツアーはツアー自身の日付で配置
+        const key = dateKey(effectiveStart(live));
+        if (!groups[key]) groups[key] = [];
+        groups[key].push({ type: 'tour', tour: live, children: [], sortDate: effectiveStart(live) || new Date(0) });
+      } else {
+        // 月ごとに子をまとめ、それぞれの月にツアーグループを置く
+        const childrenByMonth = {};
+        tourChildren.forEach(c => {
+          const key = dateKey(effectiveStart(c));
+          if (!childrenByMonth[key]) childrenByMonth[key] = [];
+          childrenByMonth[key].push(c);
+        });
+        Object.entries(childrenByMonth).forEach(([key, mc]) => {
+          if (!groups[key]) groups[key] = [];
+          groups[key].push({ type: 'tour', tour: live, children: mc, sortDate: effectiveStart(mc[0]) || new Date(0) });
+        });
+      }
+    } else {
+      const d = effectiveStart(live);
+      const key = dateKey(d);
+      if (!groups[key]) groups[key] = [];
+      groups[key].push({ type: 'live', live, sortDate: d || new Date(0) });
     }
-    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-    if (!groups[key]) groups[key] = [];
-    groups[key].push(live);
   });
+
+  // 各月内をsortDateで昇順ソート
+  Object.values(groups).forEach(arr => arr.sort((a, b) => a.sortDate - b.sortDate));
+
   const sortedKeys = (livesFilter === 'upcoming' || activeTourFilterId)
     ? Object.keys(groups).sort()
     : Object.keys(groups).sort().reverse();
 
   const timelineHtml = sortedKeys.map(key => {
     const [year, mon] = key.split('-');
-    const entries = groups[key].map(live => {
-      // ツアーフィルター中は子として表示、通常モードはツアーグループ表示
-      if (!activeTourFilterId && live.eventType === 'tour') return buildTourGroupHtml(live);
-      return buildEntryHtml(live, !!activeTourFilterId);
+    const entries = groups[key].map(entry => {
+      if (entry.type === 'tour') return buildTourGroupHtml(entry.tour, entry.children);
+      return buildEntryHtml(entry.live, !!activeTourFilterId);
     }).join('');
     const monthLabel = key === '0000-00' ? '未定' : `${year}年${parseInt(mon)}月`;
 
@@ -533,7 +565,7 @@ const EVENT_SVG_ICONS = [
 ];
 
 // アイコンHTML生成（絵文字 / SVG / 画像 を統一的に扱う）
-function getLiveIconHtml(live, size = 22) {
+export function getLiveIconHtml(live, size = 22) {
   if (live.iconImg) {
     return `<img src="${live.iconImg}" style="width:${size}px;height:${size}px;border-radius:5px;object-fit:cover;flex-shrink:0;margin-right:5px;vertical-align:middle;" />`;
   }
