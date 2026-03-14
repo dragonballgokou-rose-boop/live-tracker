@@ -884,15 +884,13 @@ function openLiveModal(live = null, defaultParentId = null, parentTour = null) {
         <input type="date" id="live-date-end" class="form-input" value="${isEdit ? toDateInputValue(live.dateEnd) : ''}" />
       </div>
       <!-- 開場・開演時間 -->
-      <div class="form-row">
-        <div class="form-group" style="flex:1;">
-          <label class="form-label" for="live-open-time">開場時間</label>
-          <input type="time" id="live-open-time" class="form-input" value="${isEdit ? escapeAttr(live.openTime || '') : ''}" />
-        </div>
-        <div class="form-group" style="flex:1;">
-          <label class="form-label" for="live-start-time">開演時間</label>
-          <input type="time" id="live-start-time" class="form-input" value="${isEdit ? escapeAttr(live.startTime || '') : ''}" />
-        </div>
+      <div class="form-group">
+        <label class="form-label" for="live-open-time">開場時間</label>
+        <input type="time" id="live-open-time" class="form-input" value="${isEdit ? escapeAttr(live.openTime || '') : ''}" />
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="live-start-time">開演時間</label>
+        <input type="time" id="live-start-time" class="form-input" value="${isEdit ? escapeAttr(live.startTime || '') : ''}" />
       </div>
       <!-- 会場 -->
       <div class="form-row">
