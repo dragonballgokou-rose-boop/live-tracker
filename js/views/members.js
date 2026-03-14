@@ -30,7 +30,10 @@ const MEMBER_COLORS = [
 export function renderMembers() {
   const content = document.getElementById('page-content');
   const members = getMembers();
-  const lives = getLives();
+  const allLives = getLives();
+  // ツアー親は子公演がある場合のみ除外（子公演のない単体ツアーは集計対象）
+  const tourChildIds = new Set(allLives.filter(l => l.parentId).map(l => l.parentId));
+  const lives = allLives.filter(l => l.eventType !== 'tour' || !tourChildIds.has(l.id));
 
   content.innerHTML = `
     <div class="section-header">
