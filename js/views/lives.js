@@ -230,19 +230,30 @@ export function renderLives() {
       metaParts.push(pref ? `${escapeHtml(live.venue)}（${pref}）` : escapeHtml(live.venue));
     }
     {
-      // 時間は単日のみインライン表示（複数日は詳細で確認）
+      // 時間表示（単日 or 全日程同一時間の場合にインライン表示）
       const liveDates = getDatesForLive(live);
+      let openTime = '';
+      let startTime = '';
       if (liveDates.length === 1) {
-        const dateStr = liveDates[0].dateStr;
-        const dt = (live.dayTimes || []).find(t => t.date === dateStr);
-        const openTime  = dt?.openTime  || live.openTime  || '';
-        const startTime = dt?.startTime || live.startTime || '';
-        if (openTime || startTime) {
-          const tp = [];
-          if (openTime)  tp.push(`開場 ${escapeHtml(openTime)}`);
-          if (startTime) tp.push(`開演 ${escapeHtml(startTime)}`);
-          metaParts.push(tp.join('　'));
+        const dt = (live.dayTimes || []).find(t => t.date === liveDates[0].dateStr);
+        openTime  = dt?.openTime  || live.openTime  || '';
+        startTime = dt?.startTime || live.startTime || '';
+      } else if (liveDates.length > 1 && live.dayTimes?.length > 0) {
+        // 全日程が同じ時間なら表示
+        const first = live.dayTimes[0];
+        const allSame = live.dayTimes.every(dt =>
+          dt.openTime === first.openTime && dt.startTime === first.startTime
+        );
+        if (allSame) {
+          openTime  = first.openTime  || '';
+          startTime = first.startTime || '';
         }
+      }
+      if (openTime || startTime) {
+        const tp = [];
+        if (openTime)  tp.push(`開場 ${escapeHtml(openTime)}`);
+        if (startTime) tp.push(`開演 ${escapeHtml(startTime)}`);
+        metaParts.push(tp.join('　'));
       }
     }
 
