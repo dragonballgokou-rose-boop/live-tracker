@@ -580,10 +580,10 @@ export function renderLives() {
           </div>
           ${viewToggleHtml}
         </div>
-        <div class="live-filter-bar">
-          <button class="live-type-btn${livesTypeFilter === 'all' ? ' active' : ''}" data-type="all">すべて</button>
-          <button class="live-type-btn${livesTypeFilter === 'live' ? ' active' : ''}" data-type="live">ライブ</button>
-          <button class="live-type-btn${livesTypeFilter === 'event' ? ' active' : ''}" data-type="event">イベント</button>
+        <div class="history-filter" style="gap:6px;">
+          <button class="history-chip${livesTypeFilter === 'all' ? ' history-chip-active' : ''}" data-type="all">すべて</button>
+          <button class="history-chip${livesTypeFilter === 'live' ? ' history-chip-active' : ''}" data-type="live">ライブ</button>
+          <button class="history-chip${livesTypeFilter === 'event' ? ' history-chip-active' : ''}" data-type="event">イベント</button>
         </div>
       </div>
       <div style="display:flex;flex-direction:column;gap:6px;">
@@ -628,7 +628,7 @@ export function renderLives() {
   });
 
   // タイプフィルターボタン（すべて/ライブ/イベント）
-  content.querySelectorAll('.live-type-btn').forEach(btn => {
+  content.querySelectorAll('[data-type]').forEach(btn => {
     btn.addEventListener('click', () => {
       livesTypeFilter = btn.dataset.type;
       renderLives();
