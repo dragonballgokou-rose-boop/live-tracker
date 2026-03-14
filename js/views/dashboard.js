@@ -307,9 +307,11 @@ function renderDashboardCalendar(month, lives, members, now) {
 
 // ---------- Member Ranking ----------
 function getMemberRanking(members, lives) {
+  const tourChildIds = new Set(lives.filter(l => l.parentId).map(l => l.parentId));
+  const countableLives = lives.filter(l => l.eventType !== 'tour' || !tourChildIds.has(l.id));
   const ranked = members.map(member => {
     let goingCount = 0;
-    lives.filter(l => l.eventType !== 'tour').forEach(live => {
+    countableLives.forEach(live => {
       const dates = getDatesForLive(live);
       dates.forEach(d => {
         if (getDayAttendanceStatus(live.id, d.dateStr, member.id) === 'going') goingCount++;
