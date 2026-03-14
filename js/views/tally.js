@@ -32,7 +32,7 @@ function liveIconHtml(live, size = 16) {
 
 export function renderTally() {
   const content = document.getElementById('page-content');
-  const lives = getLives();
+  const lives = getLives().filter(l => l.eventType !== 'tour');
   const members = getMembers();
 
   // URL params から初期フィルター状態を復元
