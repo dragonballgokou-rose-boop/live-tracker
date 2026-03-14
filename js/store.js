@@ -30,6 +30,8 @@ function liveToRow(live) {
         icon_img:    live.iconImg     ?? null,
         color:       live.color       ?? null,
         prefecture:  live.prefecture  ?? null,
+        event_type:  live.eventType   ?? null,
+        parent_id:   live.parentId    ?? null,
         created_at:  live.createdAt   ?? null,
         updated_at:  live.updatedAt   ?? null,
     };
@@ -49,6 +51,8 @@ function rowToLive(row) {
         iconImg:    row.icon_img,
         color:      row.color,
         prefecture: row.prefecture,
+        eventType:  row.event_type,
+        parentId:   row.parent_id,
         createdAt:  row.created_at,
         updatedAt:  row.updated_at,
     };
