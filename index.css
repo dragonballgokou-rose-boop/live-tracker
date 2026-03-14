@@ -587,9 +587,10 @@ a.stat-card:active {
   color: var(--text-tertiary);
 }
 
-/* iOS date/month input の高さ・左寄せを統一 */
+/* iOS date/month/time input の高さ・左寄せを統一 */
 input[type="date"].form-input,
-input[type="month"].form-input {
+input[type="month"].form-input,
+input[type="time"].form-input {
   -webkit-appearance: none;
   appearance: none;
   line-height: 1.5;
@@ -597,7 +598,8 @@ input[type="month"].form-input {
 }
 
 input[type="date"].form-input::-webkit-date-and-time-value,
-input[type="month"].form-input::-webkit-date-and-time-value {
+input[type="month"].form-input::-webkit-date-and-time-value,
+input[type="time"].form-input::-webkit-date-and-time-value {
   text-align: left;
   min-height: 1.5em;
   padding: 0;
