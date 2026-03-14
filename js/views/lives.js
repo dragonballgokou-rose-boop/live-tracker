@@ -122,6 +122,12 @@ export function renderLives() {
       const pref = live.prefecture || extractPrefecture(live.venue);
       metaParts.push(pref ? `${escapeHtml(live.venue)}（${pref}）` : escapeHtml(live.venue));
     }
+    if (live.openTime || live.startTime) {
+      const timeParts = [];
+      if (live.openTime) timeParts.push(`開場 ${escapeHtml(live.openTime)}`);
+      if (live.startTime) timeParts.push(`開演 ${escapeHtml(live.startTime)}`);
+      metaParts.push(timeParts.join('　'));
+    }
 
     const statusBadge = isOngoing
       ? `<span class="badge badge-today" style="font-size:10px;padding:1px 8px;">開催中</span>`
@@ -877,6 +883,17 @@ function openLiveModal(live = null, defaultParentId = null, parentTour = null) {
         <label class="form-label" for="live-date-end">終了日 <span style="color: var(--text-tertiary); font-size: 12px;">(複数日の場合)</span></label>
         <input type="date" id="live-date-end" class="form-input" value="${isEdit ? toDateInputValue(live.dateEnd) : ''}" />
       </div>
+      <!-- 開場・開演時間 -->
+      <div class="form-row">
+        <div class="form-group" style="flex:1;">
+          <label class="form-label" for="live-open-time">開場時間</label>
+          <input type="time" id="live-open-time" class="form-input" value="${isEdit ? escapeAttr(live.openTime || '') : ''}" />
+        </div>
+        <div class="form-group" style="flex:1;">
+          <label class="form-label" for="live-start-time">開演時間</label>
+          <input type="time" id="live-start-time" class="form-input" value="${isEdit ? escapeAttr(live.startTime || '') : ''}" />
+        </div>
+      </div>
       <!-- 会場 -->
       <div class="form-row">
         <div class="form-group" style="flex: 2;">
@@ -948,6 +965,8 @@ function openLiveModal(live = null, defaultParentId = null, parentTour = null) {
       dateEnd: dateEnd || '',
       venue: document.getElementById('live-venue').value.trim(),
       prefecture: document.getElementById('live-pref').value.trim(),
+      openTime: document.getElementById('live-open-time').value || '',
+      startTime: document.getElementById('live-start-time').value || '',
       memo: document.getElementById('live-memo').value.trim(),
       icon: document.getElementById('live-icon').value || '🎵',
       iconImg: document.getElementById('live-iconImg').value || '',
