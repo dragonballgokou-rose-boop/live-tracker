@@ -51,25 +51,20 @@ export function renderMembers() {
         ${members.map(member => {
     let goingCount = 0;
     let totalPossibleSchedules = 0;
-    let pastGoingCount = 0;
-    let totalPastSchedules = 0;
     const now = new Date();
     now.setHours(0, 0, 0, 0);
 
-    lives.filter(l => l.eventType !== 'tour').forEach(live => {
+    lives.forEach(live => {
       const dates = getDatesForLive(live);
       totalPossibleSchedules += dates.length;
       dates.forEach(d => {
-        const isPast = new Date(d.dateStr + 'T00:00:00') < now;
-        if (isPast) totalPastSchedules++;
         if (getDayAttendanceStatus(live.id, d.dateStr, member.id) === 'going') {
           goingCount++;
-          if (isPast) pastGoingCount++;
         }
       });
     });
 
-    const rate = totalPastSchedules > 0 ? Math.round((pastGoingCount / totalPastSchedules) * 100) : 0;
+    const rate = totalPossibleSchedules > 0 ? Math.round((goingCount / totalPossibleSchedules) * 100) : 0;
 
     return `
           <div class="card member-card" style="cursor: pointer; --member-color: ${member.color};" onclick="showMemberDetailsModal('${member.id}')" title="メンバー詳細を見る">
@@ -86,7 +81,7 @@ export function renderMembers() {
                 <div class="member-progress-track">
                   <div class="member-progress-fill" style="width: ${rate}%; background: ${member.color};"></div>
                 </div>
-                <span class="member-stat-label">${pastGoingCount} / ${totalPastSchedules} 回</span>
+                <span class="member-stat-label">${goingCount} / ${totalPossibleSchedules} 回</span>
               </div>
               <div class="member-card-actions">
                 <button class="btn btn-icon btn-secondary edit-member-btn" data-id="${member.id}" title="編集" onclick="event.stopPropagation()">
