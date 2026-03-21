@@ -2172,7 +2172,8 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
   align-items: center;
   justify-content: center;
   gap: 3px;
-  padding: 5px 8px;
+  width: 60px;
+  padding: 5px 0;
   border-radius: var(--radius-full);
   border: 1px solid transparent;
   transition:
@@ -2210,7 +2211,7 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
 .bottom-nav-item.active .nav-pill {
   flex-direction: column;
   gap: 3px;
-  padding: 5px 8px;
+  padding: 5px 0;
   background: linear-gradient(135deg,
     rgba(139, 92, 246, 0.60) 0%,
     rgba(168, 85, 247, 0.42) 50%,
