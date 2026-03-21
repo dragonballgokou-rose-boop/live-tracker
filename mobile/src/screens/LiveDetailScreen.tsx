@@ -250,7 +250,7 @@ function SummaryChip({ icon, color, label, count }: { icon: any; color: string; 
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bgPrimary },
-  content: { padding: 16, paddingBottom: 40 },
+  content: { padding: 16, paddingBottom: 100 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.bgPrimary },
 
   heroCard: {
