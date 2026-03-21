@@ -10,6 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import DashboardScreen from './src/screens/DashboardScreen';
 import TallyScreen from './src/screens/TallyScreen';
+import ChartScreen from './src/screens/ChartScreen';
 import LivesScreen from './src/screens/LivesScreen';
 import LiveDetailScreen from './src/screens/LiveDetailScreen';
 import MembersScreen from './src/screens/MembersScreen';
@@ -97,12 +98,15 @@ export default function App() {
             tabBarActiveTintColor: Colors.accentPurpleLight,
             tabBarInactiveTintColor: Colors.textTertiary,
             tabBarLabelStyle: { fontSize: 11, fontWeight: '600', marginTop: 2 },
+            tabBarLabelPosition: 'below-icon',
             tabBarIcon: ({ focused, color, size }) => {
               let iconName: keyof typeof Ionicons.glyphMap = 'home-outline';
               if (route.name === 'TOP') {
                 iconName = focused ? 'home' : 'home-outline';
               } else if (route.name === '集計表') {
                 iconName = focused ? 'stats-chart' : 'stats-chart-outline';
+              } else if (route.name === 'グラフ') {
+                iconName = focused ? 'bar-chart' : 'bar-chart-outline';
               } else if (route.name === 'ライブ') {
                 iconName = focused ? 'star' : 'star-outline';
               } else if (route.name === 'メンバー') {
@@ -123,6 +127,11 @@ export default function App() {
             name="集計表"
             component={TallyScreen}
             options={{ title: '集計表', tabBarLabel: '集計表', tabBarButton: (props) => <TabButton {...props} /> }}
+          />
+          <Tab.Screen
+            name="グラフ"
+            component={ChartScreen}
+            options={{ title: 'グラフ', tabBarLabel: 'グラフ', tabBarButton: (props) => <TabButton {...props} /> }}
           />
           <Tab.Screen
             name="ライブ"
