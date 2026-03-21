@@ -145,10 +145,10 @@ const tabBarStyles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 4,
-    paddingVertical: 8,
+    paddingVertical: 0,
+    height: 60,
     borderRadius: 16,
     backgroundColor: 'transparent',
-    // Bug1修正: opacity をここに置かない（子の color alpha で透明度を制御）
   },
   tabItemActive: {
     backgroundColor: 'rgba(167,139,250,0.15)',
