@@ -1,8 +1,10 @@
 import React from 'react';
 import { StatusBar } from 'expo-status-bar';
+import { View, TouchableOpacity } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import type { BottomTabBarButtonProps } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -22,6 +24,31 @@ export type LivesStackParamList = {
 
 const Tab = createBottomTabNavigator();
 const LivesStack = createNativeStackNavigator<LivesStackParamList>();
+
+function TabButton({ children, style, onPress, onLongPress, accessibilityState, ...props }: BottomTabBarButtonProps) {
+  const focused = accessibilityState?.selected;
+  return (
+    <TouchableOpacity
+      {...props}
+      style={[{ flex: 1, alignItems: 'center', justifyContent: 'center' }, style]}
+      onPress={onPress}
+      onLongPress={onLongPress}
+      accessibilityState={accessibilityState}
+    >
+      <View style={{
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: focused ? 'rgba(167, 139, 250, 0.22)' : 'transparent',
+        borderRadius: 24,
+        paddingHorizontal: 14,
+        paddingVertical: 5,
+        minWidth: 68,
+      }}>
+        {children}
+      </View>
+    </TouchableOpacity>
+  );
+}
 
 function LivesStackNavigator() {
   return (
@@ -90,27 +117,27 @@ export default function App() {
           <Tab.Screen
             name="TOP"
             component={DashboardScreen}
-            options={{ title: 'ダッシュボード', tabBarLabel: 'TOP' }}
+            options={{ title: 'ダッシュボード', tabBarLabel: 'TOP', tabBarButton: (props) => <TabButton {...props} /> }}
           />
           <Tab.Screen
             name="集計表"
             component={TallyScreen}
-            options={{ title: '集計表', tabBarLabel: '集計表' }}
+            options={{ title: '集計表', tabBarLabel: '集計表', tabBarButton: (props) => <TabButton {...props} /> }}
           />
           <Tab.Screen
             name="ライブ"
             component={LivesStackNavigator}
-            options={{ headerShown: false, tabBarLabel: 'ライブ' }}
+            options={{ headerShown: false, tabBarLabel: 'ライブ', tabBarButton: (props) => <TabButton {...props} /> }}
           />
           <Tab.Screen
             name="メンバー"
             component={MembersScreen}
-            options={{ title: 'メンバー', tabBarLabel: 'メンバー' }}
+            options={{ title: 'メンバー', tabBarLabel: 'メンバー', tabBarButton: (props) => <TabButton {...props} /> }}
           />
           <Tab.Screen
             name="設定"
             component={SettingsScreen}
-            options={{ title: '設定', tabBarLabel: '設定' }}
+            options={{ title: '設定', tabBarLabel: '設定', tabBarButton: (props) => <TabButton {...props} /> }}
           />
         </Tab.Navigator>
       </NavigationContainer>
