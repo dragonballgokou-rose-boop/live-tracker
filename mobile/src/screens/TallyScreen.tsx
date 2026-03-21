@@ -350,7 +350,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 10,
     borderWidth: 1.5,
-    minWidth: 90,
+    width: 96,
     justifyContent: 'center',
   },
   statusIcon: { fontSize: 17, fontWeight: '800' },
