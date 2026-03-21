@@ -2203,11 +2203,11 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
   color: #fff;
 }
 
-/* Active: horizontal liquid glass pill (icon + label side by side, GitHub style) */
+/* Active: vertical pill (icon on top, label below) */
 .bottom-nav-item.active .nav-pill {
-  flex-direction: row;
-  gap: 5px;
-  padding: 8px 14px;
+  flex-direction: column;
+  gap: 3px;
+  padding: 6px 14px;
   background: linear-gradient(135deg,
     rgba(139, 92, 246, 0.60) 0%,
     rgba(168, 85, 247, 0.42) 50%,
