@@ -2184,17 +2184,17 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
 .bottom-nav {
   display: flex;
   position: fixed;
-  bottom: calc(24px + env(safe-area-inset-bottom, 0px));
-  left: 50%;
-  transform: translateX(-50%);
-  width: calc(100% - 48px);
+  bottom: 0;
+  left: 12px;
+  right: 12px;
   max-width: 480px;
+  margin: 0 auto;
 
   background: rgba(20, 20, 30, 0.55);
   backdrop-filter: blur(24px) saturate(200%);
   -webkit-backdrop-filter: blur(24px) saturate(200%);
 
-  border-radius: 100px;
+  border-radius: 28px 28px 20px 20px;
   border: 1px solid rgba(255, 255, 255, 0.2);
 
   box-shadow:
@@ -2203,8 +2203,10 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
 
   z-index: 101;
   padding: 5px 6px;
+  padding-bottom: calc(env(safe-area-inset-bottom) + 8px);
   gap: 2px;
   isolation: isolate;
+  overflow: hidden;
 }
 
 /* 上端グラデーションライン */
@@ -2263,7 +2265,7 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
 
 .bottom-nav-item:hover .nav-pill,
 .bottom-nav-item:active .nav-pill {
-  transform: scale(1.05);
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .bottom-nav-item.active {
@@ -2277,18 +2279,18 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3);
 }
 
-/* content padding adjustment because nav is now floating */
+/* content padding adjustment because nav is fixed at bottom */
 .page-content {
-  padding-bottom: calc(var(--space-xl) + 74px + env(safe-area-inset-bottom, 0px)) !important;
+  padding-bottom: calc(var(--space-xl) + 72px + env(safe-area-inset-bottom, 0px)) !important;
 }
 
 @media (max-width: 768px) {
   .page-content {
-    padding-bottom: calc(var(--space-md) + 74px + env(safe-area-inset-bottom, 0px)) !important;
+    padding-bottom: calc(var(--space-md) + 72px + env(safe-area-inset-bottom, 0px)) !important;
   }
 
   .toast-container {
-    bottom: calc(var(--space-md) + 74px + env(safe-area-inset-bottom, 0px));
+    bottom: calc(var(--space-md) + 72px + env(safe-area-inset-bottom, 0px));
   }
 }
 
