@@ -21,6 +21,14 @@
 </head>
 
 <body>
+  <!-- SVG filter defs — liquid glass distortion -->
+  <svg style="width:0;height:0;position:absolute" aria-hidden="true">
+    <filter id="glass-distort">
+      <feTurbulence baseFrequency="0.015" numOctaves="2"/>
+      <feDisplacementMap in="SourceGraphic" scale="6"/>
+    </filter>
+  </svg>
+
   <div id="app">
     <!-- Main Content -->
     <main id="main-content" class="main-content">
@@ -73,6 +81,9 @@
         <!-- ページ内容がここに動的に挿入される -->
       </div>
     </main>
+
+    <!-- Liquid Glass blob — color source visible through nav glass -->
+    <div class="nav-blob" aria-hidden="true"></div>
 
     <!-- Bottom Navigation (always visible) -->
     <nav class="bottom-nav" id="bottom-nav">
