@@ -193,7 +193,7 @@ function LiveCard({ live, members }: { live: Live; members: Member[] }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bgPrimary },
-  content: { padding: 16, paddingBottom: 100 },
+  content: { padding: 16, paddingBottom: 120 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.bgPrimary },
   syncBanner: {
     backgroundColor: Colors.accentPurple + '22',

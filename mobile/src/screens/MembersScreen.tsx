@@ -214,7 +214,7 @@ export default function MembersScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bgPrimary },
-  content: { padding: 16, paddingBottom: 100 },
+  content: { padding: 16, paddingBottom: 120 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
   count: { color: Colors.textSecondary, fontSize: 14 },
   addBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.accentPurple, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, gap: 4 },
