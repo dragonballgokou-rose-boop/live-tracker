@@ -2093,20 +2093,50 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
   }
 }
 
-/* ---------- Bottom Navigation ---------- */
+/* ---------- Bottom Navigation — Floating Glass Pill ---------- */
 .bottom-nav {
   display: flex;
   position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  background: rgba(6, 6, 26, 0.72);
-  backdrop-filter: blur(40px) saturate(200%);
-  -webkit-backdrop-filter: blur(40px) saturate(200%);
-  border-top: 1px solid var(--glass-border);
-  box-shadow: 0 -1px 0 rgba(255,255,255,0.05), 0 -8px 32px rgba(0,0,0,0.4);
+  bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  left: 50%;
+  transform: translateX(-50%);
+  width: calc(100% - 32px);
+  max-width: 480px;
+
+  /* Glass */
+  background: rgba(12, 10, 32, 0.62);
+  backdrop-filter: blur(48px) saturate(220%);
+  -webkit-backdrop-filter: blur(48px) saturate(220%);
+
+  /* Pill shape */
+  border-radius: var(--radius-full);
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-top: 1px solid rgba(255, 255, 255, 0.18); /* top highlight */
+
+  /* Depth */
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.55),
+    0 2px 8px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.10),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.25);
+
   z-index: 101;
-  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding: 5px 6px;
+  gap: 2px;
+}
+
+/* Subtle inner gradient shimmer */
+.bottom-nav::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(180deg,
+    rgba(255, 255, 255, 0.055) 0%,
+    transparent 50%,
+    rgba(0, 0, 0, 0.10) 100%
+  );
+  pointer-events: none;
 }
 
 .bottom-nav-item {
@@ -2115,62 +2145,84 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 3px;
-  height: 56px;
-  color: var(--text-tertiary);
+  gap: 2px;
+  height: 52px;
+  color: rgba(165, 180, 252, 0.45);
   text-decoration: none;
   font-size: 10px;
   font-weight: 600;
-  padding: 4px;
-  transition: color var(--transition-fast), transform var(--transition-fast);
+  padding: 4px 2px;
+  transition: color var(--transition-base), transform var(--transition-base);
   position: relative;
   letter-spacing: 0.02em;
+  border-radius: calc(var(--radius-full) - 4px);
+  z-index: 1;
 }
 
 .bottom-nav-item svg {
-  transition: transform var(--transition-base);
+  transition: transform var(--transition-base), filter var(--transition-base);
+}
+
+.bottom-nav-item:hover {
+  color: var(--text-secondary);
 }
 
 .bottom-nav-item.active {
-  color: var(--accent-purple-light);
+  color: #fff;
 }
 
-/* Liquid pill active indicator */
+/* Active: floating glass pill background */
 .bottom-nav-item.active::before {
   content: '';
   position: absolute;
-  top: 6px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 44px;
-  height: 32px;
-  background: rgba(139, 92, 246, 0.16);
-  border-radius: var(--radius-full);
-  border: 1px solid rgba(139, 92, 246, 0.25);
-  box-shadow: 0 0 12px rgba(139, 92, 246, 0.2);
+  inset: 3px 4px;
+  background: linear-gradient(160deg,
+    rgba(139, 92, 246, 0.50) 0%,
+    rgba(168, 85, 247, 0.35) 40%,
+    rgba(236, 72, 153, 0.25) 100%
+  );
+  border-radius: calc(var(--radius-full) - 6px);
+  border: 1px solid rgba(167, 139, 250, 0.35);
+  box-shadow:
+    0 0 16px rgba(139, 92, 246, 0.45),
+    0 0 32px rgba(139, 92, 246, 0.20),
+    inset 0 1px 0 rgba(255, 255, 255, 0.20);
+  backdrop-filter: blur(8px);
   z-index: -1;
 }
 
+/* Remove old top-bar after */
 .bottom-nav-item.active::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 28px;
-  height: 2px;
-  background: var(--gradient-primary);
-  border-radius: 0 0 4px 4px;
-  box-shadow: 0 0 8px rgba(139, 92, 246, 0.6);
+  display: none;
 }
 
 .bottom-nav-item.active svg {
-  transform: scale(1.1);
-  filter: drop-shadow(0 0 6px rgba(139, 92, 246, 0.6));
+  transform: scale(1.12) translateY(-1px);
+  filter: drop-shadow(0 0 8px rgba(167, 139, 250, 0.9));
+}
+
+.bottom-nav-item:active {
+  transform: scale(0.91);
+  transition-duration: 80ms;
 }
 
 .bottom-nav-item:active svg {
   transform: scale(0.88);
+}
+
+/* content padding adjustment because nav is now floating */
+.page-content {
+  padding-bottom: calc(var(--space-xl) + 74px + env(safe-area-inset-bottom, 0px)) !important;
+}
+
+@media (max-width: 768px) {
+  .page-content {
+    padding-bottom: calc(var(--space-md) + 74px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  .toast-container {
+    bottom: calc(var(--space-md) + 74px + env(safe-area-inset-bottom, 0px));
+  }
 }
 
 /* 6項目のボトムナビ対応: フォントを少し小さく */
