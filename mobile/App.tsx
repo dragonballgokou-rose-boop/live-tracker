@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -36,6 +36,51 @@ const TAB_ITEMS = [
   { name: '設定',  iconFocused: 'settings'    as const, iconUnfocused: 'settings-outline'     as const, label: '設定' },
 ];
 
+// ---- Single Tab Item (manages its own press state) ----
+type TabItemProps = {
+  route: { key: string; name: string };
+  focused: boolean;
+  tab: typeof TAB_ITEMS[number];
+  accessibilityLabel?: string;
+  onPress: () => void;
+  onLongPress: () => void;
+};
+
+function TabItem({ route, focused, tab, accessibilityLabel, onPress, onLongPress }: TabItemProps) {
+  const [pressed, setPressed] = useState(false);
+  const iconColor = focused ? '#A78BFA' : 'rgba(255,255,255,0.45)';
+
+  const itemStyle = [
+    tabBarStyles.tabItem,
+    focused && tabBarStyles.tabItemActive,
+    pressed && tabBarStyles.tabItemPressed,
+  ];
+
+  return (
+    <TouchableOpacity
+      key={route.key}
+      style={itemStyle}
+      onPress={onPress}
+      onLongPress={onLongPress}
+      onPressIn={() => setPressed(true)}
+      onPressOut={() => setPressed(false)}
+      activeOpacity={1}
+      accessibilityRole="button"
+      accessibilityState={focused ? { selected: true } : {}}
+      accessibilityLabel={accessibilityLabel}
+    >
+      <Ionicons
+        name={focused ? tab.iconFocused : tab.iconUnfocused}
+        size={22}
+        color={pressed ? '#ffffff' : iconColor}
+      />
+      <Text style={[tabBarStyles.label, { color: pressed ? '#ffffff' : iconColor }]}>
+        {tab.label}
+      </Text>
+    </TouchableOpacity>
+  );
+}
+
 // ---- Custom Tab Bar ----
 function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
@@ -45,8 +90,6 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
       {state.routes.map((route, index) => {
         const focused = state.index === index;
         const tab = TAB_ITEMS.find(t => t.name === route.name) ?? TAB_ITEMS[0];
-        const iconColor = focused ? '#ffffff' : 'rgba(255,255,255,0.45)';
-        const labelColor = focused ? '#ffffff' : 'rgba(255,255,255,0.45)';
 
         const onPress = () => {
           const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
@@ -60,25 +103,15 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
         };
 
         return (
-          <TouchableOpacity
+          <TabItem
             key={route.key}
-            style={[tabBarStyles.tabItem, focused && tabBarStyles.tabItemActive]}
+            route={route}
+            focused={focused}
+            tab={tab}
+            accessibilityLabel={descriptors[route.key].options.tabBarAccessibilityLabel}
             onPress={onPress}
             onLongPress={onLongPress}
-            activeOpacity={0.8}
-            accessibilityRole="button"
-            accessibilityState={focused ? { selected: true } : {}}
-            accessibilityLabel={descriptors[route.key].options.tabBarAccessibilityLabel}
-          >
-            <Ionicons
-              name={focused ? tab.iconFocused : tab.iconUnfocused}
-              size={22}
-              color={iconColor}
-            />
-            <Text style={[tabBarStyles.label, { color: labelColor }]}>
-              {tab.label}
-            </Text>
-          </TouchableOpacity>
+          />
         );
       })}
     </View>
@@ -111,9 +144,15 @@ const tabBarStyles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 16,
     backgroundColor: 'transparent',
+    opacity: 0.45,
   },
   tabItemActive: {
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: 'rgba(167,139,250,0.15)',
+    opacity: 1.0,
+  },
+  tabItemPressed: {
+    opacity: 1.0,
+    transform: [{ scale: 1.08 }, { translateY: -2 }],
   },
   label: {
     fontSize: 10,
