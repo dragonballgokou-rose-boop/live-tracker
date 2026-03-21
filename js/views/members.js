@@ -3,6 +3,7 @@
 // ============================================
 import { getMembers, addMember, updateMember, deleteMember, getAttendanceByMember, getLives, getDatesForLive, getDayAttendanceStatus } from '../store.js';
 import { showModal, closeModal, showToast, showConfirm, memberAvatarHtml } from '../utils.js';
+import { dataUrlToClaudeImageBlock } from '../claude.js';
 
 const MEMBER_COLORS = [
   // パープル・バイオレット
@@ -214,6 +215,10 @@ function openMemberModal(member = null) {
     if (!file) return;
     resizeImageToBase64(file, 160, (base64) => {
       document.getElementById('member-avatar').value = base64;
+      // Claude API に画像を送る際は dataUrlToClaudeImageBlock を使用する。
+      // これにより media_type（例: "image/jpeg"）が自動付与され、
+      // "media_type: Field required" エラーが解消される。
+      renderMemberForm._currentClaudeImageBlock = dataUrlToClaudeImageBlock(base64);
       const area = document.querySelector('.avatar-upload-area');
       const placeholder = document.getElementById('avatar-preview-placeholder');
       const existingImg = document.getElementById('avatar-preview-img');

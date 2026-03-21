@@ -4,6 +4,7 @@
 import { getLives, addLive, updateLive, deleteLive, getMembers, getDayAttendanceStatus, setDayAttendance, getDatesForLive } from '../store.js';
 import { showModal, closeModal, showToast, showConfirm, isJapaneseHoliday } from '../utils.js';
 import { showLiveDetailsModal, showMemberDetailsModal } from './details.js';
+import { dataUrlToClaudeImageBlock } from '../claude.js';
 
 const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
 
@@ -907,6 +908,10 @@ function setupIconColorPickers(existingItem = null) {
     if (!file) return;
     resizeLiveIconToBase64(file, 200, (base64) => {
       document.getElementById('live-iconImg').value = base64;
+      // Claude API に画像を送る際は dataUrlToClaudeImageBlock を使用する。
+      // これにより media_type（例: "image/jpeg"）が自動付与され、
+      // "media_type: Field required" エラーが解消される。
+      setupIconColorPickers._currentClaudeImageBlock = dataUrlToClaudeImageBlock(base64);
       const preview = document.getElementById('live-icon-preview');
       preview.innerHTML = `<img id="live-icon-preview-img" src="${base64}" style="width:100%;height:100%;object-fit:cover;" />`;
       if (!document.getElementById('live-icon-remove-btn')) {
