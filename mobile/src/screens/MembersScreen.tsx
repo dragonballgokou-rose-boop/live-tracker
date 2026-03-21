@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { Colors, MEMBER_COLORS } from '../utils/theme';
-import { getMembers, addMember, updateMember, deleteMember, getLives, getDatesForLive, getDayAttendanceStatus } from '../store';
+import { getMembers, addMember, updateMember, deleteMember, getLives, getAttendanceStatus } from '../store';
 import { Member } from '../types';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -27,16 +27,13 @@ export default function MembersScreen() {
   const loadData = useCallback(async () => {
     const [mems, lives] = await Promise.all([getMembers(), getLives()]);
     setMembers(mems);
-    // Compute going count per member
+    // Compute going count per member (counted per live, not per day)
     const stats: Record<string, number> = {};
     for (const m of mems) {
       let count = 0;
       for (const live of lives) {
-        const dates = getDatesForLive(live);
-        for (const d of dates) {
-          const s = await getDayAttendanceStatus(live.id, d.dateStr, m.id);
-          if (s === 'going') count++;
-        }
+        const s = await getAttendanceStatus(live.id, m.id);
+        if (s === 'going') count++;
       }
       stats[m.id] = count;
     }
@@ -118,28 +115,32 @@ export default function MembersScreen() {
         ) : (
           members.map((member) => (
             <View key={member.id} style={styles.card}>
-              <View style={[styles.avatar, { backgroundColor: member.color }]}>
-                <Text style={styles.avatarText}>{member.name.charAt(0)}</Text>
+              <View style={styles.cardTop}>
+                <View style={[styles.avatar, { backgroundColor: member.color }]}>
+                  <Text style={styles.avatarText}>{member.name.charAt(0)}</Text>
+                </View>
+                <View style={styles.cardNameArea}>
+                  <Text style={styles.cardName}>{member.name}</Text>
+                  {member.nickname ? (
+                    <Text style={styles.cardNickname}>「{member.nickname}」</Text>
+                  ) : null}
+                </View>
               </View>
-              <View style={styles.cardInfo}>
-                <Text style={styles.cardName}>{member.name}</Text>
-                {member.nickname ? (
-                  <Text style={styles.cardNickname}>「{member.nickname}」</Text>
-                ) : null}
+              <View style={styles.cardBottom}>
                 <Text style={styles.cardStat}>
                   <Text style={{ color: Colors.accentGreen, fontWeight: '700' }}>
                     {memberStats[member.id] ?? 0}
                   </Text>
                   {' '}参戦
                 </Text>
-              </View>
-              <View style={styles.cardActions}>
-                <TouchableOpacity onPress={() => openEdit(member)} style={styles.iconBtn}>
-                  <Ionicons name="pencil" size={18} color={Colors.accentPurpleLight} />
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => handleDelete(member)} style={styles.iconBtn}>
-                  <Ionicons name="trash" size={18} color={Colors.accentRed} />
-                </TouchableOpacity>
+                <View style={styles.cardActions}>
+                  <TouchableOpacity onPress={() => openEdit(member)} style={styles.iconBtn}>
+                    <Ionicons name="pencil" size={18} color={Colors.accentPurpleLight} />
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => handleDelete(member)} style={styles.iconBtn}>
+                    <Ionicons name="trash" size={18} color={Colors.accentRed} />
+                  </TouchableOpacity>
+                </View>
               </View>
             </View>
           ))
@@ -221,14 +222,16 @@ const styles = StyleSheet.create({
   emptyState: { alignItems: 'center', paddingVertical: 48, gap: 12 },
   emptyIcon: { fontSize: 48 },
   emptyText: { color: Colors.textSecondary, fontSize: 15 },
-  card: { flexDirection: 'row', backgroundColor: Colors.bgCard, borderRadius: 12, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: Colors.borderColor, alignItems: 'center', gap: 12 },
+  card: { backgroundColor: Colors.bgCard, borderRadius: 12, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: Colors.borderColor },
+  cardTop: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  cardBottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, paddingTop: 8, borderTopWidth: 1, borderTopColor: Colors.borderColor },
+  cardNameArea: { flex: 1 },
   avatar: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
   avatarText: { color: '#fff', fontWeight: '700', fontSize: 18 },
-  cardInfo: { flex: 1 },
   cardName: { fontSize: 15, fontWeight: '600', color: Colors.textPrimary },
   cardNickname: { fontSize: 12, color: Colors.textSecondary, marginTop: 2 },
-  cardStat: { fontSize: 13, color: Colors.textSecondary, marginTop: 4 },
-  cardActions: { gap: 8 },
+  cardStat: { fontSize: 13, color: Colors.textSecondary },
+  cardActions: { flexDirection: 'row', gap: 4 },
   iconBtn: { padding: 6 },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' },
   modalContent: { backgroundColor: Colors.bgSecondary, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20 },
