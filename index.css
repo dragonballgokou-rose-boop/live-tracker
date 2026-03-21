@@ -2193,6 +2193,9 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
   font-weight: 600;
   letter-spacing: 0.02em;
   line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .bottom-nav-item:hover .nav-pill {
@@ -2207,7 +2210,7 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
 .bottom-nav-item.active .nav-pill {
   flex-direction: column;
   gap: 3px;
-  padding: 6px 14px;
+  padding: 5px 8px;
   background: linear-gradient(135deg,
     rgba(139, 92, 246, 0.60) 0%,
     rgba(168, 85, 247, 0.42) 50%,
