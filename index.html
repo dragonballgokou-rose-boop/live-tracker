@@ -21,6 +21,14 @@
 </head>
 
 <body>
+  <!-- SVG filter defs — liquid glass distortion -->
+  <svg style="width:0;height:0;position:absolute" aria-hidden="true">
+    <filter id="glass-distort">
+      <feTurbulence baseFrequency="0.015" numOctaves="2"/>
+      <feDisplacementMap in="SourceGraphic" scale="6"/>
+    </filter>
+  </svg>
+
   <div id="app">
     <!-- Main Content -->
     <main id="main-content" class="main-content">

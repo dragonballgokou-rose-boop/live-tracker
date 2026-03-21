@@ -2125,7 +2125,7 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
     radial-gradient(ellipse at 22% 55%, rgba(139, 92, 246, 0.75) 0%, transparent 52%),
     radial-gradient(ellipse at 78% 45%, rgba(236, 72, 153, 0.55) 0%, transparent 48%),
     radial-gradient(ellipse at 50% 85%, rgba(59, 130, 246, 0.38) 0%, transparent 42%);
-  filter: blur(30px);
+  filter: blur(30px) url(#glass-distort);
   border-radius: 50%;
   pointer-events: none;
   z-index: 99;
@@ -2165,7 +2165,7 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
   isolation: isolate;
 }
 
-/* 3. 光屈折レイヤー — プリズム的な虹色シマーを上端に再現 */
+/* 3. 光屈折レイヤー — turbulence で歪んだプリズムシマー */
 .bottom-nav::before {
   content: '';
   position: absolute;
@@ -2181,6 +2181,7 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
     rgba(167, 139, 250, 0.08) 84%,
     rgba(255, 255, 255, 0.06) 100%
   );
+  filter: url(#glass-distort);
   pointer-events: none;
   z-index: 0;
 }
