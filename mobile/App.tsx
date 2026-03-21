@@ -146,6 +146,7 @@ const tabBarStyles = StyleSheet.create({
     paddingHorizontal: 12,
     height: 56,
     borderRadius: 28,
+    alignSelf: 'stretch',
   },
   itemInnerActive: {
     backgroundColor: 'rgba(167,139,250,0.2)',
