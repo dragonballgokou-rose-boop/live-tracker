@@ -170,7 +170,7 @@ export default function ChartScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bgPrimary },
-  content: { padding: 16, paddingBottom: 32, gap: 16 },
+  content: { padding: 16, paddingBottom: 100, gap: 16 },
   emptyWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, backgroundColor: Colors.bgPrimary },
   emptyIcon: { fontSize: 48, marginBottom: 12 },
   emptyText: { color: Colors.textSecondary, fontSize: 15, textAlign: 'center' },
