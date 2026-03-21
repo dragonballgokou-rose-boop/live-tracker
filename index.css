@@ -2183,7 +2183,7 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
 /* ===== Bottom Navigation ===== */
 .bottom-nav {
   position: fixed;
-  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  bottom: 34px;
   left: 16px;
   right: 16px;
   max-width: 480px;
@@ -2191,7 +2191,7 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
   height: 64px;
 
   display: flex;
-  align-items: stretch;
+  align-items: center;
   padding: 0 4px;
 
   background: rgba(15, 15, 25, 0.75);
@@ -2210,16 +2210,25 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
 .bottom-nav-item {
   flex: 1;
   display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 64px;
+  color: rgba(255, 255, 255, 0.4);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+/* inner wrapper — active background lives here, not on the icon */
+.item-inner {
+  display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 3px;
-  height: 64px;
-  padding: 0;
-  color: rgba(255, 255, 255, 0.4);
-  text-decoration: none;
+  padding: 0 12px;
+  height: 56px;
   border-radius: 28px;
-  transition: color 0.2s ease, background 0.2s ease;
+  transition: background 0.2s ease;
 }
 
 .bottom-nav-item svg {
@@ -2241,6 +2250,9 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
 
 .bottom-nav-item.active {
   color: #A78BFA;
+}
+
+.bottom-nav-item.active .item-inner {
   background: rgba(167, 139, 250, 0.2);
 }
 

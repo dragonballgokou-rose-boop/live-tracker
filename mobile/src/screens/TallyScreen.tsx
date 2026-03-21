@@ -329,7 +329,7 @@ const styles = StyleSheet.create({
   summaryHint: { marginLeft: 'auto', fontSize: 11, color: Colors.textTertiary },
 
   // メンバーリスト
-  memberListContent: { paddingVertical: 4, paddingBottom: 100 },
+  memberListContent: { paddingVertical: 4, paddingBottom: 120 },
   memberRow: {
     flexDirection: 'row',
     alignItems: 'center',

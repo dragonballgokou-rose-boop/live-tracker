@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
@@ -52,11 +52,7 @@ function TabItem({ route, focused, tab, accessibilityLabel, onPress, onLongPress
 
   return (
     <TouchableOpacity
-      style={[
-        tabBarStyles.tabItem,
-        focused && tabBarStyles.tabItemActive,
-        pressed && tabBarStyles.tabItemPressed,
-      ]}
+      style={tabBarStyles.tabItem}
       onPress={onPress}
       onLongPress={onLongPress}
       onPressIn={() => setPressed(true)}
@@ -66,24 +62,28 @@ function TabItem({ route, focused, tab, accessibilityLabel, onPress, onLongPress
       accessibilityState={focused ? { selected: true } : {}}
       accessibilityLabel={accessibilityLabel}
     >
-      <Ionicons
-        name={focused ? tab.iconFocused : tab.iconUnfocused}
-        size={22}
-        color={color}
-      />
-      <Text style={[tabBarStyles.label, { color }]}>
-        {tab.label}
-      </Text>
+      <View style={[
+        tabBarStyles.itemInner,
+        focused && tabBarStyles.itemInnerActive,
+        pressed && tabBarStyles.itemInnerPressed,
+      ]}>
+        <Ionicons
+          name={focused ? tab.iconFocused : tab.iconUnfocused}
+          size={22}
+          color={color}
+        />
+        <Text style={[tabBarStyles.label, { color }]}>
+          {tab.label}
+        </Text>
+      </View>
     </TouchableOpacity>
   );
 }
 
 // ---- Custom Tab Bar ----
 function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
-  const insets = useSafeAreaInsets();
-
   return (
-    <View style={[tabBarStyles.container, { bottom: 16 + insets.bottom }]}>
+    <View style={tabBarStyles.container}>
       {state.routes.map((route, index) => {
         const focused = state.index === index;
         const tab = TAB_ITEMS.find(t => t.name === route.name) ?? TAB_ITEMS[0];
@@ -118,34 +118,39 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
 const tabBarStyles = StyleSheet.create({
   container: {
     position: 'absolute',
-    bottom: 16,
+    bottom: 34,
     left: 16,
     right: 16,
     flexDirection: 'row',
-    alignItems: 'stretch',
+    alignItems: 'center',
     paddingHorizontal: 4,
-    overflow: 'hidden',
+    height: 64,
     backgroundColor: 'rgba(15,15,25,0.75)',
     borderRadius: 32,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.15)',
     elevation: 0,
+    overflow: 'hidden',
   },
   tabItem: {
     flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 64,
+  },
+  itemInner: {
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 3,
-    paddingVertical: 0,
-    height: 64,
+    paddingHorizontal: 12,
+    height: 56,
     borderRadius: 28,
-    backgroundColor: 'transparent',
   },
-  tabItemActive: {
+  itemInnerActive: {
     backgroundColor: 'rgba(167,139,250,0.2)',
   },
-  tabItemPressed: {
+  itemInnerPressed: {
     transform: [{ scale: 0.95 }],
   },
   label: {
