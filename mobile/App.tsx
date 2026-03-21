@@ -48,18 +48,16 @@ type TabItemProps = {
 
 function TabItem({ route, focused, tab, accessibilityLabel, onPress, onLongPress }: TabItemProps) {
   const [pressed, setPressed] = useState(false);
-  const iconColor = focused ? '#A78BFA' : 'rgba(255,255,255,0.45)';
-
-  const itemStyle = [
-    tabBarStyles.tabItem,
-    focused && tabBarStyles.tabItemActive,
-    pressed && tabBarStyles.tabItemPressed,
-  ];
+  // Bug1修正: opacity をコンテナに使わず color の alpha で透明度を制御
+  const color: string = pressed ? '#ffffff' : focused ? '#A78BFA' : 'rgba(255,255,255,0.45)';
 
   return (
     <TouchableOpacity
-      key={route.key}
-      style={itemStyle}
+      style={[
+        tabBarStyles.tabItem,
+        focused && tabBarStyles.tabItemActive,
+        pressed && tabBarStyles.tabItemPressed,
+      ]}
       onPress={onPress}
       onLongPress={onLongPress}
       onPressIn={() => setPressed(true)}
@@ -69,12 +67,15 @@ function TabItem({ route, focused, tab, accessibilityLabel, onPress, onLongPress
       accessibilityState={focused ? { selected: true } : {}}
       accessibilityLabel={accessibilityLabel}
     >
-      <Ionicons
-        name={focused ? tab.iconFocused : tab.iconUnfocused}
-        size={22}
-        color={pressed ? '#ffffff' : iconColor}
-      />
-      <Text style={[tabBarStyles.label, { color: pressed ? '#ffffff' : iconColor }]}>
+      {/* Bug2修正: 全タブ共通の 28x28 アイコンコンテナ */}
+      <View style={tabBarStyles.iconContainer}>
+        <Ionicons
+          name={focused ? tab.iconFocused : tab.iconUnfocused}
+          size={20}
+          color={color}
+        />
+      </View>
+      <Text style={[tabBarStyles.label, { color }]}>
         {tab.label}
       </Text>
     </TouchableOpacity>
@@ -85,8 +86,11 @@ function TabItem({ route, focused, tab, accessibilityLabel, onPress, onLongPress
 function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
 
+  // Bug3修正: コンテンツ領域 60px を常に確保し、SafeArea 分だけ高さを追加
+  const containerHeight = 60 + insets.bottom;
+
   return (
-    <View style={[tabBarStyles.container, { paddingBottom: insets.bottom }]}>
+    <View style={[tabBarStyles.container, { height: containerHeight, paddingBottom: insets.bottom }]}>
       {state.routes.map((route, index) => {
         const focused = state.index === index;
         const tab = TAB_ITEMS.find(t => t.name === route.name) ?? TAB_ITEMS[0];
@@ -124,7 +128,7 @@ const tabBarStyles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    height: 80,
+    // Bug3修正: height は SafeArea 込みで動的計算するためここでは指定しない
     paddingHorizontal: 16,
     flexDirection: 'row',
     alignItems: 'center',
@@ -144,15 +148,21 @@ const tabBarStyles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 16,
     backgroundColor: 'transparent',
-    opacity: 0.45,
+    // Bug1修正: opacity をここに置かない（子の color alpha で透明度を制御）
   },
   tabItemActive: {
     backgroundColor: 'rgba(167,139,250,0.15)',
-    opacity: 1.0,
   },
   tabItemPressed: {
-    opacity: 1.0,
     transform: [{ scale: 1.08 }, { translateY: -2 }],
+  },
+  // Bug2修正: 全タブ共通の固定サイズアイコンコンテナ
+  iconContainer: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   label: {
     fontSize: 10,
