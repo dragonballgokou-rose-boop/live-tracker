@@ -2103,38 +2103,38 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
   width: calc(100% - 32px);
   max-width: 480px;
 
-  /* Glass */
-  background: rgba(12, 10, 32, 0.62);
-  backdrop-filter: blur(48px) saturate(220%);
-  -webkit-backdrop-filter: blur(48px) saturate(220%);
+  /* Glass — lighter tint so blur is visible on dark bg */
+  background: rgba(80, 60, 140, 0.28);
+  backdrop-filter: blur(40px) saturate(180%) brightness(1.1);
+  -webkit-backdrop-filter: blur(40px) saturate(180%) brightness(1.1);
 
   /* Pill shape */
   border-radius: var(--radius-full);
-  border: 1px solid rgba(255, 255, 255, 0.13);
-  border-top: 1px solid rgba(255, 255, 255, 0.18); /* top highlight */
+  border: 1px solid rgba(167, 139, 250, 0.28);
 
-  /* Depth */
+  /* Depth + ambient purple glow */
   box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.55),
-    0 2px 8px rgba(0, 0, 0, 0.35),
-    inset 0 1px 0 rgba(255, 255, 255, 0.10),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.25);
+    0 0 0 1px rgba(255, 255, 255, 0.06) inset,
+    0 1px 0 rgba(255, 255, 255, 0.14) inset,
+    0 8px 32px rgba(0, 0, 0, 0.6),
+    0 0 48px rgba(109, 40, 217, 0.20),
+    0 0 16px rgba(139, 92, 246, 0.15);
 
   z-index: 101;
   padding: 5px 6px;
   gap: 2px;
 }
 
-/* Subtle inner gradient shimmer */
+/* Inner glass highlight (top shine) */
 .bottom-nav::before {
   content: '';
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  background: linear-gradient(180deg,
-    rgba(255, 255, 255, 0.055) 0%,
-    transparent 50%,
-    rgba(0, 0, 0, 0.10) 100%
+  background: linear-gradient(170deg,
+    rgba(255, 255, 255, 0.10) 0%,
+    rgba(167, 139, 250, 0.06) 30%,
+    transparent 60%
   );
   pointer-events: none;
 }
