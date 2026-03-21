@@ -2180,90 +2180,51 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
   z-index: 99;
 }
 
-/* 2. Glass container */
+/* ===== Bottom Navigation ===== */
 .bottom-nav {
-  display: flex;
   position: fixed;
-  bottom: 0;
-  left: 12px;
-  right: 12px;
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  left: 16px;
+  right: 16px;
   max-width: 480px;
   margin: 0 auto;
+  height: 64px;
 
-  background: rgba(20, 20, 30, 0.55);
-  backdrop-filter: blur(24px) saturate(200%);
-  -webkit-backdrop-filter: blur(24px) saturate(200%);
+  display: flex;
+  align-items: stretch;
+  padding: 0 4px;
 
-  border-radius: 28px 28px 20px 20px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(15, 15, 25, 0.75);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
 
-  box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.4),
-    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  border-radius: 32px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
 
   z-index: 101;
-  height: calc(60px + env(safe-area-inset-bottom));
-  padding: 0 6px;
-  padding-bottom: env(safe-area-inset-bottom);
-  gap: 2px;
-  isolation: isolate;
   overflow: hidden;
-}
-
-/* 上端グラデーションライン */
-.bottom-nav::before {
-  content: '';
-  position: absolute;
-  left: 15%;
-  right: 15%;
-  top: 0;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.7) 50%, transparent);
-  pointer-events: none;
-  z-index: 0;
+  isolation: isolate;
 }
 
 .bottom-nav-item {
   flex: 1;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  color: rgba(255, 255, 255, 0.45);
-  text-decoration: none;
-  transition: all 0.25s ease;
-  z-index: 1;
-}
-
-/* pill — wraps icon + label together */
-.nav-pill {
-  display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-  padding: 6px 12px;
-  border-radius: 20px;
-  border: 1px solid transparent;
-  transition: all 0.25s ease;
+  gap: 3px;
+  height: 64px;
+  padding: 0;
+  color: rgba(255, 255, 255, 0.4);
+  text-decoration: none;
+  border-radius: 28px;
+  transition: color 0.2s ease, background 0.2s ease;
 }
 
-/* icon wrapper — fixed 28x28 for all tabs */
-.nav-icon {
-  width: 28px;
-  height: 28px;
-  border-radius: 14px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.bottom-nav-item svg {
   flex-shrink: 0;
-  transition: background 0.25s ease;
-}
-
-.nav-pill svg {
-  flex-shrink: 0;
-  width: 24px;
-  height: 24px;
-  transition: all 0.25s ease;
+  transition: color 0.2s ease;
 }
 
 .nav-label {
@@ -2272,43 +2233,34 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
   letter-spacing: 0.02em;
   line-height: 1;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
-.bottom-nav-item:hover .nav-pill,
-.bottom-nav-item:active .nav-pill {
-  background: rgba(255, 255, 255, 0.08);
+.bottom-nav-item:hover {
+  color: rgba(255, 255, 255, 0.7);
 }
 
 .bottom-nav-item.active {
   color: #A78BFA;
-}
-
-/* Active: highlight icon only (consistent 28x28 across all tabs) */
-.bottom-nav-item.active .nav-icon {
   background: rgba(167, 139, 250, 0.2);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
 /* content padding adjustment because nav is fixed at bottom */
 .page-content {
-  padding-bottom: calc(var(--space-xl) + 72px + env(safe-area-inset-bottom, 0px)) !important;
+  padding-bottom: calc(var(--space-xl) + 80px + env(safe-area-inset-bottom, 0px)) !important;
 }
 
 @media (max-width: 768px) {
   .page-content {
-    padding-bottom: calc(var(--space-md) + 72px + env(safe-area-inset-bottom, 0px)) !important;
+    padding-bottom: calc(var(--space-md) + 80px + env(safe-area-inset-bottom, 0px)) !important;
   }
 
   .toast-container {
-    bottom: calc(var(--space-md) + 72px + env(safe-area-inset-bottom, 0px));
+    bottom: calc(var(--space-md) + 80px + env(safe-area-inset-bottom, 0px));
   }
 }
 
-/* 6項目のボトムナビ対応: フォントを少し小さく */
-.bottom-nav-item:nth-child(n+6) ~ .bottom-nav-item,
-.bottom-nav:has(.bottom-nav-item:nth-child(6)) .bottom-nav-item {
+/* 6項目対応: ラベルを少し小さく */
+.bottom-nav:has(.bottom-nav-item:nth-child(6)) .bottom-nav-item .nav-label {
   font-size: 9px;
 }
 

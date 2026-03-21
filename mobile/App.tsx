@@ -48,8 +48,7 @@ type TabItemProps = {
 
 function TabItem({ route, focused, tab, accessibilityLabel, onPress, onLongPress }: TabItemProps) {
   const [pressed, setPressed] = useState(false);
-  // Bug1修正: opacity をコンテナに使わず color の alpha で透明度を制御
-  const color: string = pressed ? '#ffffff' : focused ? '#A78BFA' : 'rgba(255,255,255,0.45)';
+  const color: string = focused ? '#A78BFA' : pressed ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.4)';
 
   return (
     <TouchableOpacity
@@ -67,14 +66,11 @@ function TabItem({ route, focused, tab, accessibilityLabel, onPress, onLongPress
       accessibilityState={focused ? { selected: true } : {}}
       accessibilityLabel={accessibilityLabel}
     >
-      {/* Bug2修正: 全タブ共通の 28x28 アイコンコンテナ */}
-      <View style={tabBarStyles.iconContainer}>
-        <Ionicons
-          name={focused ? tab.iconFocused : tab.iconUnfocused}
-          size={20}
-          color={color}
-        />
-      </View>
+      <Ionicons
+        name={focused ? tab.iconFocused : tab.iconUnfocused}
+        size={22}
+        color={color}
+      />
       <Text style={[tabBarStyles.label, { color }]}>
         {tab.label}
       </Text>
@@ -86,11 +82,8 @@ function TabItem({ route, focused, tab, accessibilityLabel, onPress, onLongPress
 function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
 
-  // Bug3修正: コンテンツ領域 60px を常に確保し、SafeArea 分だけ高さを追加
-  const containerHeight = 60 + insets.bottom;
-
   return (
-    <View style={[tabBarStyles.container, { height: containerHeight, paddingBottom: insets.bottom }]}>
+    <View style={[tabBarStyles.container, { bottom: 16 + insets.bottom }]}>
       {state.routes.map((route, index) => {
         const focused = state.index === index;
         const tab = TAB_ITEMS.find(t => t.name === route.name) ?? TAB_ITEMS[0];
@@ -125,44 +118,35 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
 const tabBarStyles = StyleSheet.create({
   container: {
     position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    // Bug3修正: height は SafeArea 込みで動的計算するためここでは指定しない
-    paddingHorizontal: 16,
+    bottom: 16,
+    left: 16,
+    right: 16,
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'stretch',
+    paddingHorizontal: 4,
     overflow: 'hidden',
-    backgroundColor: Colors.tabBarBg,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    borderTopWidth: 1,
-    borderTopColor: Colors.tabBarBorder,
+    backgroundColor: 'rgba(15,15,25,0.75)',
+    borderRadius: 32,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
+    elevation: 0,
   },
   tabItem: {
     flex: 1,
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4,
+    gap: 3,
     paddingVertical: 0,
-    height: 60,
-    borderRadius: 16,
+    height: 64,
+    borderRadius: 28,
     backgroundColor: 'transparent',
   },
   tabItemActive: {
-    backgroundColor: 'rgba(167,139,250,0.15)',
+    backgroundColor: 'rgba(167,139,250,0.2)',
   },
   tabItemPressed: {
-    transform: [{ scale: 1.08 }, { translateY: -2 }],
-  },
-  // Bug2修正: 全タブ共通の固定サイズアイコンコンテナ
-  iconContainer: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
+    transform: [{ scale: 0.95 }],
   },
   label: {
     fontSize: 10,
