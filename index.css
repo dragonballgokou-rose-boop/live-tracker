@@ -2097,7 +2097,7 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
 .bottom-nav {
   display: flex;
   position: fixed;
-  bottom: calc(4px + env(safe-area-inset-bottom, 0px));
+  bottom: env(safe-area-inset-bottom, 0px);
   left: 50%;
   transform: translateX(-50%);
   width: calc(100% - 32px);
@@ -2175,7 +2175,7 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
 .bottom-nav-item.active::before {
   content: '';
   position: absolute;
-  inset: 4px;
+  inset: 7px 5px;
   background: linear-gradient(160deg,
     rgba(139, 92, 246, 0.50) 0%,
     rgba(168, 85, 247, 0.35) 40%,
