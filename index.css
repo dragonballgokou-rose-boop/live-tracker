@@ -100,6 +100,7 @@ html {
   -webkit-text-size-adjust: 100%;
   overflow-x: hidden;
   max-width: 100vw;
+  background-color: var(--bg-primary);
 }
 
 body {
@@ -2163,6 +2164,18 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
   transition: transform var(--transition-base), filter var(--transition-base);
 }
 
+/* Icon box — dedicated container for the frame */
+.nav-icon-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 36px;
+  border-radius: var(--radius-full);
+  flex-shrink: 0;
+  transition: background var(--transition-base), box-shadow var(--transition-base), border-color var(--transition-base);
+}
+
 .bottom-nav-item:hover {
   color: var(--text-secondary);
 }
@@ -2171,32 +2184,28 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
   color: #fff;
 }
 
-/* Active: floating glass pill background */
-.bottom-nav-item.active::before {
-  content: '';
-  position: absolute;
-  inset: 1px;
+/* Active: floating glass pill on the icon box */
+.bottom-nav-item.active .nav-icon-box {
   background: linear-gradient(160deg,
     rgba(139, 92, 246, 0.50) 0%,
     rgba(168, 85, 247, 0.35) 40%,
     rgba(236, 72, 153, 0.25) 100%
   );
-  border-radius: calc(var(--radius-full) - 6px);
   border: 1px solid rgba(167, 139, 250, 0.35);
   box-shadow:
     0 0 16px rgba(139, 92, 246, 0.45),
     0 0 32px rgba(139, 92, 246, 0.20),
     inset 0 1px 0 rgba(255, 255, 255, 0.20);
   backdrop-filter: blur(8px);
-  z-index: -1;
 }
 
-/* Remove old top-bar after */
+/* Remove old ::before / ::after pseudo-elements */
+.bottom-nav-item.active::before,
 .bottom-nav-item.active::after {
   display: none;
 }
 
-.bottom-nav-item.active svg {
+.bottom-nav-item.active .nav-icon-box svg {
   transform: scale(1.12);
   filter: drop-shadow(0 0 8px rgba(167, 139, 250, 0.9));
 }
