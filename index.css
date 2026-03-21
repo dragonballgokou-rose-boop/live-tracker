@@ -1528,6 +1528,7 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
 .member-card {
   display: flex;
   flex-direction: column;
+  justify-content: space-between;
   gap: var(--space-sm);
   padding: var(--space-md);
   border-left: 3px solid var(--member-color, var(--accent-purple));
@@ -1544,6 +1545,7 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
   display: flex;
   align-items: center;
   gap: var(--space-sm);
+  flex: 1;
 }
 
 .member-avatar {
