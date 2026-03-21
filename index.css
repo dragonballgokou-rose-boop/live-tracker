@@ -955,6 +955,11 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
   color: white;
 }
 
+.tally-card-status-dot[data-status="planned"] {
+  background: #38bdf8;
+  color: #06061a;
+}
+
 .tally-card-status-dot[data-status="undecided"] {
   background: var(--accent-amber);
   color: #1a1a2e;
@@ -1108,6 +1113,12 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
   background: rgba(248, 113, 113, 0.15);
   color: rgba(248, 113, 113, 1);
   border: 1px solid rgba(248, 113, 113, 0.4);
+}
+
+.tally-cell[data-status="planned"] {
+  background: rgba(56, 189, 248, 0.14);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.40);
 }
 
 .tally-cell[data-status="undecided"] {
@@ -2159,7 +2170,7 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
   align-items: center;
   justify-content: center;
   gap: 3px;
-  padding: 6px 12px;
+  padding: 5px 8px;
   border-radius: var(--radius-full);
   border: 1px solid transparent;
   transition:
@@ -2190,24 +2201,27 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
   color: #fff;
 }
 
-/* Active: liquid glass pill around icon + label */
+/* Active: horizontal liquid glass pill (icon + label side by side, GitHub style) */
 .bottom-nav-item.active .nav-pill {
-  background: linear-gradient(160deg,
-    rgba(139, 92, 246, 0.55) 0%,
-    rgba(168, 85, 247, 0.38) 40%,
-    rgba(236, 72, 153, 0.28) 100%
+  flex-direction: row;
+  gap: 5px;
+  padding: 8px 14px;
+  background: linear-gradient(135deg,
+    rgba(139, 92, 246, 0.60) 0%,
+    rgba(168, 85, 247, 0.42) 50%,
+    rgba(236, 72, 153, 0.30) 100%
   );
-  border-color: rgba(167, 139, 250, 0.40);
+  border-color: rgba(167, 139, 250, 0.42);
   box-shadow:
-    0 0 20px rgba(139, 92, 246, 0.50),
-    0 0 40px rgba(139, 92, 246, 0.22),
-    inset 0 1px 0 rgba(255, 255, 255, 0.22);
+    0 0 20px rgba(139, 92, 246, 0.52),
+    0 0 40px rgba(139, 92, 246, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.24);
   backdrop-filter: blur(10px);
 }
 
 .bottom-nav-item.active .nav-pill svg {
-  transform: scale(1.08);
-  filter: drop-shadow(0 0 6px rgba(167, 139, 250, 0.85));
+  transform: scale(1.05);
+  filter: drop-shadow(0 0 5px rgba(167, 139, 250, 0.85));
 }
 
 /* Tap feedback */

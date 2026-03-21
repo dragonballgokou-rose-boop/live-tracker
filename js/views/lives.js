@@ -1268,7 +1268,8 @@ function buildAttendanceSection(live) {
 
   function sty(status) {
     if (status === 'going') return { label: '○', color: 'var(--accent-green)', border: 'var(--accent-green)' };
-    if (status === 'not-going') return { label: '×', color: 'var(--accent-red)', border: 'var(--accent-red)' };
+    if (status === 'planned') return { label: '△', color: '#38bdf8', border: '#38bdf8' };
+    if (status === 'not-going' || status === 'not_going') return { label: '×', color: 'var(--accent-red)', border: 'var(--accent-red)' };
     return { label: '?', color: 'var(--text-tertiary)', border: 'var(--border-color)' };
   }
 
@@ -1298,7 +1299,7 @@ function buildAttendanceSection(live) {
 
   return `
     <div class="form-group">
-      <label class="form-label">参戦状況 <span style="font-size:11px;color:var(--text-tertiary);">タップで切替（?→○→×）</span></label>
+      <label class="form-label">参戦状況 <span style="font-size:11px;color:var(--text-tertiary);">タップで切替（?→△→○→×）</span></label>
       <div class="att-section${isMulti ? ' att-section-multi' : ''}">
         ${daysHtml}
       </div>
@@ -1307,9 +1308,10 @@ function buildAttendanceSection(live) {
 }
 
 function setupAttendanceToggles() {
-  const cycle = { undecided: 'going', going: 'not-going', 'not-going': 'undecided' };
+  const cycle = { undecided: 'planned', planned: 'going', going: 'not-going', 'not-going': 'undecided' };
   const display = {
     going: { label: '○', color: 'var(--accent-green)', border: 'var(--accent-green)' },
+    planned: { label: '△', color: '#38bdf8', border: '#38bdf8' },
     'not-going': { label: '×', color: 'var(--accent-red)', border: 'var(--accent-red)' },
     undecided: { label: '?', color: 'var(--text-tertiary)', border: 'var(--border-color)' }
   };

@@ -92,24 +92,36 @@ export function showLiveDetailsModal(liveId) {
                 : `${dateLabel}${timeStr}`;
 
             const going = [];
+            const planned = [];
             const notGoing = [];
             const undecided = [];
             members.forEach(m => {
                 const status = getDayAttendanceStatus(liveId, dateStr, m.id);
                 if (status === 'going') going.push(m);
+                else if (status === 'planned') planned.push(m);
                 else if (status === 'not-going' || status === 'not_going') notGoing.push(m);
                 else undecided.push(m);
             });
 
             html += `<div style="margin-bottom:12px;padding:12px;background:rgba(0,0,0,0.2);border:1px solid var(--border-color);border-radius:8px;">`;
-            html += `<div style="font-weight:700;font-size:13px;color:var(--accent-purple-light);margin-bottom:10px;">${dayLabel}　<span style="font-weight:400;font-size:12px;color:var(--text-tertiary);">参戦 ${going.length}人</span></div>`;
+            html += `<div style="font-weight:700;font-size:13px;color:var(--accent-purple-light);margin-bottom:10px;">${dayLabel}　<span style="font-weight:400;font-size:12px;color:var(--text-tertiary);">参戦確定 ${going.length}人　参戦予定 ${planned.length}人</span></div>`;
 
-            // 参戦 ○
+            // 参戦確定 ○
             if (going.length > 0) {
                 html += `<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:6px;">`;
                 going.forEach(m => {
                     html += `<span style="display:inline-flex;align-items:center;gap:4px;background:${m.color}18;border:1px solid ${m.color}55;color:${m.color};border-radius:20px;padding:3px 10px;font-size:12px;font-weight:600;">
                         <span style="width:6px;height:6px;border-radius:50%;background:${m.color};flex-shrink:0;"></span>${escapeHtml(m.nickname || m.name)}</span>`;
+                });
+                html += `</div>`;
+            }
+
+            // 参戦予定 △
+            if (planned.length > 0) {
+                html += `<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:6px;">`;
+                planned.forEach(m => {
+                    html += `<span style="display:inline-flex;align-items:center;gap:4px;background:rgba(56,189,248,0.10);border:1px solid rgba(56,189,248,0.35);color:#38bdf8;border-radius:20px;padding:3px 10px;font-size:12px;">
+                        <span style="font-size:11px;">◯</span>${escapeHtml(m.nickname || m.name)}</span>`;
                 });
                 html += `</div>`;
             }
