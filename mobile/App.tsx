@@ -1,6 +1,6 @@
 import React from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { View, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -26,27 +26,60 @@ export type LivesStackParamList = {
 const Tab = createBottomTabNavigator();
 const LivesStack = createNativeStackNavigator<LivesStackParamList>();
 
-function TabButton({ children, style, onPress, onLongPress, accessibilityState, ...props }: BottomTabBarButtonProps) {
-  const focused = accessibilityState?.selected;
+// ---- Liquid UI Tab Button ----
+// Apple Music / GitHub スタイル: 固定サイズのピルでアイコンのみをラップし、
+// ラベルをピルの外に配置することで、全タブで均一なサイズを保証する
+type LiquidTabButtonProps = BottomTabBarButtonProps & {
+  iconFocused: keyof typeof Ionicons.glyphMap;
+  iconUnfocused: keyof typeof Ionicons.glyphMap;
+  label: string;
+};
+
+function LiquidTabButton({
+  style,
+  onPress,
+  onLongPress,
+  accessibilityState,
+  iconFocused,
+  iconUnfocused,
+  label,
+}: LiquidTabButtonProps) {
+  const focused = accessibilityState?.selected ?? false;
+  const tintColor = focused ? Colors.accentPurpleLight : Colors.textTertiary;
+
   return (
     <TouchableOpacity
-      {...props}
-      style={[{ flex: 1, alignItems: 'center', justifyContent: 'center' }, style]}
+      style={[{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 6 }, style]}
       onPress={onPress}
       onLongPress={onLongPress}
       accessibilityState={accessibilityState}
+      activeOpacity={0.7}
     >
+      {/* 固定サイズのピル — アイコンのみ */}
       <View style={{
         alignItems: 'center',
         justifyContent: 'center',
         backgroundColor: focused ? 'rgba(167, 139, 250, 0.22)' : 'transparent',
-        borderRadius: 24,
-        paddingHorizontal: 14,
-        paddingVertical: 5,
-        minWidth: 68,
+        borderRadius: 16,
+        width: 56,
+        height: 32,
+        marginBottom: 3,
       }}>
-        {children}
+        <Ionicons
+          name={focused ? iconFocused : iconUnfocused}
+          size={22}
+          color={tintColor}
+        />
       </View>
+      {/* ラベルはピルの外側 — 全タブで同じスタイル */}
+      <Text style={{
+        fontSize: 10,
+        fontWeight: '600',
+        color: tintColor,
+        letterSpacing: 0.2,
+      }}>
+        {label}
+      </Text>
     </TouchableOpacity>
   );
 }
@@ -81,7 +114,7 @@ export default function App() {
       <StatusBar style="light" />
       <NavigationContainer>
         <Tab.Navigator
-          screenOptions={({ route }) => ({
+          screenOptions={{
             headerStyle: {
               backgroundColor: Colors.bgSecondary,
             },
@@ -91,62 +124,72 @@ export default function App() {
               backgroundColor: Colors.tabBarBg,
               borderTopColor: Colors.tabBarBorder,
               borderTopWidth: 1,
-              paddingBottom: 10,
-              paddingTop: 10,
-              height: 68,
+              height: 60,
             },
-            tabBarActiveTintColor: Colors.accentPurpleLight,
-            tabBarInactiveTintColor: Colors.textTertiary,
-            tabBarLabelStyle: { fontSize: 11, fontWeight: '600', marginTop: 2 },
-            tabBarLabelPosition: 'below-icon',
-            tabBarIcon: ({ focused, color, size }) => {
-              let iconName: keyof typeof Ionicons.glyphMap = 'home-outline';
-              if (route.name === 'TOP') {
-                iconName = focused ? 'home' : 'home-outline';
-              } else if (route.name === '集計表') {
-                iconName = focused ? 'stats-chart' : 'stats-chart-outline';
-              } else if (route.name === 'グラフ') {
-                iconName = focused ? 'bar-chart' : 'bar-chart-outline';
-              } else if (route.name === 'ライブ') {
-                iconName = focused ? 'star' : 'star-outline';
-              } else if (route.name === 'メンバー') {
-                iconName = focused ? 'people' : 'people-outline';
-              } else if (route.name === '設定') {
-                iconName = focused ? 'settings' : 'settings-outline';
-              }
-              return <Ionicons name={iconName} size={size} color={color} />;
-            },
-          })}
+            // アイコン・ラベルは LiquidTabButton が自前で描画するため非表示
+            tabBarShowLabel: false,
+            tabBarIcon: () => null,
+          }}
         >
           <Tab.Screen
             name="TOP"
             component={DashboardScreen}
-            options={{ title: 'ダッシュボード', tabBarLabel: 'TOP', tabBarButton: (props) => <TabButton {...props} /> }}
+            options={{
+              title: 'ダッシュボード',
+              tabBarButton: (props) => (
+                <LiquidTabButton {...props} iconFocused="home" iconUnfocused="home-outline" label="TOP" />
+              ),
+            }}
           />
           <Tab.Screen
             name="集計表"
             component={TallyScreen}
-            options={{ title: '集計表', tabBarLabel: '集計表', tabBarButton: (props) => <TabButton {...props} /> }}
+            options={{
+              title: '集計表',
+              tabBarButton: (props) => (
+                <LiquidTabButton {...props} iconFocused="stats-chart" iconUnfocused="stats-chart-outline" label="集計表" />
+              ),
+            }}
           />
           <Tab.Screen
             name="グラフ"
             component={ChartScreen}
-            options={{ title: 'グラフ', tabBarLabel: 'グラフ', tabBarButton: (props) => <TabButton {...props} /> }}
+            options={{
+              title: 'グラフ',
+              tabBarButton: (props) => (
+                <LiquidTabButton {...props} iconFocused="bar-chart" iconUnfocused="bar-chart-outline" label="グラフ" />
+              ),
+            }}
           />
           <Tab.Screen
             name="ライブ"
             component={LivesStackNavigator}
-            options={{ headerShown: false, tabBarLabel: 'ライブ', tabBarButton: (props) => <TabButton {...props} /> }}
+            options={{
+              headerShown: false,
+              tabBarButton: (props) => (
+                <LiquidTabButton {...props} iconFocused="star" iconUnfocused="star-outline" label="ライブ" />
+              ),
+            }}
           />
           <Tab.Screen
             name="メンバー"
             component={MembersScreen}
-            options={{ title: 'メンバー', tabBarLabel: 'メンバー', tabBarButton: (props) => <TabButton {...props} /> }}
+            options={{
+              title: 'メンバー',
+              tabBarButton: (props) => (
+                <LiquidTabButton {...props} iconFocused="people" iconUnfocused="people-outline" label="メンバー" />
+              ),
+            }}
           />
           <Tab.Screen
             name="設定"
             component={SettingsScreen}
-            options={{ title: '設定', tabBarLabel: '設定', tabBarButton: (props) => <TabButton {...props} /> }}
+            options={{
+              title: '設定',
+              tabBarButton: (props) => (
+                <LiquidTabButton {...props} iconFocused="settings" iconUnfocused="settings-outline" label="設定" />
+              ),
+            }}
           />
         </Tab.Navigator>
       </NavigationContainer>
