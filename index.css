@@ -2184,29 +2184,22 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
 .bottom-nav {
   display: flex;
   position: fixed;
-  bottom: env(safe-area-inset-bottom, 0px);
+  bottom: calc(24px + env(safe-area-inset-bottom, 0px));
   left: 50%;
   transform: translateX(-50%);
-  width: calc(100% - 32px);
+  width: calc(100% - 48px);
   max-width: 480px;
 
-  /* Ultra-thin tint — backdrop-filter が色を作る */
-  background: rgba(12, 10, 30, 0.15);
-  backdrop-filter: blur(48px) saturate(220%) brightness(1.18);
-  -webkit-backdrop-filter: blur(48px) saturate(220%) brightness(1.18);
+  background: rgba(20, 20, 30, 0.55);
+  backdrop-filter: blur(24px) saturate(200%);
+  -webkit-backdrop-filter: blur(24px) saturate(200%);
 
-  /* Pill shape */
-  border-radius: var(--radius-full);
-  border: 1px solid rgba(255, 255, 255, 0.32);
+  border-radius: 100px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
 
-  /* 多層 inset shadow で glass の厚みを表現 */
   box-shadow:
-    inset 0  1px 0   rgba(255, 255, 255, 0.50),  /* 上エッジ ハイライト */
-    inset 0 -1px 0   rgba(0,   0,   0,   0.18),  /* 下エッジ 影 */
-    inset 1px 0  0   rgba(255, 255, 255, 0.12),  /* 左エッジ 光 */
-    0  8px 32px      rgba(0,   0,   0,   0.55),  /* 外影 */
-    0  0   56px      rgba(109, 40,  217, 0.24),  /* ambient purple glow */
-    0  0   20px      rgba(139, 92,  246, 0.18);  /* soft purple halo */
+    0 8px 32px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
 
   z-index: 101;
   padding: 5px 6px;
@@ -2214,23 +2207,15 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
   isolation: isolate;
 }
 
-/* 3. 光屈折レイヤー — turbulence で歪んだプリズムシマー */
+/* 上端グラデーションライン */
 .bottom-nav::before {
   content: '';
   position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: linear-gradient(
-    108deg,
-    rgba(255, 255, 255, 0.18)  0%,
-    rgba(200, 160, 255, 0.10) 18%,
-    rgba(236,  72, 153, 0.07) 34%,
-    transparent                50%,
-    rgba( 59, 130, 246, 0.05) 68%,
-    rgba(167, 139, 250, 0.08) 84%,
-    rgba(255, 255, 255, 0.06) 100%
-  );
-  filter: url(#glass-distort);
+  left: 15%;
+  right: 15%;
+  top: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.7) 50%, transparent);
   pointer-events: none;
   z-index: 0;
 }
@@ -2240,35 +2225,30 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 52px;
-  color: rgba(165, 180, 252, 0.45);
+  color: rgba(255, 255, 255, 0.45);
   text-decoration: none;
-  transition: color 200ms ease;
+  transition: all 0.25s ease;
   z-index: 1;
 }
 
-/* pill — wraps icon + label together (GitHub style) */
+/* pill — wraps icon + label together */
 .nav-pill {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 3px;
-  width: 60px;
-  padding: 5px 0;
-  border-radius: var(--radius-full);
+  gap: 4px;
+  padding: 10px 20px;
+  border-radius: 80px;
   border: 1px solid transparent;
-  transition:
-    background 300ms cubic-bezier(0.34, 1.56, 0.64, 1),
-    box-shadow  300ms cubic-bezier(0.34, 1.56, 0.64, 1),
-    border-color 300ms ease,
-    transform 150ms ease;
+  transition: all 0.25s ease;
 }
 
 .nav-pill svg {
   flex-shrink: 0;
-  transition: transform 300ms cubic-bezier(0.34, 1.56, 0.64, 1),
-              filter 300ms ease;
+  width: 24px;
+  height: 24px;
+  transition: all 0.25s ease;
 }
 
 .nav-label {
@@ -2281,65 +2261,20 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
   text-overflow: ellipsis;
 }
 
-.bottom-nav-item:hover .nav-pill {
-  color: var(--text-secondary);
+.bottom-nav-item:hover .nav-pill,
+.bottom-nav-item:active .nav-pill {
+  transform: scale(1.05);
 }
 
 .bottom-nav-item.active {
   color: #fff;
 }
 
-/* Active: liquid glass pill */
+/* Active: Liquid Glass pill */
 .bottom-nav-item.active .nav-pill {
-  position: relative;
-  flex-direction: column;
-  gap: 3px;
-  padding: 5px 0;
-  overflow: hidden;
-
-  /* Liquid-tinted glass fill */
-  background: linear-gradient(135deg,
-    rgba(139, 92, 246, 0.50) 0%,
-    rgba(168, 85, 247, 0.34) 50%,
-    rgba(236, 72, 153, 0.24) 100%
-  );
-  backdrop-filter: blur(16px) saturate(200%);
-  -webkit-backdrop-filter: blur(16px) saturate(200%);
-
-  border-color: rgba(255, 255, 255, 0.20);
-  box-shadow:
-    inset 0  1px 0 rgba(255, 255, 255, 0.32),  /* top highlight */
-    inset 0 -1px 0 rgba(0,   0,   0,   0.12),  /* bottom shadow */
-    0 0 18px rgba(139, 92, 246, 0.50),
-    0 0 36px rgba(139, 92, 246, 0.24);
-}
-
-/* Pill 光屈折 — 斜め光源を模したハイライト */
-.bottom-nav-item.active .nav-pill::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: linear-gradient(
-    132deg,
-    rgba(255, 255, 255, 0.28) 0%,
-    rgba(255, 255, 255, 0.10) 35%,
-    transparent               55%,
-    rgba(236,  72, 153, 0.08) 80%,
-    transparent               100%
-  );
-  pointer-events: none;
-}
-
-.bottom-nav-item.active .nav-pill svg {
-  transform: scale(1.05);
-  filter: drop-shadow(0 0 5px rgba(167, 139, 250, 0.85));
-}
-
-/* Tap feedback */
-.bottom-nav-item:active .nav-pill {
-  transform: scale(0.90);
-  transition-duration: 80ms;
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 80px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3);
 }
 
 /* content padding adjustment because nav is now floating */
