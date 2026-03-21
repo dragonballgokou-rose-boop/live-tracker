@@ -87,11 +87,11 @@ export function renderTally() {
     <!-- Legend -->
     <div class="tally-legend">
       <span class="tally-legend-item">
-        <span class="tally-cell tally-cell-sm" data-status="going">◯</span>
+        <span class="tally-cell tally-cell-sm" data-status="going">✓</span>
         参戦
       </span>
       <span class="tally-legend-item">
-        <span class="tally-cell tally-cell-sm" data-status="planned">△</span>
+        <span class="tally-cell tally-cell-sm" data-status="planned">◯</span>
         参戦予定
       </span>
       <span class="tally-legend-item">
@@ -192,7 +192,7 @@ function buildTallyTable(lives, members) {
     const cells = members.map(member => {
       const status = getDayAttendanceStatus(row.live.id, row.dateStr, member.id);
       if (status === 'going') rowTotal++;
-      const display = status === 'going' ? '◯' : status === 'planned' ? '△' : status === 'not_going' ? '✕' : '？';
+      const display = status === 'going' ? '✓' : status === 'planned' ? '◯' : status === 'not_going' ? '✕' : '？';
       return `
               <td>
                 <span class="tally-cell" data-status="${status}" data-live="${row.live.id}" data-date="${row.dateStr}" data-member="${member.id}" role="button" tabindex="0">
@@ -307,7 +307,7 @@ function buildTallyCards(lives, members) {
     memberData.sort((a, b) => statusOrder[a.status] - statusOrder[b.status]);
 
     const memberBtns = memberData.map(({ member, status }) => {
-      const display = status === 'going' ? '◯' : status === 'planned' ? '△' : status === 'not_going' ? '✕' : '？';
+      const display = status === 'going' ? '✓' : status === 'planned' ? '◯' : status === 'not_going' ? '✕' : '？';
       return `
         <button class="tally-card-member"
           data-status="${status}"
@@ -390,7 +390,7 @@ function setupTallyEvents(members, filteredLives) {
       const currentStatus = cell.dataset.status;
 
       const nextStatus = { 'undecided': 'planned', 'planned': 'going', 'going': 'not_going', 'not_going': 'undecided' }[currentStatus] || 'undecided';
-      const display = { 'going': '◯', 'planned': '△', 'not_going': '✕', 'undecided': '？' }[nextStatus];
+      const display = { 'going': '✓', 'planned': '◯', 'not_going': '✕', 'undecided': '？' }[nextStatus];
 
       setDayAttendance(liveId, dateStr, memberId, nextStatus);
       cell.dataset.status = nextStatus;
@@ -416,7 +416,7 @@ function setupTallyEvents(members, filteredLives) {
       const currentStatus = btn.dataset.status;
 
       const nextStatus = { 'undecided': 'planned', 'planned': 'going', 'going': 'not_going', 'not_going': 'undecided' }[currentStatus] || 'undecided';
-      const display = { 'going': '◯', 'planned': '△', 'not_going': '✕', 'undecided': '？' }[nextStatus];
+      const display = { 'going': '✓', 'planned': '◯', 'not_going': '✕', 'undecided': '？' }[nextStatus];
 
       setDayAttendance(liveId, dateStr, memberId, nextStatus);
       btn.dataset.status = nextStatus;

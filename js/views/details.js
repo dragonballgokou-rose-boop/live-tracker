@@ -121,7 +121,7 @@ export function showLiveDetailsModal(liveId) {
                 html += `<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:6px;">`;
                 planned.forEach(m => {
                     html += `<span style="display:inline-flex;align-items:center;gap:4px;background:rgba(56,189,248,0.10);border:1px solid rgba(56,189,248,0.35);color:#38bdf8;border-radius:20px;padding:3px 10px;font-size:12px;">
-                        <span style="font-size:11px;">△</span>${escapeHtml(m.nickname || m.name)}</span>`;
+                        <span style="font-size:11px;">◯</span>${escapeHtml(m.nickname || m.name)}</span>`;
                 });
                 html += `</div>`;
             }
