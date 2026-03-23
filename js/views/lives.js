@@ -2,7 +2,7 @@
 // Lives Management View
 // ============================================
 import { getLives, addLive, updateLive, deleteLive, getMembers, getDayAttendanceStatus, setDayAttendance, getDatesForLive } from '../store.js';
-import { showModal, closeModal, showToast, showConfirm, isJapaneseHoliday } from '../utils.js';
+import { showModal, closeModal, showToast, showConfirm, isJapaneseHoliday, resizeImageToBase64 } from '../utils.js';
 import { showLiveDetailsModal, showMemberDetailsModal } from './details.js';
 
 const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
@@ -905,7 +905,7 @@ function setupIconColorPickers(existingItem = null) {
   document.getElementById('live-icon-file-input')?.addEventListener('change', (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    resizeLiveIconToBase64(file, 200, (base64) => {
+    resizeImageToBase64(file, 200, (base64) => {
       document.getElementById('live-iconImg').value = base64;
       const preview = document.getElementById('live-icon-preview');
       preview.innerHTML = `<img id="live-icon-preview-img" src="${base64}" style="width:100%;height:100%;object-fit:cover;" />`;
@@ -1622,23 +1622,3 @@ function escapeAttr(text) {
   return String(text ?? '').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
-function resizeLiveIconToBase64(file, maxSize, callback) {
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    const img = new Image();
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      const size = Math.min(img.width, img.height, maxSize);
-      const scale = size / Math.min(img.width, img.height);
-      canvas.width = Math.round(img.width * scale);
-      canvas.height = Math.round(img.height * scale);
-      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-      const mimeType = ['image/jpeg', 'image/png', 'image/webp'].includes(file.type)
-        ? file.type
-        : 'image/jpeg';
-      callback(canvas.toDataURL(mimeType, 0.82));
-    };
-    img.src = e.target.result;
-  };
-  reader.readAsDataURL(file);
-}

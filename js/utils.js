@@ -94,6 +94,28 @@ export function isJapaneseHoliday(dateStr) {
     return JP_HOLIDAYS.has(dateStr);
 }
 
+// ---------- Image Resize → Base64 ----------
+export function resizeImageToBase64(file, maxSize, callback) {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const size = Math.min(img.width, img.height, maxSize);
+      const scale = size / Math.min(img.width, img.height);
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      const mimeType = ['image/jpeg', 'image/png', 'image/webp'].includes(file.type)
+        ? file.type
+        : 'image/jpeg';
+      callback(canvas.toDataURL(mimeType, 0.82));
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
 export function showConfirm(title, message, onConfirm) {
     showModal(title, `
     <div class="confirm-delete">
