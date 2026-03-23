@@ -2,7 +2,7 @@
 // Members Management View
 // ============================================
 import { getMembers, addMember, updateMember, deleteMember, getAttendanceByMember, getLives, getDatesForLive, getDayAttendanceStatus } from '../store.js';
-import { showModal, closeModal, showToast, showConfirm, memberAvatarHtml } from '../utils.js';
+import { showModal, closeModal, showToast, showConfirm, memberAvatarHtml, resizeImageToBase64 } from '../utils.js';
 
 const MEMBER_COLORS = [
   // パープル・バイオレット
@@ -285,28 +285,6 @@ function openMemberModal(member = null) {
   });
 }
 
-// ---- 画像リサイズ（Canvas） ----
-function resizeImageToBase64(file, maxSize, callback) {
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    const img = new Image();
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      const size = Math.min(img.width, img.height, maxSize);
-      const scale = size / Math.min(img.width, img.height);
-      canvas.width = Math.round(img.width * scale);
-      canvas.height = Math.round(img.height * scale);
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      const mimeType = ['image/jpeg', 'image/png', 'image/webp'].includes(file.type)
-        ? file.type
-        : 'image/jpeg';
-      callback(canvas.toDataURL(mimeType, 0.82));
-    };
-    img.src = e.target.result;
-  };
-  reader.readAsDataURL(file);
-}
 
 function escapeHtml(text) {
   const div = document.createElement('div');
