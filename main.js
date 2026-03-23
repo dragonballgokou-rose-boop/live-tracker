@@ -3,6 +3,7 @@
 // ============================================
 import './index.css';
 import { Router } from './js/router.js';
+import BottomTabBar from './js/components/BottomTabBar.js';
 import { renderDashboard } from './js/views/dashboard.js';
 import { renderTally } from './js/views/tally.js';
 import { renderLives } from './js/views/lives.js';
@@ -25,20 +26,13 @@ const pageTitles = {
     '/history': 'ライブ管理'
 };
 
+// ---------- BottomTabBar instance ----------
+let bottomTabBar = null;
+
 // ---------- Navigation ----------
 function updateNav(path) {
-    document.querySelectorAll('.nav-item').forEach(item => {
-        item.classList.remove('active');
-    });
-    const activeItem = document.querySelector(`.nav-item[href="#${path}"]`);
-    if (activeItem) activeItem.classList.add('active');
-
-    // Update bottom nav active state
-    document.querySelectorAll('.bottom-nav-item').forEach(item => {
-        item.classList.remove('active');
-    });
-    const activeBottomItem = document.querySelector(`.bottom-nav-item[href="#${path}"]`);
-    if (activeBottomItem) activeBottomItem.classList.add('active');
+    // Delegate bottom-tab active state to the component
+    bottomTabBar?.setActiveByPath(path);
 
     document.getElementById('page-title').textContent = pageTitles[path] || 'LIVE TRACKER';
 
@@ -197,6 +191,12 @@ const router = new Router([
 
 // ---------- Event Listeners ----------
 document.addEventListener('DOMContentLoaded', async () => {
+    // Mount BottomTabBar component
+    bottomTabBar = new BottomTabBar({
+        container: document.getElementById('bottom-nav-container'),
+        activeTab: 'top',
+    });
+
     // Show App Loader initially
     const appLoader = document.getElementById('app-loader');
     if (appLoader) {
