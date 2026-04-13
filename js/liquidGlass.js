@@ -221,16 +221,16 @@ function buildNavFilter() {
   const h = nav.offsetHeight;
   if (w < 4 || h < 4) return;
   buildFilter('liquid-glass-nav', w, h, {
-    radius:         32,
-    bezelWidth:     32,
-    glassThickness: 60,
-    ior:            2.0,
-    scaleRatio:     1.0,
-    blurAmount:     22,
-    specularOpacity: 0.65,
-    specularSat:    4,
-    saturation:     2.1,
-    brightness:     1.22,
+    radius:          32,
+    bezelWidth:      32,
+    glassThickness:  65,
+    ior:             2.2,       // 屈折率を上げてよりリキッド感
+    scaleRatio:      1.4,       // 変位スケール強化
+    blurAmount:      38,        // 重めのフロスト（文字が滲まないレベル）
+    specularOpacity: 0.80,
+    specularSat:     5,
+    saturation:      2.6,       // ガラス越しの色をより鮮明に
+    brightness:      1.18,
   });
 }
 
@@ -241,16 +241,16 @@ function buildIndicatorFilter() {
   const h = indicator.offsetHeight || 56;
   if (w < 4 || h < 4) return;
   buildFilter('liquid-glass-indicator', w, h, {
-    radius:         28,
-    bezelWidth:     28,
-    glassThickness: 38,
-    ior:            2.6,
-    scaleRatio:     1.2,
-    blurAmount:     10,
-    specularOpacity: 0.9,
-    specularSat:    6,
-    saturation:     1.6,
-    brightness:     1.35,
+    radius:          28,
+    bezelWidth:      28,
+    glassThickness:  42,
+    ior:             2.8,       // より強い屈折でピル感
+    scaleRatio:      1.5,
+    blurAmount:      14,        // ピルはやや透過感を残す
+    specularOpacity: 0.95,      // ほぼ最大スペキュラー
+    specularSat:     7,
+    saturation:      1.8,
+    brightness:      1.4,
   });
 }
 
