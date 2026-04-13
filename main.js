@@ -4,6 +4,7 @@
 import './index.css';
 import { Router } from './js/router.js';
 import BottomTabBar from './js/components/BottomTabBar.js';
+import { initLiquidGlass } from './js/liquidGlass.js';
 import { renderDashboard } from './js/views/dashboard.js';
 import { renderTally } from './js/views/tally.js';
 import { renderLives } from './js/views/lives.js';
@@ -196,6 +197,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         container: document.getElementById('bottom-nav-container'),
         activeTab: 'top',
     });
+
+    // Initialise physics-based liquid glass filters (Snell's Law refraction + specular)
+    initLiquidGlass();
 
     // Show App Loader initially
     const appLoader = document.getElementById('app-loader');

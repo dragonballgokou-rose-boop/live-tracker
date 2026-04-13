@@ -2156,33 +2156,36 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
   }
 }
 
-/* ---------- Bottom Navigation — Floating Glass Pill ---------- */
 /* ============================================================
-   LIQUID GLASS — Bottom Nav  (Apple iOS 26 仕様準拠)
-   ① nav-blob: ガラス越しに見える色光源（屈折歪曲あり）
-   ② bottom-nav: フロステッドガラスパネル + エッジスペキュラー
-   ③ tab-indicator: 白いガラスピル + 強スペキュラー（スプリングスライド）
+   LIQUID GLASS — Bottom Nav  (Apple iOS 26 / archisvaze style)
+   ① nav-blob  : ガラス越しに見える液体色光源
+   ② bottom-nav: Snell's Law 屈折 + スペキュラー SVG フィルター
+   ③ tab-indicator: 白いガラスピル + 物理ベーススペキュラー
    ============================================================ */
 
-/* ① Ambient color blob — ガラス越しに透けて見える液体色光源 */
+/* ① Ambient colour blob — ガラス越しに歪んで見える液体光源 */
 .nav-blob {
   position: fixed;
-  bottom: 22px;           /* タブバー(bottom:34 + h:64=98px)の中央あたり */
+  bottom: 22px;
   left: 50%;
   transform: translateX(-50%);
-  width: 480px;
-  height: 88px;
+  width: 520px;
+  height: 96px;
   background:
-    radial-gradient(ellipse at 20% 50%, rgba(139, 92, 246, 0.92) 0%, transparent 50%),
-    radial-gradient(ellipse at 80% 40%, rgba(236, 72, 153, 0.65) 0%, transparent 46%),
-    radial-gradient(ellipse at 50% 90%, rgba(59, 130, 246, 0.45) 0%, transparent 40%);
-  filter: blur(22px) url(#glass-distort);  /* 有機的歪曲 */
+    radial-gradient(ellipse at 18% 55%, rgba(139, 92, 246, 0.95) 0%, transparent 48%),
+    radial-gradient(ellipse at 78% 38%, rgba(236, 72, 153, 0.72) 0%, transparent 44%),
+    radial-gradient(ellipse at 52% 88%, rgba(59, 130, 246, 0.50) 0%, transparent 40%);
+  /* 有機的な歪曲 — glass-distort は turbulence フィルター */
+  filter: blur(24px) url(#glass-distort);
   border-radius: 50%;
   pointer-events: none;
   z-index: 99;
 }
 
-/* ② Frosted glass tab bar container */
+/* ② Frosted-glass tab bar
+   – Fallback (Firefox / Safari): CSS backdrop blur
+   – Enhanced (Chrome): replaced by SVG liquid-glass filter via .liquid-glass-ready
+*/
 .bottom-nav {
   position: fixed;
   bottom: 34px;
@@ -2196,72 +2199,52 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
   align-items: center;
   padding: 0 4px;
 
-  /*
-   * Apple Liquid Glass マテリアル:
-   * – 非常に高いblur (50px) で背景コンテンツをしっかり拡散
-   * – saturation 200%+ でガラス越しの色を鮮やかに保つ
-   * – brightness 1.2 でガラスが光を集める感覚
-   * – 背景は極めて低opacity（ガラスは透明）
-   */
-  background: rgba(10, 10, 20, 0.32);
+  background: rgba(10, 10, 20, 0.28);
+
+  /* Fallback frosted glass (all browsers) */
   backdrop-filter: blur(50px) saturate(210%) brightness(1.22);
   -webkit-backdrop-filter: blur(50px) saturate(210%) brightness(1.22);
 
   border-radius: 32px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.16);
 
-  /*
-   * box-shadow 多層構造:
-   * 1. 外側ドロップシャドウ（浮遊感）
-   * 2. 上縁スペキュラーハイライト（最重要・ガラスの光沢）
-   * 3. 下縁アンビエントオクルージョン
-   */
   box-shadow:
-    0 16px 48px rgba(0, 0, 0, 0.55),
+    0 20px 56px rgba(0, 0, 0, 0.60),
     0 4px 16px rgba(0, 0, 0, 0.35),
-    inset 0 1.5px 0 rgba(255, 255, 255, 0.28),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.18);
+    inset 0 1.5px 0 rgba(255, 255, 255, 0.32),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.20);
 
   z-index: 101;
   overflow: hidden;
   isolation: isolate;
 }
 
-/*
- * エッジ屈折レイヤー:
- * SVG glass-edge フィルターで glass の縁を micro-distort。
- * backdrop-filter url() はChrome系のみ有効、未対応環境では無視される。
- */
-.bottom-nav::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: 32px;
-  backdrop-filter: url(#glass-edge);
-  -webkit-backdrop-filter: url(#glass-edge);
-  pointer-events: none;
-  z-index: 0;
-}
-
-/*
- * トップスペキュラーグラデーション:
- * ガラス上縁に光が当たって輝く薄いグローを表現。
- */
+/* Top-edge specular glow (always visible) */
 .bottom-nav::after {
   content: '';
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
-  height: 32px;
+  height: 36px;
   border-radius: 32px 32px 0 0;
   background: linear-gradient(
     180deg,
-    rgba(255, 255, 255, 0.12) 0%,
+    rgba(255, 255, 255, 0.14) 0%,
     rgba(255, 255, 255, 0) 100%
   );
   pointer-events: none;
   z-index: 2;
+}
+
+/* ── Chrome: Liquid Glass SVG filter (physics-based refraction + specular) ── */
+/* backdrop-filter: url() is Chrome/Chromium only; other browsers keep the     */
+/* CSS blur fallback above. .liquid-glass-ready is added by js/liquidGlass.js  */
+@supports (backdrop-filter: url('#')) {
+  .liquid-glass-ready .bottom-nav {
+    backdrop-filter: url(#liquid-glass-nav);
+    -webkit-backdrop-filter: url(#liquid-glass-nav);
+  }
 }
 
 /* ③ Liquid Glass sliding indicator — Apple の白いガラスピル */
@@ -2271,34 +2254,36 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
   height: 56px;
   border-radius: 28px;
 
-  /*
-   * インジケーターは「色付き」ではなく「白いガラス」
-   * Apple iOS 26 では、アクティブタブの背景は
-   * ほぼ無色透明の明るいガラスピル。
-   */
-  background: rgba(255, 255, 255, 0.13);
+  background: rgba(255, 255, 255, 0.11);
+
+  /* Fallback backdrop blur */
   backdrop-filter: blur(20px) brightness(1.35);
   -webkit-backdrop-filter: blur(20px) brightness(1.35);
 
-  border: 1px solid rgba(255, 255, 255, 0.28);
+  border: 1px solid rgba(255, 255, 255, 0.30);
 
   box-shadow:
-    /* スペキュラーハイライト（ガラス上縁の輝き）*/
-    inset 0 1.5px 0 rgba(255, 255, 255, 0.55),
-    inset 0 -0.5px 0 rgba(255, 255, 255, 0.08),
-    /* アクセントカラーのグロー */
-    0 0 24px rgba(167, 139, 250, 0.22),
-    /* ドロップシャドウ */
-    0 4px 16px rgba(0, 0, 0, 0.28);
+    inset 0 1.5px 0 rgba(255, 255, 255, 0.60),
+    inset 0 -0.5px 0 rgba(255, 255, 255, 0.10),
+    0 0 28px rgba(167, 139, 250, 0.25),
+    0 4px 18px rgba(0, 0, 0, 0.30);
 
   pointer-events: none;
   z-index: 0;
 
-  /* スプリングスライド: overshoot で "液体が流れる" 感触 */
+  /* Spring slide — liquid feel */
   transition:
     left  0.45s cubic-bezier(0.34, 1.56, 0.64, 1),
     width 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
   will-change: left, width;
+}
+
+/* Chrome: replace blur with Snell's Law displacement + specular */
+@supports (backdrop-filter: url('#')) {
+  .liquid-glass-ready .tab-indicator {
+    backdrop-filter: url(#liquid-glass-indicator);
+    -webkit-backdrop-filter: url(#liquid-glass-indicator);
+  }
 }
 
 .tab-indicator.no-transition {
