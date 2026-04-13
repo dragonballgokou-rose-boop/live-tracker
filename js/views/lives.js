@@ -1479,9 +1479,20 @@ function renderLivesCalendar(filteredLives, members, now, content) {
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const nowStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
 
+  // ツアーを子ライブに展開（カレンダー用）
+  const allLivesData = getLives();
+  const calItems = [];
+  filteredLives.forEach(live => {
+    if (live.eventType === 'tour') {
+      allLivesData.filter(l => l.parentId === live.id).forEach(child => calItems.push(child));
+    } else {
+      calItems.push(live);
+    }
+  });
+
   // dateStr → lives マップ
   const dayMap = {};
-  filteredLives.forEach(live => {
+  calItems.forEach(live => {
     getDatesForLive(live).forEach(({ dateStr }) => {
       if (!dayMap[dateStr]) dayMap[dateStr] = [];
       if (!dayMap[dateStr].find(l => l.id === live.id)) dayMap[dateStr].push(live);
@@ -1491,7 +1502,7 @@ function renderLivesCalendar(filteredLives, members, now, content) {
   // 選択メンバーの参戦日セットを構築（黄枠強調用）
   const memberHighlightDays = new Set();
   if (activeFilterMemberIds.size > 0) {
-    filteredLives.forEach(live => {
+    calItems.forEach(live => {
       getDatesForLive(live).forEach(({ dateStr }) => {
         for (const memberId of activeFilterMemberIds) {
           if (getDayAttendanceStatus(live.id, dateStr, memberId) === 'going') {
