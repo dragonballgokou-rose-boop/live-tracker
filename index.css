@@ -4104,14 +4104,15 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
   justify-content: space-between;
   gap: 10px;
   padding: 8px 10px;
-  background: rgba(139, 92, 246, 0.08);
-  border: 1px solid rgba(139, 92, 246, 0.20);
+  margin-bottom: 8px;
+  background: rgba(18, 18, 38, 0.95);
+  border: 1px solid rgba(139, 92, 246, 0.30);
   border-radius: var(--radius-md);
   position: sticky;
   top: 0;
-  z-index: 2;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  z-index: 10;
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
 }
 
 .os-check-all-label {
