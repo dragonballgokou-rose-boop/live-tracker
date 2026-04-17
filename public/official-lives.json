@@ -1,0 +1,10 @@
+{
+  "version": "1",
+  "updatedAt": "2026-04-17T00:00:00+09:00",
+  "sources": {
+    "nogizaka46": "https://www.nogizaka46.com/s/n46/media/list/schedule",
+    "sakurazaka46": "https://sakurazaka46.com/s/s46/media/list/schedule"
+  },
+  "note": "scripts/scrape-official.mjs により自動生成されます。手動編集は非推奨。",
+  "lives": []
+}
