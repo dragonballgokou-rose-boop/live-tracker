@@ -404,27 +404,12 @@ textarea {
   display: flex;
   align-items: center;
   gap: var(--space-md);
-  background: rgba(6, 6, 26, 0.42);
-  backdrop-filter: var(--glass-filter-strong);
-  -webkit-backdrop-filter: var(--glass-filter-strong);
-  border-bottom: 1px solid var(--glass-border);
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.42),
-    0 4px 24px rgba(0, 0, 0, 0.35),
-    inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  background: rgba(10, 10, 26, 0.72);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04);
   z-index: 50;
-}
-
-/* ヘッダーの水面反射スペキュラー */
-.main-header::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: linear-gradient(180deg,
-    rgba(255, 255, 255, 0.08) 0%,
-    rgba(255, 255, 255, 0.02) 40%,
-    transparent 60%);
 }
 
 /* Header logo */
@@ -462,6 +447,7 @@ textarea {
   flex-shrink: 0;
 }
 
+/* iOS 26 style circular glass button */
 .header-action-btn {
   width: 36px;
   height: 36px;
@@ -470,61 +456,25 @@ textarea {
   align-items: center;
   justify-content: center;
   color: var(--text-secondary);
-  background: var(--glass-bg-medium);
-  border: 1px solid var(--glass-border);
+  background: rgba(255, 255, 255, 0.10);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   cursor: pointer;
   transition: all var(--transition-fast);
   font-family: inherit;
-  backdrop-filter: var(--glass-filter);
-  -webkit-backdrop-filter: var(--glass-filter);
   box-shadow:
-    var(--glass-rim),
-    0 4px 12px rgba(0, 0, 0, 0.24);
-  position: relative;
-  overflow: hidden;
-  isolation: isolate;
+    inset 0 0.5px 0 rgba(255, 255, 255, 0.25),
+    0 1px 2px rgba(0, 0, 0, 0.20);
 }
-
-/* 上縁スペキュラー */
-.header-action-btn::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background:
-    radial-gradient(ellipse 130% 60% at 30% -10%,
-      rgba(255, 255, 255, 0.55) 0%,
-      rgba(255, 255, 255, 0.14) 40%,
-      transparent 70%);
-  pointer-events: none;
-}
-
-/* 下端リム（屈折影） */
-.header-action-btn::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: radial-gradient(ellipse 130% 50% at 70% 110%,
-    rgba(0, 0, 0, 0.15) 0%,
-    transparent 60%);
-  pointer-events: none;
-}
-
-.header-action-btn > * { position: relative; z-index: 1; }
 
 .header-action-btn:hover {
-  background: var(--glass-bg-strong);
+  background: rgba(255, 255, 255, 0.16);
   color: var(--text-primary);
-  border-color: var(--glass-border-hover);
-  transform: scale(1.05);
-  box-shadow:
-    var(--glass-rim-strong),
-    0 6px 18px rgba(0, 0, 0, 0.32);
+  border-color: rgba(255, 255, 255, 0.22);
 }
 
 .header-action-btn:active {
-  transform: scale(0.93);
+  transform: scale(0.94);
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .page-title {
@@ -560,48 +510,33 @@ textarea {
 }
 
 /* ---------- Cards ---------- */
+/* ---------- Cards (コンテンツカード)
+   iOS 26 の Settings / Notes のようなフラット＆サブトル
+   → スペキュラー/強リムはナビ・モーダル・FAB に限定 */
 .card {
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: var(--radius-lg);
   padding: var(--space-lg);
-  backdrop-filter: var(--glass-filter);
-  -webkit-backdrop-filter: var(--glass-filter);
-  box-shadow: var(--shadow-glass);
-  transition: all var(--transition-base);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.30),
+    0 6px 16px rgba(0, 0, 0, 0.22),
+    inset 0 0.5px 0 rgba(255, 255, 255, 0.08);
+  transition: background var(--transition-fast),
+              border-color var(--transition-fast),
+              transform var(--transition-base),
+              box-shadow var(--transition-base);
   position: relative;
-  overflow: hidden;
-  isolation: isolate;
 }
-
-/* 上部スペキュラー（水面反射） + 下端屈折リム を 1つの擬似要素にまとめる
-   （::after は .stat-card が使うため ::before のみ使用） */
-.card::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background:
-    radial-gradient(ellipse 120% 60% at 20% -10%,
-      rgba(255, 255, 255, 0.30) 0%,
-      rgba(255, 255, 255, 0.08) 35%,
-      rgba(255, 255, 255, 0.0) 60%),
-    linear-gradient(180deg,
-      rgba(255, 255, 255, 0.08) 0%,
-      rgba(255, 255, 255, 0.0) 32%,
-      rgba(255, 255, 255, 0.0) 72%,
-      rgba(0, 0, 0, 0.10) 100%);
-  pointer-events: none;
-  z-index: 0;
-}
-
-.card > * { position: relative; z-index: 1; }
 
 .card:hover {
-  border-color: var(--glass-border-hover);
-  box-shadow: var(--shadow-glass-lg);
-  background: var(--glass-bg-medium);
+  background: rgba(255, 255, 255, 0.075);
+  border-color: rgba(255, 255, 255, 0.14);
   transform: translateY(-1px);
+  box-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.32),
+    0 10px 24px rgba(0, 0, 0, 0.28),
+    inset 0 0.5px 0 rgba(255, 255, 255, 0.10);
 }
 
 .card:active {
@@ -634,9 +569,13 @@ a.stat-card {
 }
 
 a.stat-card:hover {
-  transform: translateY(-3px);
-  border-color: var(--border-accent);
-  box-shadow: var(--shadow-glass-lg), var(--shadow-glow);
+  transform: translateY(-2px);
+  border-color: rgba(255, 255, 255, 0.18);
+  box-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.32),
+    0 12px 28px rgba(0, 0, 0, 0.30),
+    inset 0 0.5px 0 rgba(255, 255, 255, 0.12),
+    0 0 20px color-mix(in srgb, var(--stat-color, #8B5CF6) 22%, transparent);
 }
 
 a.stat-card:active {
@@ -726,43 +665,19 @@ a.stat-card:active {
 }
 
 .btn-secondary {
-  background: var(--glass-bg-medium);
-  border: 1px solid var(--glass-border);
+  background: rgba(255, 255, 255, 0.10);
+  border: 1px solid rgba(255, 255, 255, 0.14);
   color: var(--text-secondary);
-  backdrop-filter: var(--glass-filter);
-  -webkit-backdrop-filter: var(--glass-filter);
   box-shadow:
-    var(--glass-rim),
-    0 4px 12px rgba(0, 0, 0, 0.22);
-  position: relative;
-  overflow: hidden;
-  isolation: isolate;
+    inset 0 0.5px 0 rgba(255, 255, 255, 0.22),
+    0 1px 2px rgba(0, 0, 0, 0.20);
 }
-
-.btn-secondary::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background:
-    radial-gradient(ellipse 130% 70% at 30% -20%,
-      rgba(255, 255, 255, 0.45) 0%,
-      rgba(255, 255, 255, 0.10) 45%,
-      transparent 70%);
-  pointer-events: none;
-  z-index: 0;
-}
-
-.btn-secondary > * { position: relative; z-index: 1; }
 
 .btn-secondary:hover {
-  background: var(--glass-bg-strong);
-  border-color: var(--glass-border-hover);
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.22);
   color: var(--text-primary);
   transform: translateY(-1px);
-  box-shadow:
-    var(--glass-rim-strong),
-    0 6px 18px rgba(0, 0, 0, 0.30);
 }
 
 .btn-danger {
@@ -882,12 +797,13 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
 /* ---------- Tables ---------- */
 .table-container {
   overflow-x: auto;
-  border: 1px solid var(--glass-border);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: var(--radius-lg);
-  background: var(--glass-bg);
-  backdrop-filter: var(--glass-filter);
-  -webkit-backdrop-filter: var(--glass-filter);
-  box-shadow: var(--shadow-glass);
+  background: rgba(255, 255, 255, 0.04);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.30),
+    0 6px 16px rgba(0, 0, 0, 0.22),
+    inset 0 0.5px 0 rgba(255, 255, 255, 0.08);
 }
 
 .data-table {
@@ -931,32 +847,15 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
 }
 
 .tally-card {
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: var(--radius-lg);
   overflow: hidden;
-  backdrop-filter: var(--glass-filter);
-  -webkit-backdrop-filter: var(--glass-filter);
-  box-shadow: var(--shadow-glass);
-  position: relative;
-  isolation: isolate;
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.30),
+    0 6px 16px rgba(0, 0, 0, 0.22),
+    inset 0 0.5px 0 rgba(255, 255, 255, 0.08);
 }
-
-.tally-card::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background:
-    radial-gradient(ellipse 120% 55% at 22% -10%,
-      rgba(255, 255, 255, 0.22) 0%,
-      rgba(255, 255, 255, 0.04) 40%,
-      transparent 65%);
-  pointer-events: none;
-  z-index: 0;
-}
-
-.tally-card > * { position: relative; z-index: 1; }
 
 .tally-card-past {
   opacity: 0.55;
@@ -1132,12 +1031,13 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: none;
   max-height: calc(100vh - 280px);
-  border: 1px solid var(--glass-border);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: var(--radius-lg);
-  background: rgba(6, 6, 26, 0.48);
-  backdrop-filter: var(--glass-filter);
-  -webkit-backdrop-filter: var(--glass-filter);
-  box-shadow: var(--shadow-glass);
+  background: rgba(255, 255, 255, 0.04);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.30),
+    0 6px 16px rgba(0, 0, 0, 0.22),
+    inset 0 0.5px 0 rgba(255, 255, 255, 0.08);
   position: relative;
 }
 
@@ -1353,45 +1253,16 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
   max-width: 520px;
   max-height: 90vh;
   overflow-y: auto;
-  background: rgba(14, 14, 34, 0.52);
-  border: 1px solid var(--glass-border);
+  background: rgba(22, 22, 38, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.10);
   border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-glass-lg);
-  backdrop-filter: var(--glass-filter-strong);
-  -webkit-backdrop-filter: var(--glass-filter-strong);
+  box-shadow:
+    0 24px 64px rgba(0, 0, 0, 0.55),
+    0 4px 10px rgba(0, 0, 0, 0.32),
+    inset 0 0.5px 0 rgba(255, 255, 255, 0.14);
+  backdrop-filter: blur(40px) saturate(180%);
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
   animation: modalIn var(--transition-base) ease-out;
-  isolation: isolate;
-}
-
-/* モーダル上部の強い水面スペキュラー */
-.modal::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background:
-    radial-gradient(ellipse 130% 70% at 18% -5%,
-      rgba(255, 255, 255, 0.30) 0%,
-      rgba(255, 255, 255, 0.08) 32%,
-      transparent 55%),
-    linear-gradient(180deg,
-      rgba(255, 255, 255, 0.08) 0%,
-      rgba(255, 255, 255, 0.0) 30%);
-  pointer-events: none;
-  z-index: 0;
-}
-
-/* モーダル底部の屈折陰影 */
-.modal::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: radial-gradient(ellipse 140% 50% at 80% 105%,
-    rgba(139, 92, 246, 0.10) 0%,
-    transparent 60%);
-  pointer-events: none;
-  z-index: 0;
 }
 
 @keyframes modalIn {
@@ -1412,8 +1283,6 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
   justify-content: space-between;
   padding: var(--space-lg);
   border-bottom: 1px solid var(--border-color);
-  position: relative;
-  z-index: 1;
 }
 
 .modal-title {
@@ -1435,8 +1304,6 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
 
 .modal-body {
   padding: var(--space-lg);
-  position: relative;
-  z-index: 1;
 }
 
 /* ---------- Toast ---------- */
@@ -1452,12 +1319,14 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
 
 .toast {
   padding: var(--space-md) var(--space-lg);
-  background: rgba(14, 14, 34, 0.62);
-  border: 1px solid var(--glass-border);
+  background: rgba(20, 20, 36, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-glass-lg);
-  backdrop-filter: var(--glass-filter-strong);
-  -webkit-backdrop-filter: var(--glass-filter-strong);
+  box-shadow:
+    0 12px 36px rgba(0, 0, 0, 0.48),
+    inset 0 0.5px 0 rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
   color: var(--text-primary);
   font-size: var(--font-size-sm);
   font-weight: 500;
@@ -1466,26 +1335,7 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
   align-items: center;
   gap: var(--space-sm);
   min-width: 250px;
-  position: relative;
-  overflow: hidden;
-  isolation: isolate;
 }
-
-.toast::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background:
-    radial-gradient(ellipse 130% 60% at 20% -10%,
-      rgba(255, 255, 255, 0.28) 0%,
-      rgba(255, 255, 255, 0.06) 40%,
-      transparent 60%);
-  pointer-events: none;
-  z-index: 0;
-}
-
-.toast > * { position: relative; z-index: 1; }
 
 .toast.success {
   border-left: 3px solid var(--accent-green);
@@ -1737,13 +1587,21 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
   gap: var(--space-sm);
   padding: var(--space-md);
   border-left: 3px solid var(--member-color, var(--accent-purple));
-  transition: transform var(--transition-base), box-shadow var(--transition-base);
-  box-shadow: var(--shadow-glass), -4px 0 16px -4px color-mix(in srgb, var(--member-color, #8B5CF6) 25%, transparent);
+  transition: transform var(--transition-base), box-shadow var(--transition-base), background var(--transition-fast);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.30),
+    0 6px 16px rgba(0, 0, 0, 0.22),
+    inset 0 0.5px 0 rgba(255, 255, 255, 0.08),
+    -4px 0 14px -6px color-mix(in srgb, var(--member-color, #8B5CF6) 28%, transparent);
 }
 
 .member-card:hover {
-  transform: translateY(-3px) translateX(1px);
-  box-shadow: var(--shadow-glass-lg), -6px 0 20px -2px color-mix(in srgb, var(--member-color, #8B5CF6) 35%, transparent);
+  transform: translateY(-2px) translateX(1px);
+  box-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.32),
+    0 12px 24px rgba(0, 0, 0, 0.28),
+    inset 0 0.5px 0 rgba(255, 255, 255, 0.12),
+    -6px 0 18px -4px color-mix(in srgb, var(--member-color, #8B5CF6) 40%, transparent);
 }
 
 .member-card-top {
@@ -2367,7 +2225,7 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
   left: 12%;
   width: 42vw;
   height: 42vw;
-  background: radial-gradient(circle, rgba(167, 139, 250, 0.38) 0%, rgba(139, 92, 246, 0.12) 45%, transparent 72%);
+  background: radial-gradient(circle, rgba(167, 139, 250, 0.22) 0%, rgba(139, 92, 246, 0.06) 45%, transparent 72%);
   animation: liquid-source-1 26s ease-in-out infinite;
 }
 .liquid-bg-source::after {
@@ -2375,7 +2233,7 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
   right: 8%;
   width: 44vw;
   height: 44vw;
-  background: radial-gradient(circle, rgba(244, 114, 182, 0.30) 0%, rgba(236, 72, 153, 0.10) 45%, transparent 72%);
+  background: radial-gradient(circle, rgba(244, 114, 182, 0.18) 0%, rgba(236, 72, 153, 0.05) 45%, transparent 72%);
   animation: liquid-source-2 32s ease-in-out infinite;
 }
 @keyframes liquid-source-1 {
@@ -2405,12 +2263,12 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
   align-items: center;
   padding: 0 4px;
 
-  /* 背景を不透明寄りに → リスト文字の被りを防止 */
-  background: rgba(6, 6, 20, 0.55);
+  /* 背景を十分不透明に → ラベルに後ろのテキストが透けないように */
+  background: rgba(10, 10, 24, 0.78);
 
-  /* Fallback frosted glass (all browsers): blur 強化 */
-  backdrop-filter: blur(80px) saturate(240%) brightness(1.18);
-  -webkit-backdrop-filter: blur(80px) saturate(240%) brightness(1.18);
+  /* Fallback frosted glass — 強ブラーで後ろのコンテンツを確実に溶かす */
+  backdrop-filter: blur(40px) saturate(200%);
+  -webkit-backdrop-filter: blur(40px) saturate(200%);
 
   border-radius: 32px;
   border: 1px solid rgba(255, 255, 255, 0.22);
@@ -2446,19 +2304,12 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
   z-index: 2;
 }
 
-/* ── Chrome: Liquid Glass SVG filter (Snell's Law + specular) ── */
+/* ── Chrome: Liquid Glass SVG filter (Snell's Law + specular)
+   ボトムナビとインジケーターのみ — iOS 26 の tab bar ガラス感 */
 @supports (backdrop-filter: url('#')) {
   .liquid-glass-ready .bottom-nav {
     backdrop-filter: url(#liquid-glass-nav);
     -webkit-backdrop-filter: url(#liquid-glass-nav);
-  }
-
-  /* Shared turbulence-based liquid backdrop for large surfaces */
-  .liquid-glass-ready .modal,
-  .liquid-glass-ready .auth-card,
-  .liquid-glass-ready .rooms-card {
-    backdrop-filter: url(#liquid-backdrop);
-    -webkit-backdrop-filter: url(#liquid-backdrop);
   }
 }
 
@@ -2599,19 +2450,13 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
   font-size: 12px;
   font-weight: 500;
   color: var(--text-secondary);
-  background: var(--glass-bg-medium);
-  border: 1px solid var(--glass-border);
-  backdrop-filter: var(--glass-filter-subtle);
-  -webkit-backdrop-filter: var(--glass-filter-subtle);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.10);
   cursor: pointer;
   white-space: nowrap;
   transition: all var(--transition-base);
   font-family: inherit;
   flex-shrink: 0;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.28),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.16),
-    0 2px 6px rgba(0, 0, 0, 0.20);
 }
 
 .history-chip:active { transform: scale(0.95); }
@@ -3472,18 +3317,20 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
 
 .auth-card,
 .rooms-card {
-  background: rgba(14, 14, 34, 0.58);
-  border: 1px solid var(--glass-border);
+  background: rgba(22, 22, 38, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.10);
   border-radius: var(--radius-xl);
   padding: 32px 24px;
   width: 100%;
   max-width: 420px;
-  box-shadow: var(--shadow-glass-lg);
-  backdrop-filter: var(--glass-filter-strong);
-  -webkit-backdrop-filter: var(--glass-filter-strong);
+  box-shadow:
+    0 24px 64px rgba(0, 0, 0, 0.55),
+    0 4px 10px rgba(0, 0, 0, 0.32),
+    inset 0 0.5px 0 rgba(255, 255, 255, 0.14);
+  backdrop-filter: blur(40px) saturate(180%);
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
   position: relative;
   overflow: hidden;
-  isolation: isolate;
 }
 
 .auth-card::before,
@@ -3791,34 +3638,17 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
 
 /* ---- ツアーグループ ---- */
 .tour-group {
-  border: 1px solid var(--glass-border);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-left: 3px solid var(--tour-color, var(--accent-purple));
   border-radius: var(--radius-lg);
-  background: var(--glass-bg);
-  backdrop-filter: var(--glass-filter);
-  -webkit-backdrop-filter: var(--glass-filter);
+  background: rgba(255, 255, 255, 0.05);
   margin-bottom: 10px;
   overflow: hidden;
-  box-shadow: var(--shadow-glass);
-  position: relative;
-  isolation: isolate;
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.30),
+    0 6px 16px rgba(0, 0, 0, 0.22),
+    inset 0 0.5px 0 rgba(255, 255, 255, 0.08);
 }
-
-.tour-group::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background:
-    radial-gradient(ellipse 110% 55% at 25% -10%,
-      rgba(255, 255, 255, 0.20) 0%,
-      rgba(255, 255, 255, 0.03) 40%,
-      transparent 65%);
-  pointer-events: none;
-  z-index: 0;
-}
-
-.tour-group > * { position: relative; z-index: 1; }
 
 .tour-group-past {
   opacity: 0.65;
