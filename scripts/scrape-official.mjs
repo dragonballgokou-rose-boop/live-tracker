@@ -508,7 +508,7 @@ function parsePlainTextFallback(html, { artist, idPrefix, url }) {
     const venue = venueMatch ? venueMatch[1].trim().split(/\s{2,}/)[0] : null;
 
     // 「ライブ」/「イベント」/「感謝祭」等の区別
-    const eventType = /感謝祭|ミーグリ|お話し会|誕生|握手|イベント/.test(title) ? 'イベント' : 'ライブ';
+    const eventType = /感謝祭|ミーグリ|お話し会|誕生|握手|イベント/.test(title) ? 'event' : 'live';
 
     results.push({
       officialId: `${idPrefix}-${dates[0]}-${slugify(title)}`,
@@ -553,11 +553,13 @@ function normalizeDate(raw) {
 
 function mapCategory(raw) {
   const s = cleanText(raw).toLowerCase();
-  if (!s) return 'ライブ';
-  if (s.includes('live') || s.includes('ライブ') || s.includes('コンサート')) return 'ライブ';
-  if (s.includes('ミーグリ') || s.includes('握手') || s.includes('ファン')) return 'イベント';
-  if (s.includes('event') || s.includes('イベント')) return 'イベント';
-  return 'ライブ';
+  // アプリ本体が使う値に合わせる: 'live' / 'event' / 'tour'
+  // Supabase の lives_event_type_check 制約もこれらの値のみ許可
+  if (!s) return 'live';
+  if (s.includes('live') || s.includes('ライブ') || s.includes('コンサート')) return 'live';
+  if (s.includes('ミーグリ') || s.includes('握手') || s.includes('ファン')) return 'event';
+  if (s.includes('event') || s.includes('イベント')) return 'event';
+  return 'live';
 }
 
 // ---------- main ----------

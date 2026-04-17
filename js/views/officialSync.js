@@ -66,6 +66,13 @@ function escapeHtml(s) {
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
+function eventTypeLabel(v) {
+  // DB に格納される値は live/event/tour 。UI 表示用に日本語へ
+  if (v === 'event' || v === 'イベント') return 'イベント';
+  if (v === 'tour')  return 'ツアー';
+  return 'ライブ';
+}
+
 function formatDateRange(startIso, endIso) {
   if (!startIso) return '';
   if (!endIso || endIso === startIso) return startIso.slice(0, 10);
@@ -510,7 +517,7 @@ function renderAddItem(item, i) {
         ${similarWarning}
         <div class="os-row"><span class="os-label">日程</span> ${escapeHtml(formatDateRange(o.dateStart, o.dateEnd))}</div>
         <div class="os-row"><span class="os-label">会場</span> ${escapeHtml(o.venue || '-')}</div>
-        <div class="os-row"><span class="os-label">種別</span> ${escapeHtml(o.eventType || 'ライブ')}</div>
+        <div class="os-row"><span class="os-label">種別</span> ${escapeHtml(eventTypeLabel(o.eventType))}</div>
         ${pickerHtml}
         ${renderSourceLine(o)}
       </div>

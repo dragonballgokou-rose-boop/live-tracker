@@ -2253,8 +2253,8 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
 */
 .bottom-nav {
   position: fixed;
-  /* iOS safe-area を考慮。home indicator と被らない位置 */
-  bottom: calc(16px + env(safe-area-inset-bottom, 18px));
+  /* iOS safe-area を考慮。home indicator と被らない位置。最低 34px 確保 */
+  bottom: max(34px, calc(18px + env(safe-area-inset-bottom, 0px)));
   left: 16px;
   right: 16px;
   max-width: 480px;
