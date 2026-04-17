@@ -43,14 +43,16 @@ const SOURCES = [
     artist: '櫻坂46',
     idPrefix: 'saku',
     candidates: [
-      'https://sakurazaka46.com/s/s46/live',
-      'https://sakurazaka46.com/s/s46/live/list',
-      'https://sakurazaka46.com/s/s46/event',
-      'https://sakurazaka46.com/s/s46/event/list',
-      'https://sakurazaka46.com/s/s46/schedule',
-      'https://sakurazaka46.com/s/s46/calendar',
-      'https://sakurazaka46.com/live',
-      'https://sakurazaka46.com/event',
+      // sakurazaka46.com のトップレベル CMS 構造を試す
+      'https://sakurazaka46.com/',
+      'https://sakurazaka46.com/ja/live',
+      'https://sakurazaka46.com/ja/live/list',
+      'https://sakurazaka46.com/ja/event',
+      'https://sakurazaka46.com/ja/schedule',
+      'https://sakurazaka46.com/ja/calendar',
+      'https://sakurazaka46.com/live/list',
+      'https://sakurazaka46.com/diary/list',
+      'https://sakurazaka46.com/news/list',
     ],
   },
 ];
@@ -141,6 +143,17 @@ function parseScheduleHtml(html, { artist, idPrefix, url }) {
   // 2) HTML パターン群を順に試す
   const patterns = [
     {
+      // 乃木坂46 / 欅坂系 CMS — la--list__in / la--list__date などのクラス名
+      name: 'la--list',
+      itemRe: /<(?:li|a|div)[^>]*class=["'][^"']*la--list__(?:in|item)[^"']*["'][^>]*>([\s\S]*?)<\/(?:li|a|div)>/gi,
+      fields: {
+        date:  /la--list__(?:date|day)[^>]*>([\s\S]*?)</i,
+        title: /la--list__(?:ttl|title|name)[^>]*>([\s\S]*?)</i,
+        place: /la--list__(?:place|venue|loc)[^>]*>([\s\S]*?)</i,
+        cate:  /la--list__(?:cate|category|tag)[^>]*>([\s\S]*?)</i,
+      },
+    },
+    {
       name: 'b-media-list',
       itemRe: /<li[^>]*class=["'][^"']*b-media-list__item[^"']*["'][^>]*>([\s\S]*?)<\/li>/gi,
       fields: {
@@ -209,15 +222,35 @@ function parseScheduleHtml(html, { artist, idPrefix, url }) {
   // 3) 失敗時は HTML の構造ヒントを出して終了
   if (results.length === 0) {
     console.warn(`  ↳ Failed to parse. JSON-LD events=0, HTML patterns: ${JSON.stringify(debug.htmlPatterns)}`);
-    // 主要クラス名のヒントを表示（次の調整に役立てる）
+
+    // クラス名ヒント（次の正規表現調整用）
     const classes = [...new Set(
-      [...html.matchAll(/class=["']([^"']{1,80})["']/g)]
+      [...html.matchAll(/class=["']([^"']{1,100})["']/g)]
         .map(x => x[1].split(/\s+/))
         .flat()
-        .filter(c => /(list|item|schedule|date|venue|event|live)/i.test(c))
-    )].slice(0, 25);
-    console.warn(`  ↳ Classes containing list/item/schedule/date/venue/event/live (top 25):`);
-    console.warn(`     ${classes.join(', ')}`);
+        .filter(c => /(list|item|schedule|date|venue|event|live|sche|cale)/i.test(c))
+    )].slice(0, 40);
+    console.warn(`  ↳ Candidate classes:\n     ${classes.join(', ')}`);
+
+    // API エンドポイントヒント（JSで動的ロードしてる場合）
+    const apiUrls = [...new Set(
+      [...html.matchAll(/["']([^"']*(?:\/api\/|\/json\/|\.json|endpoint)[^"']*)["']/gi)]
+        .map(x => x[1])
+        .filter(u => u.length < 200 && !u.includes('schema.org'))
+    )].slice(0, 15);
+    if (apiUrls.length > 0) {
+      console.warn(`  ↳ Possible API endpoints found in HTML:\n     ${apiUrls.join('\n     ')}`);
+    }
+
+    // data-* 属性ヒント（data-endpoint など）
+    const dataAttrs = [...new Set(
+      [...html.matchAll(/data-(?:url|endpoint|api|src|href)=["']([^"']+)["']/gi)]
+        .map(x => x[1])
+        .filter(u => u.length < 200)
+    )].slice(0, 10);
+    if (dataAttrs.length > 0) {
+      console.warn(`  ↳ data-* URL attributes:\n     ${dataAttrs.join('\n     ')}`);
+    }
   }
 
   return results;
