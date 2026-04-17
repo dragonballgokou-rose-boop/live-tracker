@@ -22,16 +22,36 @@ const OUT_PATH  = resolve(__dirname, '..', 'public', 'official-lives.json');
 
 const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0 Safari/537.36';
 
+// 各サイトで試す URL 候補。最初に 200 を返したものを採用する。
+// CMS の URL 構造は予告なく変わるので、よくあるパターンを並べて耐性を上げる。
 const SOURCES = [
   {
     artist: '乃木坂46',
     idPrefix: 'nogi',
-    url: 'https://www.nogizaka46.com/s/n46/media/list/schedule',
+    candidates: [
+      'https://www.nogizaka46.com/s/n46/media/list/schedule',
+      'https://www.nogizaka46.com/s/n46/calendar',
+      'https://www.nogizaka46.com/s/n46/schedule',
+      'https://www.nogizaka46.com/s/n46/news/list/schedule',
+      'https://www.nogizaka46.com/s/n46/news/calendar',
+      'https://www.nogizaka46.com/s/n46/diary/schedule',
+      'https://www.nogizaka46.com/calendar',
+      'https://www.nogizaka46.com/schedule',
+    ],
   },
   {
     artist: '櫻坂46',
     idPrefix: 'saku',
-    url: 'https://sakurazaka46.com/s/s46/media/list/schedule',
+    candidates: [
+      'https://sakurazaka46.com/s/s46/media/list/schedule',
+      'https://sakurazaka46.com/s/s46/calendar',
+      'https://sakurazaka46.com/s/s46/schedule',
+      'https://sakurazaka46.com/s/s46/news/list/schedule',
+      'https://sakurazaka46.com/s/s46/news/calendar',
+      'https://sakurazaka46.com/s/s46/diary/schedule',
+      'https://sakurazaka46.com/calendar',
+      'https://sakurazaka46.com/schedule',
+    ],
   },
 ];
 
@@ -39,6 +59,7 @@ const SOURCES = [
 
 async function fetchHtml(url) {
   const res = await fetch(url, {
+    redirect: 'follow',
     headers: {
       'User-Agent': UA,
       'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
@@ -48,7 +69,28 @@ async function fetchHtml(url) {
   if (!res.ok) {
     throw new Error(`HTTP ${res.status} while fetching ${url}`);
   }
-  return await res.text();
+  return { html: await res.text(), finalUrl: res.url };
+}
+
+/**
+ * 候補URLを順番に試して、最初に 200 を返したものを使う。
+ * 失敗したURLは理由とともにログに残す。
+ */
+async function fetchAnyCandidate(candidates) {
+  const errors = [];
+  for (const url of candidates) {
+    try {
+      const { html, finalUrl } = await fetchHtml(url);
+      console.log(`  ↳ fetched ${url} → ${finalUrl} (${html.length} bytes)`);
+      return { html, finalUrl, url };
+    } catch (e) {
+      console.warn(`  ↳ tried ${url} → ${e.message}`);
+      errors.push({ url, error: e.message });
+    }
+  }
+  const err = new Error(`all ${candidates.length} candidates failed`);
+  err.details = errors;
+  throw err;
 }
 
 // ---------- パース ----------
@@ -248,13 +290,15 @@ async function main() {
   const errors = [];
 
   for (const src of SOURCES) {
+    console.log(`[${src.artist}] trying ${src.candidates.length} URL candidates...`);
     try {
-      const html = await fetchHtml(src.url);
-      const lives = parseScheduleHtml(html, src);
-      console.log(`[${src.artist}] parsed ${lives.length} entries`);
+      const { html, url: workingUrl } = await fetchAnyCandidate(src.candidates);
+      const lives = parseScheduleHtml(html, { ...src, url: workingUrl });
+      console.log(`[${src.artist}] parsed ${lives.length} entries (from ${workingUrl})`);
       allLives.push(...lives);
     } catch (e) {
-      console.error(`[${src.artist}] failed:`, e.message);
+      console.error(`[${src.artist}] all candidates failed`);
+      if (e.details) e.details.forEach(d => console.error(`  - ${d.url} → ${d.error}`));
       errors.push({ artist: src.artist, error: e.message });
     }
   }
@@ -282,7 +326,7 @@ async function main() {
     updatedAt: new Date().toISOString(),
     sources: Object.fromEntries(SOURCES.map(s => [
       s.artist === '乃木坂46' ? 'nogizaka46' : 'sakurazaka46',
-      s.url,
+      s.candidates[0],
     ])),
     errors: errors.length ? errors : undefined,
     lives: deduped,
