@@ -257,7 +257,7 @@ function attachHandlers({ toAdd, toUpdate }) {
         showToast('追加に失敗しました（結果が空）', 'error');
         return;
       }
-      showToast(`追加しました: ${official.name}`, 'success');
+      showToast(`追加しました: ${official.name} (ライブ総数 ${getLives().length}件)`, 'success');
       removeFromAdd(official);
       refreshOfficialSyncBadge();
       renderModal();
@@ -288,6 +288,61 @@ function attachHandlers({ toAdd, toUpdate }) {
       removeFromAdd(item.official);
       refreshOfficialSyncBadge();
       renderModal();
+    });
+  });
+
+  // ピッカーで選択された任意の既存ライブと統合
+  document.querySelectorAll('[data-action="merge-picked"]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const i = Number(btn.dataset.index);
+      const localIdx = Number(btn.dataset.localIdx);
+      const official = toAdd[i]?.official;
+      const target = getLives()[localIdx];
+      if (!official || !target) return;
+      let merged = null;
+      try {
+        merged = mergeIntoExisting(target, official);
+      } catch (err) {
+        console.error('mergeIntoExisting failed', err);
+        showToast(`統合失敗: ${err.message || err}`, 'error');
+        return;
+      }
+      if (!merged) {
+        showToast('統合に失敗しました', 'error');
+        return;
+      }
+      showToast(`既存ライブと統合しました: ${target.name}`, 'success');
+      removeFromAdd(official);
+      refreshOfficialSyncBadge();
+      renderModal();
+    });
+  });
+
+  // 統合ピッカーの検索
+  document.querySelectorAll('.os-merge-search').forEach(input => {
+    input.addEventListener('input', e => {
+      const i = Number(e.target.dataset.index);
+      const list = document.querySelector(`.os-merge-picker-list[data-index="${i}"]`);
+      if (!list) return;
+      list.innerHTML = renderMergePickerList(i, e.target.value);
+      // 新しいボタンにハンドラを付け直す
+      list.querySelectorAll('[data-action="merge-picked"]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const official = toAdd[Number(btn.dataset.index)]?.official;
+          const target = getLives()[Number(btn.dataset.localIdx)];
+          if (!official || !target) return;
+          try {
+            mergeIntoExisting(target, official);
+          } catch (err) {
+            showToast(`統合失敗: ${err.message || err}`, 'error');
+            return;
+          }
+          showToast(`既存ライブと統合しました: ${target.name}`, 'success');
+          removeFromAdd(official);
+          refreshOfficialSyncBadge();
+          renderModal();
+        });
+      });
     });
   });
 
@@ -415,6 +470,19 @@ function renderAddItem(item, i) {
     ? `<img src="${escapeHtml(o.iconImg)}" class="os-item-logo" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.style.display='none'" />`
     : '';
 
+  // どのライブでも「任意の既存ライブと統合」できるピッカー
+  const pickerHtml = `
+    <details class="os-merge-picker">
+      <summary>他の既存ライブと統合する</summary>
+      <div class="os-merge-picker-body">
+        <input type="text" class="form-input os-merge-search" placeholder="ライブ名で検索..." data-index="${i}" />
+        <div class="os-merge-picker-list" data-index="${i}">
+          ${renderMergePickerList(i, '')}
+        </div>
+      </div>
+    </details>
+  `;
+
   return `
     <div class="os-item${similar.length > 0 ? ' os-item-warn' : ''}">
       <div class="os-item-header">
@@ -434,10 +502,47 @@ function renderAddItem(item, i) {
         <div class="os-row"><span class="os-label">日程</span> ${escapeHtml(formatDateRange(o.dateStart, o.dateEnd))}</div>
         <div class="os-row"><span class="os-label">会場</span> ${escapeHtml(o.venue || '-')}</div>
         <div class="os-row"><span class="os-label">種別</span> ${escapeHtml(o.eventType || 'ライブ')}</div>
+        ${pickerHtml}
         ${renderSourceLine(o)}
       </div>
     </div>
   `;
+}
+
+/**
+ * 任意の既存ライブを絞り込んで統合候補として表示する。
+ * query が与えられた場合は name/artist/date に対する部分一致で絞り込む。
+ */
+function renderMergePickerList(addIndex, query) {
+  const localLives = getLives();
+  const q = (query || '').trim().toLowerCase();
+  const filtered = q
+    ? localLives.filter(l => {
+        const hay = `${l.name || ''} ${l.artist || ''} ${l.venue || ''} ${l.dateStart || ''}`.toLowerCase();
+        return hay.includes(q);
+      })
+    : localLives.slice(0, 30); // 初期は先頭30件
+
+  if (filtered.length === 0) {
+    return `<div class="os-merge-empty">該当する既存ライブがありません</div>`;
+  }
+
+  return filtered.map((l, lIdx) => {
+    const realIdx = localLives.indexOf(l);
+    return `
+      <div class="os-merge-candidate">
+        <div class="os-merge-cand-info">
+          <div class="os-merge-cand-name">${escapeHtml(l.name || '(無題)')}</div>
+          <div class="os-merge-cand-meta">
+            ${escapeHtml(l.artist || '')} ${escapeHtml((l.dateStart || '').slice(0, 10))}
+            ${l.venue ? `／${escapeHtml(l.venue)}` : ''}
+          </div>
+        </div>
+        <button type="button" class="btn btn-secondary btn-sm"
+                data-action="merge-picked" data-index="${addIndex}" data-local-idx="${realIdx}">統合</button>
+      </div>
+    `;
+  }).join('');
 }
 
 function renderUpdateItem(item, i) {
