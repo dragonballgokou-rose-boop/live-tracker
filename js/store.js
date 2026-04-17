@@ -152,6 +152,30 @@ async function syncCollectionToSupabase(tableName, localItems, toRow) {
 let syncTimeout = null;
 const dirtyKeys  = new Set();
 
+/** dirtyKeys に従って実際の Supabase 同期を実行する */
+async function runSyncNow() {
+    const keysToSync = [...dirtyKeys];
+    dirtyKeys.clear();
+
+    const promises = [];
+    if (keysToSync.length === 0 || keysToSync.includes(STORAGE_KEYS.LIVES)) {
+        promises.push(
+            syncCollectionToSupabase('lives', getAll(STORAGE_KEYS.LIVES), liveToRow)
+        );
+    }
+    if (keysToSync.length === 0 || keysToSync.includes(STORAGE_KEYS.MEMBERS)) {
+        promises.push(
+            syncCollectionToSupabase('members', getAll(STORAGE_KEYS.MEMBERS), memberToRow)
+        );
+    }
+    if (keysToSync.length === 0 || keysToSync.includes(STORAGE_KEYS.ATTENDANCE)) {
+        promises.push(
+            syncCollectionToSupabase('attendance', getAll(STORAGE_KEYS.ATTENDANCE), attendanceToRow)
+        );
+    }
+    await Promise.all(promises);
+}
+
 export function triggerSync() {
     if (!supabase) return;
 
@@ -160,35 +184,37 @@ export function triggerSync() {
     if (syncTimeout) clearTimeout(syncTimeout);
 
     syncTimeout = setTimeout(async () => {
-        const keysToSync = [...dirtyKeys];
-        dirtyKeys.clear();
-
         try {
-            const promises = [];
-
-            if (keysToSync.length === 0 || keysToSync.includes(STORAGE_KEYS.LIVES)) {
-                promises.push(
-                    syncCollectionToSupabase('lives', getAll(STORAGE_KEYS.LIVES), liveToRow)
-                );
-            }
-            if (keysToSync.length === 0 || keysToSync.includes(STORAGE_KEYS.MEMBERS)) {
-                promises.push(
-                    syncCollectionToSupabase('members', getAll(STORAGE_KEYS.MEMBERS), memberToRow)
-                );
-            }
-            if (keysToSync.length === 0 || keysToSync.includes(STORAGE_KEYS.ATTENDANCE)) {
-                promises.push(
-                    syncCollectionToSupabase('attendance', getAll(STORAGE_KEYS.ATTENDANCE), attendanceToRow)
-                );
-            }
-
-            await Promise.all(promises);
+            await runSyncNow();
             window.dispatchEvent(new CustomEvent('livetracker:sync-success'));
         } catch (e) {
             console.error('Supabase への同期に失敗しました:', e);
-            window.dispatchEvent(new CustomEvent('livetracker:sync-error'));
+            window.dispatchEvent(new CustomEvent('livetracker:sync-error', { detail: { error: e } }));
         }
     }, 1500);
+}
+
+/**
+ * デバウンスを飛ばして即座に Supabase 同期を実行する。
+ * 成功/失敗を明示的に返すので呼び出し側で UI フィードバックできる。
+ */
+export async function flushSyncNow() {
+    if (!supabase) return { ok: false, reason: 'supabase-not-configured' };
+
+    if (syncTimeout) {
+        clearTimeout(syncTimeout);
+        syncTimeout = null;
+    }
+    window.dispatchEvent(new CustomEvent('livetracker:sync-start'));
+    try {
+        await runSyncNow();
+        window.dispatchEvent(new CustomEvent('livetracker:sync-success'));
+        return { ok: true };
+    } catch (e) {
+        console.error('flushSyncNow failed:', e);
+        window.dispatchEvent(new CustomEvent('livetracker:sync-error', { detail: { error: e } }));
+        return { ok: false, reason: 'sync-failed', error: e };
+    }
 }
 
 // ---------- 初回ロード時の取得 ----------

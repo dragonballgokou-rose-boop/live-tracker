@@ -2,7 +2,7 @@
 // Official Sync View — 公式ライブ情報の差分確認モーダル
 // ============================================
 
-import { getLives } from '../store.js';
+import { getLives, flushSyncNow } from '../store.js';
 import { showModal, closeModal, showToast } from '../utils.js';
 import {
   fetchOfficialLives,
@@ -239,7 +239,7 @@ function attachHandlers({ toAdd, toUpdate }) {
 
   // 個別追加
   document.querySelectorAll('[data-action="add"]').forEach(btn => {
-    btn.addEventListener('click', () => {
+    btn.addEventListener('click', async () => {
       const i = Number(btn.dataset.index);
       const official = toAdd[i]?.official;
       if (!official) return;
@@ -255,10 +255,17 @@ function attachHandlers({ toAdd, toUpdate }) {
         showToast('追加に失敗しました（結果が空）', 'error');
         return;
       }
-      showToast(`追加しました: ${official.name} (ライブ総数 ${getLives().length}件)`, 'success');
+      showToast(`追加: ${official.name} (ローカル${getLives().length}件)`, 'success');
       refreshDiffFromStore();
       refreshOfficialSyncBadge();
       renderModal();
+
+      // デバウンスを飛ばして即 Supabase 同期。失敗したら toast で明示
+      const res = await flushSyncNow();
+      if (res && res.ok === false && res.reason === 'sync-failed') {
+        const msg = res.error?.message || res.error?.details || JSON.stringify(res.error || {}).slice(0, 120);
+        showToast(`Supabase同期失敗: ${msg}`, 'error');
+      }
     });
   });
 
@@ -376,7 +383,7 @@ function attachHandlers({ toAdd, toUpdate }) {
   });
 
   // チェックした分だけ一括追加
-  document.getElementById('os-add-checked')?.addEventListener('click', () => {
+  document.getElementById('os-add-checked')?.addEventListener('click', async () => {
     let n = 0;
     const failures = [];
     document.querySelectorAll('.os-item-check:checked').forEach(cb => {
@@ -401,10 +408,16 @@ function attachHandlers({ toAdd, toUpdate }) {
     if (failures.length > 0) {
       showToast(`${failures.length}件失敗: ${failures[0]}`, 'error');
     }
-    if (n > 0) showToast(`${n}件追加しました (総数 ${getLives().length}件)`, 'success');
+    if (n > 0) showToast(`${n}件追加 (ローカル${getLives().length}件)`, 'success');
     refreshDiffFromStore();
     refreshOfficialSyncBadge();
     renderModal();
+
+    const res = await flushSyncNow();
+    if (res && res.ok === false && res.reason === 'sync-failed') {
+      const msg = res.error?.message || res.error?.details || JSON.stringify(res.error || {}).slice(0, 120);
+      showToast(`Supabase同期失敗: ${msg}`, 'error');
+    }
   });
 
   // 差分の反映（選択フィールド）
