@@ -190,15 +190,13 @@ function renderModal() {
   attachHandlers({ toAdd, toUpdate });
 }
 
-/** 追加/統合した official を _state.diff.toAdd から除外してUI再描画に反映させる */
-function removeFromAdd(official) {
-  if (!_state?.diff?.toAdd) return;
-  const key = official.officialId || (official.artist + '|' + official.name + '|' + official.dateStart);
-  _state.diff.toAdd = _state.diff.toAdd.filter(it => {
-    const o = it.official;
-    const k = o.officialId || (o.artist + '|' + o.name + '|' + o.dateStart);
-    return k !== key;
-  });
+/**
+ * 追加/統合の後、_state.diff を localStorage から再計算する。
+ * これで「即UIから消す」手動ロジックのバグを完全回避する。
+ */
+function refreshDiffFromStore() {
+  if (!_state?.data) return;
+  _state.diff = computeDiff(_state.data.lives || [], getLives());
 }
 
 function attachHandlers({ toAdd, toUpdate }) {
@@ -258,7 +256,7 @@ function attachHandlers({ toAdd, toUpdate }) {
         return;
       }
       showToast(`追加しました: ${official.name} (ライブ総数 ${getLives().length}件)`, 'success');
-      removeFromAdd(official);
+      refreshDiffFromStore();
       refreshOfficialSyncBadge();
       renderModal();
     });
@@ -285,7 +283,7 @@ function attachHandlers({ toAdd, toUpdate }) {
         return;
       }
       showToast(`既存ライブと統合しました: ${target.name}`, 'success');
-      removeFromAdd(item.official);
+      refreshDiffFromStore();
       refreshOfficialSyncBadge();
       renderModal();
     });
@@ -312,7 +310,7 @@ function attachHandlers({ toAdd, toUpdate }) {
         return;
       }
       showToast(`既存ライブと統合しました: ${target.name}`, 'success');
-      removeFromAdd(official);
+      refreshDiffFromStore();
       refreshOfficialSyncBadge();
       renderModal();
     });
@@ -338,7 +336,7 @@ function attachHandlers({ toAdd, toUpdate }) {
             return;
           }
           showToast(`既存ライブと統合しました: ${target.name}`, 'success');
-          removeFromAdd(official);
+          refreshDiffFromStore();
           refreshOfficialSyncBadge();
           renderModal();
         });
@@ -381,7 +379,6 @@ function attachHandlers({ toAdd, toUpdate }) {
   document.getElementById('os-add-checked')?.addEventListener('click', () => {
     let n = 0;
     const failures = [];
-    const addedOfficials = [];
     document.querySelectorAll('.os-item-check:checked').forEach(cb => {
       if (cb.disabled) return;
       const i = Number(cb.dataset.index);
@@ -390,7 +387,6 @@ function attachHandlers({ toAdd, toUpdate }) {
       try {
         const added = applyAddition(official);
         if (!added) throw new Error('addLive returned falsy');
-        addedOfficials.push(official);
       } catch (err) {
         console.error('applyAddition failed', err);
         failures.push(`${official.name}: ${err.message || err}`);
@@ -405,8 +401,8 @@ function attachHandlers({ toAdd, toUpdate }) {
     if (failures.length > 0) {
       showToast(`${failures.length}件失敗: ${failures[0]}`, 'error');
     }
-    if (n > 0) showToast(`${n}件追加しました`, 'success');
-    addedOfficials.forEach(removeFromAdd);
+    if (n > 0) showToast(`${n}件追加しました (総数 ${getLives().length}件)`, 'success');
+    refreshDiffFromStore();
     refreshOfficialSyncBadge();
     renderModal();
   });
