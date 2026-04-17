@@ -5,6 +5,14 @@ on:
     # 毎日 06:00 JST (= 21:00 UTC)
     - cron: '0 21 * * *'
   workflow_dispatch:
+  push:
+    # このワークフローファイル自体、または scraper スクリプトを更新した時に動かす
+    branches:
+      - main
+      - 'claude/**'
+    paths:
+      - '.github/workflows/update-official-lives.yml'
+      - 'scripts/scrape-official.mjs'
 
 permissions:
   contents: write
