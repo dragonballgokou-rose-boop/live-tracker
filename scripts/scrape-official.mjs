@@ -376,6 +376,32 @@ function parseScheduleHtml(html, { artist, idPrefix, url }) {
     if (scriptUrls.length > 0) {
       console.warn(`  ↳ URLs referenced in HTML/scripts:\n     ${scriptUrls.join('\n     ')}`);
     }
+
+    // 主要クラス周辺の HTML スニペットを dump — 実際の DOM 構造を見る
+    const focusClasses = [...new Set(classes.filter(c =>
+      /(list.*part|livelist|livetlist|live-top|live-list|event-list|schedule)/i.test(c)
+    ))].slice(0, 3);
+    for (const cls of focusClasses) {
+      const escaped = cls.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+      const re = new RegExp(`class=["'][^"']*${escaped}[^"']*["']`, 'i');
+      const m = re.exec(html);
+      if (!m) continue;
+      const start = Math.max(0, m.index - 80);
+      const end = Math.min(html.length, m.index + 1200);
+      const snippet = html.slice(start, end).replace(/\n/g, ' ').replace(/\s+/g, ' ');
+      console.warn(`  ↳ HTML snippet around .${cls} (~${end - start} chars):\n     ${snippet.slice(0, 1500)}`);
+    }
+
+    // <script> 内の embedded JSON ヒント（window.__DATA__, var lives = {...} など）
+    const scriptBodyMatches = [...html.matchAll(/<script[^>]*>([\s\S]{0,4000})<\/script>/gi)];
+    for (const sm of scriptBodyMatches) {
+      const s = sm[1].trim();
+      if (s.length < 100) continue;
+      // 有用そうなもののみ: live/event/schedule/kouen を含む
+      if (!/live|event|kouen|schedule/i.test(s)) continue;
+      console.warn(`  ↳ relevant <script> content (first 500 chars):\n     ${s.slice(0, 500).replace(/\n/g, ' ')}`);
+      break;
+    }
   }
 
   return results;
