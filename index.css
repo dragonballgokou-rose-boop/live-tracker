@@ -2180,7 +2180,8 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
 /* ① Ambient colour blob — ガラス越しに歪んで見える液体光源（より鮮やか） */
 .nav-blob {
   position: fixed;
-  bottom: 18px;
+  bottom: max(6px, calc(-4px + env(safe-area-inset-bottom, 0px)));
+  transform: translate3d(-50%, 0, 0);
   left: 50%;
   transform: translateX(-50%);
   width: 560px;
@@ -2252,7 +2253,8 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
 */
 .bottom-nav {
   position: fixed;
-  bottom: 34px;
+  /* iOS safe-area を考慮。home indicator と被らない位置 */
+  bottom: calc(16px + env(safe-area-inset-bottom, 18px));
   left: 16px;
   right: 16px;
   max-width: 480px;
@@ -2262,6 +2264,14 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
   display: flex;
   align-items: center;
   padding: 0 4px;
+
+  /* iOS Safari の rubber-band / hide-chrome で位置がズレないように
+     GPU 層に固定する。これで scroll 時にナビが消える現象を防ぐ */
+  transform: translateZ(0);
+  -webkit-transform: translate3d(0, 0, 0);
+  will-change: transform;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
 
   /* 背景を十分不透明に → ラベルに後ろのテキストが透けないように */
   background: rgba(10, 10, 24, 0.78);
