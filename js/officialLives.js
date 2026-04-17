@@ -83,6 +83,44 @@ function datesOverlap(aStart, aEnd, bStart, bEnd) {
   return s1 <= e2 && s2 <= e1;
 }
 
+/** あいまい類似検索: 明確な同一ではないが「似ている」ローカルライブを列挙する */
+export function findSimilarLocalLives(officialLive, localLives) {
+  const officialNames = nameCandidates(officialLive);
+  const officialArtist = normalize(officialLive.artist);
+  const results = [];
+  for (const local of localLives) {
+    // 厳密な「同じ」は別タブで扱うので除外
+    if (isSameLive(local, officialLive)) continue;
+
+    const localArtist = normalize(local.artist);
+    // アーティストが両方あって違えば非類似
+    if (localArtist && officialArtist && localArtist !== officialArtist) continue;
+
+    const localNames = nameCandidates(local);
+    // タイトルに 4文字以上の共通部分があれば「似てる」とみなす
+    const nameSimilar = localNames.some(ln =>
+      officialNames.some(on => {
+        if (!ln || !on) return false;
+        if (ln === on) return true;
+        const shorter = ln.length < on.length ? ln : on;
+        const longer  = ln.length < on.length ? on : ln;
+        return shorter.length >= 4 && longer.includes(shorter);
+      })
+    );
+    if (!nameSimilar) continue;
+
+    // 日付が近い (90日以内) か、一方が同じ年・月か
+    const lDate = (local.dateStart || local.date || '').slice(0, 10);
+    const oDate = (officialLive.dateStart || '').slice(0, 10);
+    if (!lDate || !oDate) continue;
+    const diffDays = Math.abs((new Date(lDate) - new Date(oDate)) / 86400000);
+    if (!isFinite(diffDays) || diffDays > 120) continue;
+
+    results.push({ local, diffDays: Math.round(diffDays) });
+  }
+  return results.sort((a, b) => a.diffDays - b.diffDays);
+}
+
 /** 2つのライブが「同じ」と判定できるか */
 function isSameLive(localLive, officialLive) {
   const localArtist    = normalize(localLive.artist);
@@ -128,7 +166,9 @@ export function computeDiff(officialLives, localLives) {
     // localLives を全走査してマッチ探索（柔軟マッチ優先）
     const local = localLives.find(l => isSameLive(l, official));
     if (!local) {
-      toAdd.push({ official });
+      // 厳密には一致しないが類似したローカルライブがあれば警告用に添える
+      const similar = findSimilarLocalLives(official, localLives);
+      toAdd.push({ official, similar });
       continue;
     }
     const diffs = [];
@@ -164,6 +204,7 @@ export function applyAddition(official) {
     dateStart:  official.dateStart    ?? null,
     dateEnd:    official.dateEnd      ?? null,
     eventType:  official.eventType    ?? 'ライブ',
+    iconImg:    official.iconImg      ?? null,
     memo:       buildEvidenceMemo(official),
     officialId: official.officialId   ?? null,
   });

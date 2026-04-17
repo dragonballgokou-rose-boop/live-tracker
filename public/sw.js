@@ -1,5 +1,5 @@
 // Service Worker - Cache Strategy
-const CACHE_NAME = 'live-tracker-v2';
+const CACHE_NAME = 'live-tracker-v3-official';
 
 const ASSETS = [
     '/',
@@ -8,6 +8,11 @@ const ASSETS = [
     '/main.js',
     '/manifest.json'
 ];
+
+// 公式ライブ JSON は毎回ネットワーク必須（キャッシュさせない）
+function shouldBypassCache(url) {
+    return url.pathname.endsWith('/official-lives.json') || url.search.includes('v=');
+}
 
 // Install
 self.addEventListener('install', (event) => {
@@ -31,8 +36,14 @@ self.addEventListener('activate', (event) => {
     self.clients.claim();
 });
 
-// Fetch - Network first, fallback to cache
+// Fetch - Network first, fallback to cache (except for official-lives.json)
 self.addEventListener('fetch', (event) => {
+    const url = new URL(event.request.url);
+    // 公式ライブ JSON はキャッシュさせず常にネットワーク
+    if (shouldBypassCache(url)) {
+        event.respondWith(fetch(event.request));
+        return;
+    }
     event.respondWith(
         fetch(event.request)
             .then((response) => {
