@@ -41,17 +41,17 @@ const SOURCES = [
   {
     artist: '櫻坂46',
     idPrefix: 'saku',
-    referer: 'https://sakurazaka46.com/s/s46/diary/live_page/list?ima=0000',
+    referer: 'https://sakurazaka46.com/',
     candidates: [
-      // 櫻坂は別CMSでAPIパス未特定。複数推測
-      'https://sakurazaka46.com/s/s46/api/list/live',
-      'https://sakurazaka46.com/s/s46/api/page/live',
-      'https://sakurazaka46.com/s/s46/api/diary/live_page/list',
-      'https://sakurazaka46.com/s/s46/api/diary/list/live',
-      'https://sakurazaka46.com/s/s46/diary/live_page/list?ima=0000&format=json',
-      // フォールバック: HTML ページ
+      // 新デザインの公開ページ（スクショで確認された見た目）
+      'https://sakurazaka46.com/live/',
+      'https://sakurazaka46.com/live/index.html',
+      'https://sakurazaka46.com/ja/live',
+      'https://sakurazaka46.com/ja/live/',
+      'https://sakurazaka46.com/live.html',
+      // 旧CMS（schedule HTML）— バックアップ
       'https://sakurazaka46.com/s/s46/diary/live_page/list?ima=0000',
-      'https://sakurazaka46.com/s/s46/live',
+      'https://sakurazaka46.com/s/s46/diary/event_page/list?ima=0000',
     ],
   },
 ];
@@ -334,6 +334,17 @@ function parseScheduleHtml(html, { artist, idPrefix, url }) {
     }
   }
 
+  // 3) テキストベースのフォールバック（櫻坂新デザイン向け）
+  // 「〜」内のタイトル + YYYY.M.D（曜）形式の日付 + @会場 のパターンを
+  // HTML タグを剥がしたプレーンテキストから抽出する
+  if (results.length === 0) {
+    const textResults = parsePlainTextFallback(html, { artist, idPrefix, url });
+    if (textResults.length > 0) {
+      console.log(`  ↳ plain-text fallback matched: ${textResults.length}`);
+      results.push(...textResults);
+    }
+  }
+
   // 3) 失敗時は HTML の構造ヒントを出して終了
   if (results.length === 0) {
     console.warn(`  ↳ Failed to parse. JSON-LD events=0, HTML patterns: ${JSON.stringify(debug.htmlPatterns)}`);
@@ -432,6 +443,86 @@ function fromJsonLdEvent(node, { artist, idPrefix, url }) {
 function pick(s, re) {
   const m = re.exec(s);
   return m ? m[1] : '';
+}
+
+/**
+ * 櫻坂46 の live ページのような、構造が緩い HTML 向けフォールバック。
+ *
+ * スクショで確認したパターン:
+ *   櫻坂46「5th YEAR ANNIVERSARY LIVE」
+ *   2026.4.11（土）開場 15:00 ／開演 17:30
+ *   2026.4.12（日）開場 15:00 ／開演 17:30
+ *   @MUFGスタジアム（国立競技場）
+ *
+ * HTML タグを全部剥がしてプレーンテキストにし、
+ * タイトル（「〜」）→ 日付複数行 → @会場 の塊を抜き出す。
+ */
+function parsePlainTextFallback(html, { artist, idPrefix, url }) {
+  // タグとnbsp類を剥がして改行を保持
+  let text = html
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/(li|div|p|h[1-6]|section|article)>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/[ \t]+/g, ' ');
+
+  const results = [];
+  // タイトル行: 「...」を含む行。改行から改行までを「ブロックの先頭」とする
+  const titleRe = /「([^「」\n]{3,120})」/g;
+  const dateRe = /(\d{4})[.\/\-年](\d{1,2})[.\/\-月](\d{1,2})(?:日)?(?:（[^）]*）|\([^\)]*\))?/g;
+
+  let tm;
+  const positions = [];
+  while ((tm = titleRe.exec(text)) !== null) {
+    positions.push({ index: tm.index, title: tm[1].trim(), fullLen: tm[0].length });
+  }
+  if (positions.length === 0) return results;
+
+  for (let i = 0; i < positions.length; i++) {
+    const { index, title } = positions[i];
+    const blockEnd = (i + 1 < positions.length) ? positions[i + 1].index : Math.min(text.length, index + 1200);
+    const block = text.slice(index, blockEnd);
+
+    // 日付を複数抽出
+    const dates = [];
+    let dm;
+    dateRe.lastIndex = 0;
+    while ((dm = dateRe.exec(block)) !== null) {
+      const yyyy = dm[1];
+      const mm = String(dm[2]).padStart(2, '0');
+      const dd = String(dm[3]).padStart(2, '0');
+      dates.push(`${yyyy}-${mm}-${dd}`);
+    }
+    if (dates.length === 0) continue;
+    dates.sort();
+
+    // 会場: @で始まる行
+    const venueMatch = /@\s*([^\n@]{2,80})/.exec(block);
+    const venue = venueMatch ? venueMatch[1].trim().split(/\s{2,}/)[0] : null;
+
+    // 「ライブ」/「イベント」/「感謝祭」等の区別
+    const eventType = /感謝祭|ミーグリ|お話し会|誕生|握手|イベント/.test(title) ? 'イベント' : 'ライブ';
+
+    results.push({
+      officialId: `${idPrefix}-${dates[0]}-${slugify(title)}`,
+      artist,
+      name: title,
+      venue: venue || null,
+      prefecture: null,
+      dateStart: dates[0],
+      dateEnd: dates[dates.length - 1],
+      eventType,
+      sourceUrl: url,
+      scrapedAt: new Date().toISOString(),
+    });
+  }
+
+  return results;
 }
 
 function cleanText(s) {
