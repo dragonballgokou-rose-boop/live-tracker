@@ -193,6 +193,19 @@ export function triggerSync() {
 
 // ---------- 初回ロード時の取得 ----------
 
+/**
+ * リモート配列を基本に、ローカルにしか無いアイテム（= まだ Supabase に
+ * push されていない新規追加分）を保護してマージする。
+ * - リモートに存在する id はリモートの値を使う（サーバーが正）
+ * - リモートに存在しない id（ローカル専用）はそのまま残す
+ * これにより追加直後にリロードしても追加した live/member/attendance が消えない。
+ */
+function mergePreservingLocalOnly(remoteArr, localArr) {
+    const remoteIds = new Set(remoteArr.map(r => r.id));
+    const localOnly = localArr.filter(l => l && l.id && !remoteIds.has(l.id));
+    return [...remoteArr, ...localOnly];
+}
+
 export async function fetchFromSupabase() {
     if (!supabase) return false;
     try {
@@ -226,10 +239,37 @@ export async function fetchFromSupabase() {
                 syncCollectionToSupabase('attendance', getAll(STORAGE_KEYS.ATTENDANCE), attendanceToRow),
             ]);
         } else if (remoteHasData) {
-            // Supabase にデータがある場合 → ローカルを上書き
-            localStorage.setItem(STORAGE_KEYS.LIVES,      JSON.stringify(livesRes.data.map(rowToLive)));
-            localStorage.setItem(STORAGE_KEYS.MEMBERS,    JSON.stringify(membersRes.data.map(rowToMember)));
-            localStorage.setItem(STORAGE_KEYS.ATTENDANCE, JSON.stringify(attendanceRes.data.map(rowToAttendance)));
+            // Supabase にデータがある場合 → リモートを基本にしつつ、
+            // まだ push 完了してないローカル専用アイテムは保護する（データ消失防止）
+            const remoteLives       = livesRes.data.map(rowToLive);
+            const remoteMembers     = membersRes.data.map(rowToMember);
+            const remoteAttendance  = attendanceRes.data.map(rowToAttendance);
+
+            const mergedLives      = mergePreservingLocalOnly(remoteLives,      getAll(STORAGE_KEYS.LIVES));
+            const mergedMembers    = mergePreservingLocalOnly(remoteMembers,    getAll(STORAGE_KEYS.MEMBERS));
+            const mergedAttendance = mergePreservingLocalOnly(remoteAttendance, getAll(STORAGE_KEYS.ATTENDANCE));
+
+            localStorage.setItem(STORAGE_KEYS.LIVES,      JSON.stringify(mergedLives));
+            localStorage.setItem(STORAGE_KEYS.MEMBERS,    JSON.stringify(mergedMembers));
+            localStorage.setItem(STORAGE_KEYS.ATTENDANCE, JSON.stringify(mergedAttendance));
+
+            // ローカル専用アイテムがあれば push してリモートと揃える
+            const remoteIds = {
+                lives:      new Set(remoteLives.map(x => x.id)),
+                members:    new Set(remoteMembers.map(x => x.id)),
+                attendance: new Set(remoteAttendance.map(x => x.id)),
+            };
+            const hasLocalOnly =
+                mergedLives.some(x => !remoteIds.lives.has(x.id)) ||
+                mergedMembers.some(x => !remoteIds.members.has(x.id)) ||
+                mergedAttendance.some(x => !remoteIds.attendance.has(x.id));
+            if (hasLocalOnly) {
+                console.log('fetchFromSupabase: detected local-only items, pushing back');
+                dirtyKeys.add(STORAGE_KEYS.LIVES);
+                dirtyKeys.add(STORAGE_KEYS.MEMBERS);
+                dirtyKeys.add(STORAGE_KEYS.ATTENDANCE);
+                triggerSync();
+            }
         }
         // 両方空の場合は何もしない
 
