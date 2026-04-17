@@ -43,12 +43,15 @@ const SOURCES = [
     idPrefix: 'saku',
     referer: 'https://sakurazaka46.com/s/s46/diary/live_page/list?ima=0000',
     candidates: [
-      // Nogizaka と同じ CMS パターンで推測
+      // 櫻坂は別CMSでAPIパス未特定。複数推測
       'https://sakurazaka46.com/s/s46/api/list/live',
-      'https://sakurazaka46.com/s/s46/api/list/live?ima=0000',
+      'https://sakurazaka46.com/s/s46/api/page/live',
+      'https://sakurazaka46.com/s/s46/api/diary/live_page/list',
+      'https://sakurazaka46.com/s/s46/api/diary/list/live',
+      'https://sakurazaka46.com/s/s46/diary/live_page/list?ima=0000&format=json',
       // フォールバック: HTML ページ
       'https://sakurazaka46.com/s/s46/diary/live_page/list?ima=0000',
-      'https://sakurazaka46.com/s/s46/diary/live/list?ima=0000',
+      'https://sakurazaka46.com/s/s46/live',
     ],
   },
 ];
@@ -103,29 +106,36 @@ async function fetchAnyCandidate(candidates, opts = {}) {
 // ---------- JSON API パース ----------
 
 /**
- * 内部API（JSON）のレスポンスを公式ライブ形式にマッピングする。
- * CMS の応答は { list: [...] } / { data: [...] } / 配列 のいずれか想定。
- * フィールド名も複数パターン試行して候補値を拾う。
+ * 内部API のレスポンスを公式ライブ形式にマッピングする。
+ * Sony Music CMS は JSONP (`res({...})` 形式) で返すことが多いので、
+ * 先に wrapper を剥がしてからパースする。
  */
 function parseScheduleJson(body, { artist, idPrefix, url }) {
+  // JSONP ラッパーを剥がす: res({...}) / callback({...}) / anyName({...})
+  let text = body.trim();
+  const jsonpMatch = text.match(/^[a-zA-Z_][\w$]*\s*\(([\s\S]*)\);?\s*$/);
+  if (jsonpMatch) {
+    text = jsonpMatch[1];
+    console.log(`  ↳ stripped JSONP wrapper`);
+  }
+
   let data;
   try {
-    data = JSON.parse(body);
+    data = JSON.parse(text);
   } catch (e) {
     console.warn(`  ↳ JSON parse failed: ${e.message}`);
-    // 最初の 400 文字を出す（次の調整用）
-    console.warn(`  ↳ body preview:\n     ${body.slice(0, 400).replace(/\n/g, ' ')}`);
+    console.warn(`  ↳ body preview:\n     ${text.slice(0, 400).replace(/\n/g, ' ')}`);
     return [];
   }
 
   const list = Array.isArray(data)
     ? data
-    : (data.list || data.data || data.items || data.result || data.results || []);
+    : (data.list || data.data || data.items || data.result || data.results
+       || data.kouen || []);
 
   if (!Array.isArray(list) || list.length === 0) {
     console.warn(`  ↳ JSON loaded but no list array. Top-level keys: ${Object.keys(data || {}).join(', ')}`);
-    // サンプルを出す
-    console.warn(`  ↳ body preview:\n     ${body.slice(0, 400).replace(/\n/g, ' ')}`);
+    console.warn(`  ↳ body preview:\n     ${text.slice(0, 400).replace(/\n/g, ' ')}`);
     return [];
   }
 
@@ -133,47 +143,68 @@ function parseScheduleJson(body, { artist, idPrefix, url }) {
 
   const results = [];
   for (const item of list) {
-    // 日付フィールド候補
-    const dateRaw = item.date || item.startDate || item.start_date || item.day || item.open
-      || item.eventDate || item.event_date;
-    const dateStart = normalizeDate(dateRaw);
-    if (!dateStart) continue;
-
-    // タイトル候補
+    // Nogizaka CMS 固有: item.kouen[] に個別公演が入る
+    // 各 kouen から dateStart/dateEnd を計算して1つのツアーエントリにまとめる
     const title = cleanText(
       item.title || item.name || item.subject || item.liveName || item.live_name || ''
     );
     if (!title) continue;
 
-    // 会場候補
-    const venue = cleanText(
-      item.venue || item.place || item.location || item.hall || ''
-    );
+    const kouenArr = Array.isArray(item.kouen) ? item.kouen
+                    : Array.isArray(item.performances) ? item.performances
+                    : null;
 
-    // 終了日候補
-    const dateEnd = normalizeDate(
-      item.endDate || item.end_date || item.dateEnd || item.date_end || item.close || dateRaw
-    );
+    if (kouenArr && kouenArr.length > 0) {
+      // 複数公演 → ツアー全体を1エントリに集約
+      const dates = kouenArr.map(k => normalizeDate(k.date || k.day)).filter(Boolean).sort();
+      if (dates.length === 0) continue;
+      const dateStart = dates[0];
+      const dateEnd   = dates[dates.length - 1];
 
-    // 種別候補
-    const category = item.category || item.type || item.genre || item.cate || '';
+      // 会場は最初のものを代表として採用（ツアーは複数会場だが1つに集約）
+      const firstKouen = kouenArr[0] || {};
+      const venue = cleanText(firstKouen.place || firstKouen.venue || firstKouen.hall || '');
+      const prefecture = cleanText(firstKouen.area || firstKouen.prefecture || firstKouen.pref || '');
 
-    results.push({
-      officialId: `${idPrefix}-${dateStart}-${slugify(title)}`,
-      artist,
-      name: title,
-      venue: venue || null,
-      prefecture: cleanText(item.prefecture || item.pref || item.area || '') || null,
-      dateStart,
-      dateEnd: dateEnd || dateStart,
-      eventType: mapCategory(category),
-      sourceUrl: url,
-      scrapedAt: new Date().toISOString(),
-    });
+      results.push({
+        officialId: `${idPrefix}-${item.code || dateStart}-${slugify(title)}`,
+        artist,
+        name: title,
+        venue: venue || null,
+        prefecture: prefecture || null,
+        dateStart,
+        dateEnd,
+        eventType: mapCategory(item.cate || item.category || ''),
+        sourceUrl: item.link || url,
+        scrapedAt: new Date().toISOString(),
+      });
+    } else {
+      // 単独公演フォーマット（API により違う）
+      const dateRaw = item.startDate || item.start_date || item.date || item.day;
+      const dateStart = normalizeDate(dateRaw);
+      if (!dateStart) continue;
+      const dateEnd = normalizeDate(
+        item.endDate || item.end_date || item.dateEnd || dateRaw
+      );
+      const venue = cleanText(item.venue || item.place || item.location || item.hall || '');
+
+      results.push({
+        officialId: `${idPrefix}-${item.code || dateStart}-${slugify(title)}`,
+        artist,
+        name: title,
+        venue: venue || null,
+        prefecture: cleanText(item.prefecture || item.pref || item.area || '') || null,
+        dateStart,
+        dateEnd: dateEnd || dateStart,
+        eventType: mapCategory(item.cate || item.category || item.type || ''),
+        sourceUrl: item.link || url,
+        scrapedAt: new Date().toISOString(),
+      });
+    }
   }
 
   if (results.length === 0 && list.length > 0) {
-    console.warn(`  ↳ JSON items parsed 0 — sample item:\n     ${JSON.stringify(list[0]).slice(0, 400)}`);
+    console.warn(`  ↳ JSON items parsed 0 — sample item:\n     ${JSON.stringify(list[0]).slice(0, 600)}`);
   }
 
   return results;
@@ -335,6 +366,16 @@ function parseScheduleHtml(html, { artist, idPrefix, url }) {
     if (dataAttrs.length > 0) {
       console.warn(`  ↳ data-* URL attributes:\n     ${dataAttrs.join('\n     ')}`);
     }
+
+    // script タグ内の URL / JSON ヒント（SPA は JS に埋め込んであるケース多い）
+    const scriptUrls = [...new Set(
+      [...html.matchAll(/["'](\/s\/[^"']+|https?:\/\/[^"']*(?:api|json|live|schedule|event)[^"']*)["']/gi)]
+        .map(x => x[1])
+        .filter(u => u.length < 200 && !u.match(/\.(png|jpg|gif|svg|css|woff|js)(\?|$)/i))
+    )].slice(0, 20);
+    if (scriptUrls.length > 0) {
+      console.warn(`  ↳ URLs referenced in HTML/scripts:\n     ${scriptUrls.join('\n     ')}`);
+    }
   }
 
   return results;
@@ -413,10 +454,12 @@ async function main() {
         await fetchAnyCandidate(src.candidates, { referer: src.referer });
 
       let lives = [];
+      const trimmed = body.trim();
       const looksLikeJson =
         contentType.includes('json') ||
-        body.trim().startsWith('{') ||
-        body.trim().startsWith('[');
+        trimmed.startsWith('{') ||
+        trimmed.startsWith('[') ||
+        /^[a-zA-Z_][\w$]*\s*\(/.test(trimmed); // JSONP wrapper
 
       if (looksLikeJson) {
         lives = parseScheduleJson(body, { ...src, url: workingUrl });
