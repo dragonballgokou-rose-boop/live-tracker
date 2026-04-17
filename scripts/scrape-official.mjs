@@ -63,8 +63,9 @@ async function fetchHtml(url) {
  */
 function parseScheduleHtml(html, { artist, idPrefix, url }) {
   const results = [];
+  const debug = { jsonLdEvents: 0, htmlPatterns: {} };
 
-  // JSON-LD が埋め込まれていれば優先する
+  // 1) JSON-LD が埋め込まれていれば優先する
   const jsonLdRe = /<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
   let m;
   while ((m = jsonLdRe.exec(html)) !== null) {
@@ -73,47 +74,108 @@ function parseScheduleHtml(html, { artist, idPrefix, url }) {
       const arr = Array.isArray(data) ? data : [data];
       for (const node of arr) {
         if (!node) continue;
-        const type = node['@type'];
-        if (type === 'Event' || type === 'MusicEvent' || type === 'ConcertEvent') {
-          const live = fromJsonLdEvent(node, { artist, idPrefix, url });
-          if (live) results.push(live);
+        // @graph の場合
+        const items = node['@graph'] || [node];
+        for (const item of items) {
+          const type = item['@type'];
+          if (type === 'Event' || type === 'MusicEvent' || type === 'ConcertEvent'
+              || (Array.isArray(type) && type.some(t => /Event/i.test(t)))) {
+            const live = fromJsonLdEvent(item, { artist, idPrefix, url });
+            if (live) {
+              results.push(live);
+              debug.jsonLdEvents++;
+            }
+          }
         }
       }
-    } catch { /* ignore */ }
+    } catch { /* ignore JSON parse errors */ }
   }
 
-  if (results.length > 0) return results;
+  if (results.length > 0) {
+    console.log(`  ↳ JSON-LD events: ${debug.jsonLdEvents}`);
+    return results;
+  }
 
-  // JSON-LD がない場合: HTML リスト要素から抽出（欅坂46系テンプレート）
-  // 例:
-  //   <li class="b-media-list__item"><a href="...">
-  //     <div class="b-media-list__date">2026.02.20</div>
-  //     <div class="b-media-list__ttl">XX LIVE</div>
-  //     <div class="b-media-list__place">東京ドーム</div>
-  //     <div class="b-media-list__cate">ライブ</div>
-  //   </a></li>
-  const itemRe = /<li[^>]*class=["'][^"']*b-media-list__item[^"']*["'][^>]*>([\s\S]*?)<\/li>/gi;
-  while ((m = itemRe.exec(html)) !== null) {
-    const inner = m[1];
-    const dateRaw = pick(inner, /b-media-list__date[^>]*>([\s\S]*?)</i);
-    const title   = pick(inner, /b-media-list__ttl[^>]*>([\s\S]*?)</i);
-    const place   = pick(inner, /b-media-list__place[^>]*>([\s\S]*?)</i);
-    const cate    = pick(inner, /b-media-list__cate[^>]*>([\s\S]*?)</i);
-    if (!dateRaw || !title) continue;
-    const dateStart = normalizeDate(dateRaw);
-    if (!dateStart) continue;
-    results.push({
-      officialId: `${idPrefix}-${dateStart}-${slugify(title)}`,
-      artist,
-      name: cleanText(title),
-      venue: cleanText(place) || null,
-      prefecture: null,
-      dateStart,
-      dateEnd: dateStart,
-      eventType: mapCategory(cate),
-      sourceUrl: url,
-      scrapedAt: new Date().toISOString(),
-    });
+  // 2) HTML パターン群を順に試す
+  const patterns = [
+    {
+      name: 'b-media-list',
+      itemRe: /<li[^>]*class=["'][^"']*b-media-list__item[^"']*["'][^>]*>([\s\S]*?)<\/li>/gi,
+      fields: {
+        date:  /b-media-list__date[^>]*>([\s\S]*?)</i,
+        title: /b-media-list__ttl[^>]*>([\s\S]*?)</i,
+        place: /b-media-list__place[^>]*>([\s\S]*?)</i,
+        cate:  /b-media-list__cate[^>]*>([\s\S]*?)</i,
+      },
+    },
+    {
+      name: 'sc-list (sakura)',
+      itemRe: /<li[^>]*class=["'][^"']*(?:sc-list__item|p-schedule__item|js-schedule-item)[^"']*["'][^>]*>([\s\S]*?)<\/li>/gi,
+      fields: {
+        date:  /(?:sc|p-schedule)__(?:date|day)[^>]*>([\s\S]*?)</i,
+        title: /(?:sc|p-schedule)__(?:ttl|title)[^>]*>([\s\S]*?)</i,
+        place: /(?:sc|p-schedule)__(?:place|venue)[^>]*>([\s\S]*?)</i,
+        cate:  /(?:sc|p-schedule)__(?:cate|category)[^>]*>([\s\S]*?)</i,
+      },
+    },
+    {
+      name: 'time-element',
+      itemRe: /<(?:li|article|div)[^>]*>([\s\S]*?<time[^>]*datetime=[\s\S]*?<\/(?:li|article|div)>)/gi,
+      fields: {
+        date:  /<time[^>]*datetime=["']([^"']+)["']/i,
+        title: /<(?:h[1-6]|p|span)[^>]*>([\s\S]*?)<\/(?:h[1-6]|p|span)>/i,
+        place: /(?:venue|place|会場)[^>]*>([\s\S]*?)</i,
+        cate:  /(?:cate|type|種別)[^>]*>([\s\S]*?)</i,
+      },
+    },
+  ];
+
+  for (const pat of patterns) {
+    const matched = [];
+    let mm;
+    pat.itemRe.lastIndex = 0;
+    while ((mm = pat.itemRe.exec(html)) !== null) {
+      const inner = mm[1];
+      const dateRaw = pick(inner, pat.fields.date);
+      const title   = pick(inner, pat.fields.title);
+      const place   = pick(inner, pat.fields.place);
+      const cate    = pick(inner, pat.fields.cate);
+      if (!dateRaw || !title) continue;
+      const dateStart = normalizeDate(dateRaw);
+      if (!dateStart) continue;
+      matched.push({
+        officialId: `${idPrefix}-${dateStart}-${slugify(title)}`,
+        artist,
+        name: cleanText(title),
+        venue: cleanText(place) || null,
+        prefecture: null,
+        dateStart,
+        dateEnd: dateStart,
+        eventType: mapCategory(cate),
+        sourceUrl: url,
+        scrapedAt: new Date().toISOString(),
+      });
+    }
+    debug.htmlPatterns[pat.name] = matched.length;
+    if (matched.length > 0) {
+      console.log(`  ↳ HTML pattern matched: ${pat.name} (${matched.length})`);
+      results.push(...matched);
+      break;
+    }
+  }
+
+  // 3) 失敗時は HTML の構造ヒントを出して終了
+  if (results.length === 0) {
+    console.warn(`  ↳ Failed to parse. JSON-LD events=0, HTML patterns: ${JSON.stringify(debug.htmlPatterns)}`);
+    // 主要クラス名のヒントを表示（次の調整に役立てる）
+    const classes = [...new Set(
+      [...html.matchAll(/class=["']([^"']{1,80})["']/g)]
+        .map(x => x[1].split(/\s+/))
+        .flat()
+        .filter(c => /(list|item|schedule|date|venue|event|live)/i.test(c))
+    )].slice(0, 25);
+    console.warn(`  ↳ Classes containing list/item/schedule/date/venue/event/live (top 25):`);
+    console.warn(`     ${classes.join(', ')}`);
   }
 
   return results;
