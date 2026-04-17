@@ -203,7 +203,7 @@ export function applyAddition(official) {
     prefecture: official.prefecture   ?? null,
     dateStart:  official.dateStart    ?? null,
     dateEnd:    official.dateEnd      ?? null,
-    eventType:  official.eventType    ?? 'ライブ',
+    eventType:  official.eventType    ?? 'live',
     iconImg:    official.iconImg      ?? null,
     memo:       buildEvidenceMemo(official),
     officialId: official.officialId   ?? null,
