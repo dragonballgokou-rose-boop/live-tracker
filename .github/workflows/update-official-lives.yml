@@ -5,6 +5,14 @@ on:
     # 毎日 06:00 JST (= 21:00 UTC)
     - cron: '0 21 * * *'
   workflow_dispatch:
+  push:
+    # このワークフローファイル自体、または scraper スクリプトを更新した時に動かす
+    branches:
+      - main
+      - 'claude/**'
+    paths:
+      - '.github/workflows/update-official-lives.yml'
+      - 'scripts/scrape-official.mjs'
 
 permissions:
   contents: write
@@ -14,6 +22,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 1
 
       - uses: actions/setup-node@v4
         with:
@@ -32,4 +43,4 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add public/official-lives.json
           git commit -m "chore: update official lives (auto)"
-          git push
+          git push origin HEAD:${{ github.ref_name }}
