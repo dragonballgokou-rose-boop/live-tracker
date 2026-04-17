@@ -22,6 +22,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 1
 
       - uses: actions/setup-node@v4
         with:
@@ -40,4 +43,4 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add public/official-lives.json
           git commit -m "chore: update official lives (auto)"
-          git push
+          git push origin HEAD:${{ github.ref_name }}
