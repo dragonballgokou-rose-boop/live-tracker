@@ -28,62 +28,68 @@ const SOURCES = [
   {
     artist: '乃木坂46',
     idPrefix: 'nogi',
+    referer: 'https://www.nogizaka46.com/s/n46/live',
     candidates: [
-      // Sony Music CMS パターン（櫻坂と同じ形式の想定）
-      'https://www.nogizaka46.com/s/n46/diary/live_page/list?ima=0000',
-      'https://www.nogizaka46.com/s/n46/live_page/list?ima=0000',
-      'https://www.nogizaka46.com/s/n46/live/list?ima=0000',
+      // HTML 内で発見した API エンドポイント — JSON 返却の想定
+      'https://www.nogizaka46.com/s/n46/api/list/live',
+      'https://www.nogizaka46.com/s/n46/api/list/live?ima=0000',
+      // フォールバック: HTML ページ（la--list は JS で populate されてる）
       'https://www.nogizaka46.com/s/n46/live',
-      'https://www.nogizaka46.com/s/n46/live/list',
-      'https://www.nogizaka46.com/s/n46/event',
-      'https://www.nogizaka46.com/s/n46/schedule',
-      'https://www.nogizaka46.com/s/n46/calendar',
+      'https://www.nogizaka46.com/s/n46/live?ima=0000',
     ],
   },
   {
     artist: '櫻坂46',
     idPrefix: 'saku',
+    referer: 'https://sakurazaka46.com/s/s46/diary/live_page/list?ima=0000',
     candidates: [
-      // ユーザー確認済み URL（最有力）
+      // Nogizaka と同じ CMS パターンで推測
+      'https://sakurazaka46.com/s/s46/api/list/live',
+      'https://sakurazaka46.com/s/s46/api/list/live?ima=0000',
+      // フォールバック: HTML ページ
       'https://sakurazaka46.com/s/s46/diary/live_page/list?ima=0000',
-      'https://sakurazaka46.com/s/s46/live_page/list?ima=0000',
-      'https://sakurazaka46.com/s/s46/live/list?ima=0000',
-      'https://sakurazaka46.com/s/s46/live',
-      'https://sakurazaka46.com/s/s46/event',
-      'https://sakurazaka46.com/s/s46/schedule',
-      'https://sakurazaka46.com/s/s46/calendar',
+      'https://sakurazaka46.com/s/s46/diary/live/list?ima=0000',
     ],
   },
 ];
 
 // ---------- 汎用 fetch ----------
 
-async function fetchHtml(url) {
-  const res = await fetch(url, {
-    redirect: 'follow',
-    headers: {
-      'User-Agent': UA,
-      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-      'Accept-Language': 'ja-JP,ja;q=0.9,en;q=0.8',
-    },
-  });
+async function fetchResource(url, { referer } = {}) {
+  const isApi = /\/api\//.test(url);
+  const headers = {
+    'User-Agent': UA,
+    'Accept': isApi
+      ? 'application/json, text/plain, */*'
+      : 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+    'Accept-Language': 'ja-JP,ja;q=0.9,en;q=0.8',
+  };
+  if (isApi) {
+    // Sony Music CMS の内部API呼び出しは JS からの XHR として振る舞う必要がある
+    headers['X-Requested-With'] = 'XMLHttpRequest';
+  }
+  if (referer) headers['Referer'] = referer;
+
+  const res = await fetch(url, { redirect: 'follow', headers });
   if (!res.ok) {
     throw new Error(`HTTP ${res.status} while fetching ${url}`);
   }
-  return { html: await res.text(), finalUrl: res.url };
+  const contentType = (res.headers.get('content-type') || '').toLowerCase();
+  const body = await res.text();
+  return { body, finalUrl: res.url, contentType };
 }
 
 /**
  * 候補URLを順番に試して、最初に 200 を返したものを使う。
  * 失敗したURLは理由とともにログに残す。
  */
-async function fetchAnyCandidate(candidates) {
+async function fetchAnyCandidate(candidates, opts = {}) {
   const errors = [];
   for (const url of candidates) {
     try {
-      const { html, finalUrl } = await fetchHtml(url);
-      console.log(`  ↳ fetched ${url} → ${finalUrl} (${html.length} bytes)`);
-      return { html, finalUrl, url };
+      const { body, finalUrl, contentType } = await fetchResource(url, opts);
+      console.log(`  ↳ fetched ${url} → ${finalUrl} (${body.length} bytes, ${contentType || 'no-ct'})`);
+      return { body, finalUrl, contentType, url };
     } catch (e) {
       console.warn(`  ↳ tried ${url} → ${e.message}`);
       errors.push({ url, error: e.message });
@@ -92,6 +98,85 @@ async function fetchAnyCandidate(candidates) {
   const err = new Error(`all ${candidates.length} candidates failed`);
   err.details = errors;
   throw err;
+}
+
+// ---------- JSON API パース ----------
+
+/**
+ * 内部API（JSON）のレスポンスを公式ライブ形式にマッピングする。
+ * CMS の応答は { list: [...] } / { data: [...] } / 配列 のいずれか想定。
+ * フィールド名も複数パターン試行して候補値を拾う。
+ */
+function parseScheduleJson(body, { artist, idPrefix, url }) {
+  let data;
+  try {
+    data = JSON.parse(body);
+  } catch (e) {
+    console.warn(`  ↳ JSON parse failed: ${e.message}`);
+    // 最初の 400 文字を出す（次の調整用）
+    console.warn(`  ↳ body preview:\n     ${body.slice(0, 400).replace(/\n/g, ' ')}`);
+    return [];
+  }
+
+  const list = Array.isArray(data)
+    ? data
+    : (data.list || data.data || data.items || data.result || data.results || []);
+
+  if (!Array.isArray(list) || list.length === 0) {
+    console.warn(`  ↳ JSON loaded but no list array. Top-level keys: ${Object.keys(data || {}).join(', ')}`);
+    // サンプルを出す
+    console.warn(`  ↳ body preview:\n     ${body.slice(0, 400).replace(/\n/g, ' ')}`);
+    return [];
+  }
+
+  console.log(`  ↳ JSON list loaded: ${list.length} items`);
+
+  const results = [];
+  for (const item of list) {
+    // 日付フィールド候補
+    const dateRaw = item.date || item.startDate || item.start_date || item.day || item.open
+      || item.eventDate || item.event_date;
+    const dateStart = normalizeDate(dateRaw);
+    if (!dateStart) continue;
+
+    // タイトル候補
+    const title = cleanText(
+      item.title || item.name || item.subject || item.liveName || item.live_name || ''
+    );
+    if (!title) continue;
+
+    // 会場候補
+    const venue = cleanText(
+      item.venue || item.place || item.location || item.hall || ''
+    );
+
+    // 終了日候補
+    const dateEnd = normalizeDate(
+      item.endDate || item.end_date || item.dateEnd || item.date_end || item.close || dateRaw
+    );
+
+    // 種別候補
+    const category = item.category || item.type || item.genre || item.cate || '';
+
+    results.push({
+      officialId: `${idPrefix}-${dateStart}-${slugify(title)}`,
+      artist,
+      name: title,
+      venue: venue || null,
+      prefecture: cleanText(item.prefecture || item.pref || item.area || '') || null,
+      dateStart,
+      dateEnd: dateEnd || dateStart,
+      eventType: mapCategory(category),
+      sourceUrl: url,
+      scrapedAt: new Date().toISOString(),
+    });
+  }
+
+  if (results.length === 0 && list.length > 0) {
+    console.warn(`  ↳ JSON items parsed 0 — sample item:\n     ${JSON.stringify(list[0]).slice(0, 400)}`);
+  }
+
+  return results;
 }
 
 // ---------- パース ----------
@@ -324,8 +409,20 @@ async function main() {
   for (const src of SOURCES) {
     console.log(`[${src.artist}] trying ${src.candidates.length} URL candidates...`);
     try {
-      const { html, url: workingUrl } = await fetchAnyCandidate(src.candidates);
-      const lives = parseScheduleHtml(html, { ...src, url: workingUrl });
+      const { body, contentType, url: workingUrl } =
+        await fetchAnyCandidate(src.candidates, { referer: src.referer });
+
+      let lives = [];
+      const looksLikeJson =
+        contentType.includes('json') ||
+        body.trim().startsWith('{') ||
+        body.trim().startsWith('[');
+
+      if (looksLikeJson) {
+        lives = parseScheduleJson(body, { ...src, url: workingUrl });
+      } else {
+        lives = parseScheduleHtml(body, { ...src, url: workingUrl });
+      }
       console.log(`[${src.artist}] parsed ${lives.length} entries (from ${workingUrl})`);
       allLives.push(...lives);
     } catch (e) {
