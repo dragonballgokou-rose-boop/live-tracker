@@ -224,13 +224,13 @@ function buildNavFilter() {
     radius:          32,
     bezelWidth:      32,
     glassThickness:  65,
-    ior:             2.2,       // 屈折率を上げてよりリキッド感
-    scaleRatio:      1.4,       // 変位スケール強化
-    blurAmount:      38,        // 重めのフロスト（文字が滲まないレベル）
-    specularOpacity: 0.80,
-    specularSat:     5,
-    saturation:      2.6,       // ガラス越しの色をより鮮明に
-    brightness:      1.18,
+    ior:             2.0,
+    scaleRatio:      1.2,
+    blurAmount:      60,        // 強ブラー — 後ろのコンテンツを完全に溶かす
+    specularOpacity: 0.70,
+    specularSat:     4,
+    saturation:      2.2,
+    brightness:      1.10,
   });
 }
 
