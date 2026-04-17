@@ -9,6 +9,7 @@ import {
   computeDiff,
   applyAddition,
   applyUpdate,
+  mergeIntoExisting,
 } from '../officialLives.js';
 
 // ---------- ヘッダーボタンのバッジ更新 ----------
@@ -189,6 +190,17 @@ function renderModal() {
   attachHandlers({ toAdd, toUpdate });
 }
 
+/** 追加/統合した official を _state.diff.toAdd から除外してUI再描画に反映させる */
+function removeFromAdd(official) {
+  if (!_state?.diff?.toAdd) return;
+  const key = official.officialId || (official.artist + '|' + official.name + '|' + official.dateStart);
+  _state.diff.toAdd = _state.diff.toAdd.filter(it => {
+    const o = it.official;
+    const k = o.officialId || (o.artist + '|' + o.name + '|' + o.dateStart);
+    return k !== key;
+  });
+}
+
 function attachHandlers({ toAdd, toUpdate }) {
   // グループフィルター
   document.getElementById('os-artist-select')?.addEventListener('change', e => {
@@ -233,23 +245,49 @@ function attachHandlers({ toAdd, toUpdate }) {
       const i = Number(btn.dataset.index);
       const official = toAdd[i]?.official;
       if (!official) return;
+      let added = null;
       try {
-        applyAddition(official);
+        added = applyAddition(official);
       } catch (err) {
         console.error('applyAddition failed', err);
         showToast(`追加失敗: ${err.message || err}`, 'error');
         return;
       }
-      const container = btn.closest('.os-item');
-      container.classList.add('os-applied');
-      btn.disabled = true;
-      btn.textContent = '追加済み';
-      const cb = container.querySelector('.os-item-check');
-      if (cb) { cb.checked = false; cb.disabled = true; }
+      if (!added) {
+        showToast('追加に失敗しました（結果が空）', 'error');
+        return;
+      }
       showToast(`追加しました: ${official.name}`, 'success');
+      removeFromAdd(official);
       refreshOfficialSyncBadge();
-      const addBtn = document.getElementById('os-add-checked');
-      if (addBtn) addBtn.textContent = '選択した0件を追加';
+      renderModal();
+    });
+  });
+
+  // 類似既存ライブと統合（ローカルの既存ライブを公式で更新）
+  document.querySelectorAll('[data-action="merge"]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const i = Number(btn.dataset.index);
+      const sIdx = Number(btn.dataset.similar);
+      const item = toAdd[i];
+      const target = item?.similar?.[sIdx]?.local;
+      if (!item || !target) return;
+      let merged = null;
+      try {
+        merged = mergeIntoExisting(target, item.official);
+      } catch (err) {
+        console.error('mergeIntoExisting failed', err);
+        showToast(`統合失敗: ${err.message || err}`, 'error');
+        return;
+      }
+      if (!merged) {
+        showToast('統合に失敗しました', 'error');
+        return;
+      }
+      showToast(`既存ライブと統合しました: ${target.name}`, 'success');
+      removeFromAdd(item.official);
+      refreshOfficialSyncBadge();
+      renderModal();
     });
   });
 
@@ -288,23 +326,21 @@ function attachHandlers({ toAdd, toUpdate }) {
   document.getElementById('os-add-checked')?.addEventListener('click', () => {
     let n = 0;
     const failures = [];
+    const addedOfficials = [];
     document.querySelectorAll('.os-item-check:checked').forEach(cb => {
       if (cb.disabled) return;
       const i = Number(cb.dataset.index);
       const official = toAdd[i]?.official;
       if (!official) return;
       try {
-        applyAddition(official);
+        const added = applyAddition(official);
+        if (!added) throw new Error('addLive returned falsy');
+        addedOfficials.push(official);
       } catch (err) {
         console.error('applyAddition failed', err);
-        failures.push(official.name || '(no name)');
+        failures.push(`${official.name}: ${err.message || err}`);
         return;
       }
-      const container = cb.closest('.os-item');
-      container?.classList.add('os-applied');
-      cb.disabled = true;
-      const btn = container?.querySelector('[data-action="add"]');
-      if (btn) { btn.disabled = true; btn.textContent = '追加済み'; }
       n++;
     });
     if (n === 0 && failures.length === 0) {
@@ -312,11 +348,12 @@ function attachHandlers({ toAdd, toUpdate }) {
       return;
     }
     if (failures.length > 0) {
-      showToast(`${failures.length}件の追加に失敗しました: ${failures[0]}`, 'error');
+      showToast(`${failures.length}件失敗: ${failures[0]}`, 'error');
     }
     if (n > 0) showToast(`${n}件追加しました`, 'success');
+    addedOfficials.forEach(removeFromAdd);
     refreshOfficialSyncBadge();
-    updateCheckedCountUI();
+    renderModal();
   });
 
   // 差分の反映（選択フィールド）
@@ -359,10 +396,16 @@ function renderAddItem(item, i) {
   const similar = Array.isArray(item.similar) ? item.similar : [];
   const similarWarning = similar.length > 0 ? `
     <div class="os-similar-warn">
-      ⚠ 既存に似たライブがあります（${similar.length}件）。重複して追加される可能性:
+      ⚠ 既存に似たライブがあります（${similar.length}件）。重複を避けたい場合は「既存と統合」を使ってください:
       <ul class="os-similar-list">
-        ${similar.slice(0, 3).map(s => `
-          <li>「${escapeHtml(s.local.name || '')}」 ${escapeHtml((s.local.dateStart || '').slice(0, 10))} <span class="os-similar-diff">(${s.diffDays}日差)</span></li>
+        ${similar.slice(0, 3).map((s, sIdx) => `
+          <li>
+            <span class="os-similar-name">「${escapeHtml(s.local.name || '')}」</span>
+            <span class="os-similar-date">${escapeHtml((s.local.dateStart || '').slice(0, 10))}</span>
+            <span class="os-similar-diff">(${s.diffDays}日差)</span>
+            <button type="button" class="btn btn-secondary btn-sm os-merge-btn"
+                    data-action="merge" data-index="${i}" data-similar="${sIdx}">既存と統合</button>
+          </li>
         `).join('')}
       </ul>
     </div>

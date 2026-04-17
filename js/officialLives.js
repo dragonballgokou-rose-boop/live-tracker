@@ -227,6 +227,33 @@ export function applyUpdate(localLive, official, fieldsToApply) {
   return updateLive(localLive.id, updates);
 }
 
+/**
+ * 類似警告された既存ローカルライブに、公式データをマージして統合する。
+ * - 空のフィールドは公式で埋める
+ * - 既存値がある場合は既存優先（勝手に上書きしない）
+ * - iconImg / 根拠 memo は追記
+ */
+export function mergeIntoExisting(localLive, official) {
+  const updates = {};
+  // 空フィールドだけ埋める戦略
+  const fillIfEmpty = (field, value) => {
+    const cur = localLive[field];
+    if ((cur == null || cur === '') && value) updates[field] = value;
+  };
+  fillIfEmpty('artist', official.artist);
+  fillIfEmpty('venue', official.venue);
+  fillIfEmpty('prefecture', official.prefecture);
+  fillIfEmpty('dateStart', official.dateStart);
+  fillIfEmpty('dateEnd', official.dateEnd);
+  fillIfEmpty('eventType', official.eventType);
+  fillIfEmpty('iconImg', official.iconImg);
+
+  updates.memo       = appendEvidenceMemo(localLive.memo, official);
+  updates.officialId = localLive.officialId || official.officialId || null;
+
+  return updateLive(localLive.id, updates);
+}
+
 // ---------- 根拠（evidence）記録 ----------
 
 function formatDate(iso) {

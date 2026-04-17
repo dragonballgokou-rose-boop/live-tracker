@@ -4175,3 +4175,28 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
   flex-shrink: 0;
   background: rgba(255, 255, 255, 0.05);
 }
+
+/* ---------- Official Sync: merge button on similar warning ---------- */
+.os-similar-list li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin: 4px 0;
+}
+
+.os-similar-name {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.os-similar-date {
+  color: var(--text-secondary);
+  font-size: 10px;
+}
+
+.os-merge-btn {
+  padding: 3px 10px;
+  font-size: 11px;
+  margin-left: auto;
+}
