@@ -13,7 +13,7 @@ import { renderChart } from './js/views/chart.js';
 import { exportData, importData, fetchFromSupabase } from './js/store.js';
 import { showToast } from './js/utils.js';
 import { showLiveDetailsModal, showMemberDetailsModal } from './js/views/details.js';
-import { showOfficialSyncModal } from './js/views/officialSync.js';
+import { showOfficialSyncModal, refreshOfficialSyncBadge } from './js/views/officialSync.js';
 
 window.showLiveDetailsModal = showLiveDetailsModal;
 window.showMemberDetailsModal = showMemberDetailsModal;
@@ -219,6 +219,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (appLoader) {
         appLoader.classList.add('hidden');
     }
+
+    // 公式データの更新件数をヘッダーバッジに表示（失敗しても無視）
+    refreshOfficialSyncBadge();
 
     // Sidebar toggle
     document.getElementById('menu-toggle')?.addEventListener('click', openSidebar);
