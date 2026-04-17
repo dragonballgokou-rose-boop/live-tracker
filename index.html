@@ -33,8 +33,28 @@
         <feDisplacementMap in="SourceGraphic" in2="noise"
                            scale="14" xChannelSelector="R" yChannelSelector="G"/>
       </filter>
+
+      <!-- Shared liquid backdrop filter — size-agnostic turbulence wobble + saturation boost.
+           Used by large surfaces (modal, sheets) as backdrop-filter: url(#liquid-backdrop) -->
+      <filter id="liquid-backdrop" x="-4%" y="-4%" width="108%" height="108%"
+              color-interpolation-filters="sRGB">
+        <feGaussianBlur in="SourceGraphic" stdDeviation="18" result="blurred"/>
+        <feColorMatrix in="blurred" type="saturate" values="2.1" result="saturated"/>
+        <feComponentTransfer in="saturated" result="brighter">
+          <feFuncR type="linear" slope="1.08"/>
+          <feFuncG type="linear" slope="1.08"/>
+          <feFuncB type="linear" slope="1.08"/>
+        </feComponentTransfer>
+        <feTurbulence type="fractalNoise" baseFrequency="0.012"
+                      numOctaves="2" seed="5" result="wobble"/>
+        <feDisplacementMap in="brighter" in2="wobble"
+                           scale="6" xChannelSelector="R" yChannelSelector="G"/>
+      </filter>
     </defs>
   </svg>
+
+  <!-- Ambient colour sources — picked up by all liquid-glass surfaces via backdrop-filter -->
+  <div class="liquid-bg-source" aria-hidden="true"></div>
 
   <div id="app">
     <!-- Main Content -->
