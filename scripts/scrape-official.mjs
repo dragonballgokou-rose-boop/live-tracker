@@ -29,30 +29,29 @@ const SOURCES = [
     artist: '乃木坂46',
     idPrefix: 'nogi',
     candidates: [
+      // Sony Music CMS パターン（櫻坂と同じ形式の想定）
+      'https://www.nogizaka46.com/s/n46/diary/live_page/list?ima=0000',
+      'https://www.nogizaka46.com/s/n46/live_page/list?ima=0000',
+      'https://www.nogizaka46.com/s/n46/live/list?ima=0000',
       'https://www.nogizaka46.com/s/n46/live',
       'https://www.nogizaka46.com/s/n46/live/list',
       'https://www.nogizaka46.com/s/n46/event',
-      'https://www.nogizaka46.com/s/n46/event/list',
       'https://www.nogizaka46.com/s/n46/schedule',
       'https://www.nogizaka46.com/s/n46/calendar',
-      'https://www.nogizaka46.com/live',
-      'https://www.nogizaka46.com/event',
     ],
   },
   {
     artist: '櫻坂46',
     idPrefix: 'saku',
     candidates: [
-      // sakurazaka46.com のトップレベル CMS 構造を試す
-      'https://sakurazaka46.com/',
-      'https://sakurazaka46.com/ja/live',
-      'https://sakurazaka46.com/ja/live/list',
-      'https://sakurazaka46.com/ja/event',
-      'https://sakurazaka46.com/ja/schedule',
-      'https://sakurazaka46.com/ja/calendar',
-      'https://sakurazaka46.com/live/list',
-      'https://sakurazaka46.com/diary/list',
-      'https://sakurazaka46.com/news/list',
+      // ユーザー確認済み URL（最有力）
+      'https://sakurazaka46.com/s/s46/diary/live_page/list?ima=0000',
+      'https://sakurazaka46.com/s/s46/live_page/list?ima=0000',
+      'https://sakurazaka46.com/s/s46/live/list?ima=0000',
+      'https://sakurazaka46.com/s/s46/live',
+      'https://sakurazaka46.com/s/s46/event',
+      'https://sakurazaka46.com/s/s46/schedule',
+      'https://sakurazaka46.com/s/s46/calendar',
     ],
   },
 ];
