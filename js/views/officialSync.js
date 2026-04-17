@@ -157,14 +157,18 @@ function renderModal() {
       <div class="os-panel${activeTab === 'add' ? '' : ' hidden'}" data-panel="add">
         ${toAdd.length === 0
           ? `<div class="os-empty">新規の公式ライブはありません。</div>`
-          : toAdd.map(renderAddItem).join('')}
-        ${toAdd.length > 1 ? `
-          <div class="os-bulk">
-            <button type="button" class="btn btn-secondary btn-sm" id="os-add-all">
-              すべて追加（${toAdd.length}件）
-            </button>
-          </div>
-        ` : ''}
+          : `
+            <div class="os-bulk-head">
+              <label class="os-check-all-label">
+                <input type="checkbox" id="os-check-all" />
+                <span>すべて選択</span>
+              </label>
+              <button type="button" class="btn btn-primary btn-sm" id="os-add-checked" disabled>
+                選択した0件を追加
+              </button>
+            </div>
+            ${toAdd.map(renderAddItem).join('')}
+          `}
       </div>
 
       <div class="os-panel${activeTab === 'update' ? '' : ' hidden'}" data-panel="update">
@@ -230,29 +234,73 @@ function attachHandlers({ toAdd, toUpdate }) {
       const official = toAdd[i]?.official;
       if (!official) return;
       applyAddition(official);
-      btn.closest('.os-item').classList.add('os-applied');
+      const container = btn.closest('.os-item');
+      container.classList.add('os-applied');
       btn.disabled = true;
       btn.textContent = '追加済み';
+      const cb = container.querySelector('.os-item-check');
+      if (cb) { cb.checked = false; cb.disabled = true; }
       showToast(`追加しました: ${official.name}`, 'success');
       refreshOfficialSyncBadge();
+      const addBtn = document.getElementById('os-add-checked');
+      if (addBtn) addBtn.textContent = '選択した0件を追加';
     });
   });
 
-  // 一括追加
-  document.getElementById('os-add-all')?.addEventListener('click', () => {
-    let n = 0;
-    toAdd.forEach((item, i) => {
-      const btn = document.querySelector(`[data-action="add"][data-index="${i}"]`);
-      if (btn && !btn.disabled) {
-        applyAddition(item.official);
-        btn.disabled = true;
-        btn.textContent = '追加済み';
-        btn.closest('.os-item').classList.add('os-applied');
-        n++;
-      }
+  // チェックボックスの状態管理
+  const updateCheckedCountUI = () => {
+    const boxes = [...document.querySelectorAll('.os-item-check')];
+    const checked = boxes.filter(b => b.checked && !b.disabled);
+    const checkAll = document.getElementById('os-check-all');
+    const addBtn = document.getElementById('os-add-checked');
+    if (addBtn) {
+      addBtn.disabled = checked.length === 0;
+      addBtn.textContent = `選択した${checked.length}件を追加`;
+    }
+    if (checkAll) {
+      const selectable = boxes.filter(b => !b.disabled);
+      checkAll.checked = selectable.length > 0 && checked.length === selectable.length;
+      checkAll.indeterminate = checked.length > 0 && checked.length < selectable.length;
+    }
+  };
+
+  // 個別チェックボックス
+  document.querySelectorAll('.os-item-check').forEach(cb => {
+    cb.addEventListener('change', updateCheckedCountUI);
+  });
+
+  // 全選択チェックボックス
+  document.getElementById('os-check-all')?.addEventListener('change', e => {
+    const on = e.target.checked;
+    document.querySelectorAll('.os-item-check').forEach(cb => {
+      if (!cb.disabled) cb.checked = on;
     });
+    updateCheckedCountUI();
+  });
+
+  // チェックした分だけ一括追加
+  document.getElementById('os-add-checked')?.addEventListener('click', () => {
+    let n = 0;
+    document.querySelectorAll('.os-item-check:checked').forEach(cb => {
+      if (cb.disabled) return;
+      const i = Number(cb.dataset.index);
+      const official = toAdd[i]?.official;
+      if (!official) return;
+      applyAddition(official);
+      const container = cb.closest('.os-item');
+      container?.classList.add('os-applied');
+      cb.disabled = true;
+      const btn = container?.querySelector('[data-action="add"]');
+      if (btn) { btn.disabled = true; btn.textContent = '追加済み'; }
+      n++;
+    });
+    if (n === 0) {
+      showToast('選択がありません', 'info');
+      return;
+    }
     showToast(`${n}件追加しました`, 'success');
     refreshOfficialSyncBadge();
+    updateCheckedCountUI();
   });
 
   // 差分の反映（選択フィールド）
@@ -295,6 +343,9 @@ function renderAddItem(item, i) {
   return `
     <div class="os-item">
       <div class="os-item-header">
+        <label class="os-item-check-wrap" title="一括追加の対象に含める">
+          <input type="checkbox" class="os-item-check" data-index="${i}" />
+        </label>
         <div class="os-item-title">
           <span class="os-artist">${escapeHtml(o.artist || '')}</span>
           <span class="os-name">${escapeHtml(o.name || '')}</span>

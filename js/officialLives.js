@@ -36,24 +36,78 @@ export async function fetchOfficialLives({ noCache = false } = {}) {
 
 // ---------- 正規化 ----------
 
+// よく混入するアーティスト名のプレフィックス候補
+const ARTIST_PREFIX_RE = /^(?:乃木坂46|櫻坂46|欅坂46|日向坂46|sakurazaka46|nogizaka46)\s*/i;
+
 function normalize(str) {
   if (!str) return '';
   return String(str)
     .trim()
     .toLowerCase()
-    .replace(/\s+/g, '')
-    // 全角→半角の軽微な正規化
+    // 全角→半角
     .replace(/[Ａ-Ｚａ-ｚ０-９]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0xfee0))
     // 記号統一
     .replace(/[〜～]/g, '-')
-    .replace(/[（）]/g, m => (m === '（' ? '(' : ')'));
+    .replace(/[（）]/g, m => (m === '（' ? '(' : ')'))
+    .replace(/[「」『』"']/g, '')
+    // 空白・区切り記号を除去（マッチング用）
+    .replace(/[\s\-_:：、。・／\/]+/g, '');
 }
 
-function matchKey(live) {
-  const name = normalize(live.name);
-  const date = (live.dateStart || live.date || '').slice(0, 10);
-  const artist = normalize(live.artist);
-  return `${artist}|${name}|${date}`;
+/** アーティスト名プレフィックスをタイトルから取り除いた形で正規化する */
+function normalizeName(name) {
+  if (!name) return '';
+  const stripped = String(name).trim().replace(ARTIST_PREFIX_RE, '');
+  return normalize(stripped);
+}
+
+/** 「一致候補」をいくつか作る — 同じライブでもフィールドのズレを吸収 */
+function nameCandidates(live) {
+  const candidates = new Set();
+  const rawName = live.name || '';
+  candidates.add(normalizeName(rawName));
+  candidates.add(normalize(rawName));
+  // サブタイトルや日数表記 (Day1/Day2) を削った形も候補に
+  candidates.add(normalize(rawName.replace(/\s*(day\s*\d+|第\d+日|\d+日目)/gi, '')));
+  candidates.delete('');
+  return [...candidates];
+}
+
+/** 日付範囲が重なるかチェック（date range overlap） */
+function datesOverlap(aStart, aEnd, bStart, bEnd) {
+  const s1 = (aStart || '').slice(0, 10);
+  const e1 = (aEnd   || aStart || '').slice(0, 10);
+  const s2 = (bStart || '').slice(0, 10);
+  const e2 = (bEnd   || bStart || '').slice(0, 10);
+  if (!s1 || !s2) return false;
+  return s1 <= e2 && s2 <= e1;
+}
+
+/** 2つのライブが「同じ」と判定できるか */
+function isSameLive(localLive, officialLive) {
+  const localArtist    = normalize(localLive.artist);
+  const officialArtist = normalize(officialLive.artist);
+  // アーティスト片方でも空なら無視、両方あれば一致してる必要
+  if (localArtist && officialArtist && localArtist !== officialArtist) return false;
+
+  const localNames    = nameCandidates(localLive);
+  const officialNames = nameCandidates(officialLive);
+  // 名前候補のどれか1ペアが一致するか、substring 関係にあれば OK
+  const nameMatch = localNames.some(ln =>
+    officialNames.some(on =>
+      ln === on ||
+      (ln.length >= 6 && on.includes(ln)) ||
+      (on.length >= 6 && ln.includes(on))
+    )
+  );
+  if (!nameMatch) return false;
+
+  return datesOverlap(
+    localLive.dateStart || localLive.date,
+    localLive.dateEnd   || localLive.date,
+    officialLive.dateStart,
+    officialLive.dateEnd,
+  );
 }
 
 // ---------- diff ----------
@@ -66,18 +120,13 @@ function matchKey(live) {
  * }}
  */
 export function computeDiff(officialLives, localLives) {
-  const localByKey = new Map();
-  for (const live of localLives) {
-    localByKey.set(matchKey(live), live);
-  }
-
   const toAdd = [];
   const toUpdate = [];
   const toSkip = [];
 
   for (const official of officialLives) {
-    const key = matchKey(official);
-    const local = localByKey.get(key);
+    // localLives を全走査してマッチ探索（柔軟マッチ優先）
+    const local = localLives.find(l => isSameLive(l, official));
     if (!local) {
       toAdd.push({ official });
       continue;
