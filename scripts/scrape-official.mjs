@@ -175,6 +175,7 @@ function parseScheduleJson(body, { artist, idPrefix, url }) {
         dateStart,
         dateEnd,
         eventType: mapCategory(item.cate || item.category || ''),
+        iconImg: item.img || item.image || item.thumbnail || null,
         sourceUrl: item.link || url,
         scrapedAt: new Date().toISOString(),
       });
@@ -197,6 +198,7 @@ function parseScheduleJson(body, { artist, idPrefix, url }) {
         dateStart,
         dateEnd: dateEnd || dateStart,
         eventType: mapCategory(item.cate || item.category || item.type || ''),
+        iconImg: item.img || item.image || item.thumbnail || null,
         sourceUrl: item.link || url,
         scrapedAt: new Date().toISOString(),
       });

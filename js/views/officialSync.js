@@ -233,7 +233,13 @@ function attachHandlers({ toAdd, toUpdate }) {
       const i = Number(btn.dataset.index);
       const official = toAdd[i]?.official;
       if (!official) return;
-      applyAddition(official);
+      try {
+        applyAddition(official);
+      } catch (err) {
+        console.error('applyAddition failed', err);
+        showToast(`追加失敗: ${err.message || err}`, 'error');
+        return;
+      }
       const container = btn.closest('.os-item');
       container.classList.add('os-applied');
       btn.disabled = true;
@@ -281,12 +287,19 @@ function attachHandlers({ toAdd, toUpdate }) {
   // チェックした分だけ一括追加
   document.getElementById('os-add-checked')?.addEventListener('click', () => {
     let n = 0;
+    const failures = [];
     document.querySelectorAll('.os-item-check:checked').forEach(cb => {
       if (cb.disabled) return;
       const i = Number(cb.dataset.index);
       const official = toAdd[i]?.official;
       if (!official) return;
-      applyAddition(official);
+      try {
+        applyAddition(official);
+      } catch (err) {
+        console.error('applyAddition failed', err);
+        failures.push(official.name || '(no name)');
+        return;
+      }
       const container = cb.closest('.os-item');
       container?.classList.add('os-applied');
       cb.disabled = true;
@@ -294,11 +307,14 @@ function attachHandlers({ toAdd, toUpdate }) {
       if (btn) { btn.disabled = true; btn.textContent = '追加済み'; }
       n++;
     });
-    if (n === 0) {
+    if (n === 0 && failures.length === 0) {
       showToast('選択がありません', 'info');
       return;
     }
-    showToast(`${n}件追加しました`, 'success');
+    if (failures.length > 0) {
+      showToast(`${failures.length}件の追加に失敗しました: ${failures[0]}`, 'error');
+    }
+    if (n > 0) showToast(`${n}件追加しました`, 'success');
     refreshOfficialSyncBadge();
     updateCheckedCountUI();
   });
@@ -340,12 +356,29 @@ function renderSourceLine(official) {
 
 function renderAddItem(item, i) {
   const o = item.official;
+  const similar = Array.isArray(item.similar) ? item.similar : [];
+  const similarWarning = similar.length > 0 ? `
+    <div class="os-similar-warn">
+      ⚠ 既存に似たライブがあります（${similar.length}件）。重複して追加される可能性:
+      <ul class="os-similar-list">
+        ${similar.slice(0, 3).map(s => `
+          <li>「${escapeHtml(s.local.name || '')}」 ${escapeHtml((s.local.dateStart || '').slice(0, 10))} <span class="os-similar-diff">(${s.diffDays}日差)</span></li>
+        `).join('')}
+      </ul>
+    </div>
+  ` : '';
+
+  const logoHtml = o.iconImg
+    ? `<img src="${escapeHtml(o.iconImg)}" class="os-item-logo" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.style.display='none'" />`
+    : '';
+
   return `
-    <div class="os-item">
+    <div class="os-item${similar.length > 0 ? ' os-item-warn' : ''}">
       <div class="os-item-header">
         <label class="os-item-check-wrap" title="一括追加の対象に含める">
           <input type="checkbox" class="os-item-check" data-index="${i}" />
         </label>
+        ${logoHtml}
         <div class="os-item-title">
           <span class="os-artist">${escapeHtml(o.artist || '')}</span>
           <span class="os-name">${escapeHtml(o.name || '')}</span>
@@ -354,6 +387,7 @@ function renderAddItem(item, i) {
                 data-action="add" data-index="${i}">追加</button>
       </div>
       <div class="os-item-body">
+        ${similarWarning}
         <div class="os-row"><span class="os-label">日程</span> ${escapeHtml(formatDateRange(o.dateStart, o.dateEnd))}</div>
         <div class="os-row"><span class="os-label">会場</span> ${escapeHtml(o.venue || '-')}</div>
         <div class="os-row"><span class="os-label">種別</span> ${escapeHtml(o.eventType || 'ライブ')}</div>
