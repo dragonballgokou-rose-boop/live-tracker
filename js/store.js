@@ -35,6 +35,7 @@ function liveToRow(live) {
         open_time:   live.openTime    ?? null,
         start_time:  live.startTime   ?? null,
         day_times:   live.dayTimes    ? JSON.stringify(live.dayTimes) : null,
+        official_id: live.officialId  ?? null,
         created_at:  live.createdAt   ?? null,
         updated_at:  live.updatedAt   ?? null,
     };
@@ -63,6 +64,7 @@ function rowToLive(row) {
         openTime:   row.open_time,
         startTime:  row.start_time,
         dayTimes,
+        officialId: row.official_id,
         createdAt:  row.created_at,
         updatedAt:  row.updated_at,
     };
@@ -497,6 +499,27 @@ export function getDayAttendanceStatus(liveId, dateStr, memberId) {
         status = getAttendanceStatus(liveId, memberId);
     }
     return status || 'undecided';
+}
+
+/**
+ * 集計表など N×M 回の参戦検索が必要なビュー用の一括ルックアップ。
+ * localStorage の読み込み・JSON.parse を 1 回で済ませ Map を返す。
+ * キー: `${liveId}_${dateStr}|${memberId}` または `${liveId}|${memberId}`
+ */
+export function buildAttendanceLookup() {
+    const all = getAll(STORAGE_KEYS.ATTENDANCE);
+    const map = new Map();
+    for (const a of all) {
+        map.set(`${a.liveId}|${a.memberId}`, a.status);
+    }
+    return map;
+}
+
+/** buildAttendanceLookup() で得た Map から 1 セル分の状態を取得する */
+export function lookupDayAttendance(map, liveId, dateStr, memberId) {
+    return map.get(`${liveId}_${dateStr}|${memberId}`)
+        ?? map.get(`${liveId}|${memberId}`)
+        ?? 'undecided';
 }
 
 // ---------- Statistics ----------

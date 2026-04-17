@@ -123,6 +123,12 @@ export function findSimilarLocalLives(officialLive, localLives) {
 
 /** 2つのライブが「同じ」と判定できるか */
 function isSameLive(localLive, officialLive) {
+  // officialId が両方にあって一致すれば即 true（統合済みマーカー）
+  if (localLive.officialId && officialLive.officialId &&
+      localLive.officialId === officialLive.officialId) {
+    return true;
+  }
+
   const localArtist    = normalize(localLive.artist);
   const officialArtist = normalize(officialLive.artist);
   // アーティスト片方でも空なら無視、両方あれば一致してる必要
