@@ -13,6 +13,7 @@ import { renderChart } from './js/views/chart.js';
 import { exportData, importData, fetchFromSupabase } from './js/store.js';
 import { showToast } from './js/utils.js';
 import { showLiveDetailsModal, showMemberDetailsModal } from './js/views/details.js';
+import { showOfficialSyncModal, refreshOfficialSyncBadge } from './js/views/officialSync.js';
 
 window.showLiveDetailsModal = showLiveDetailsModal;
 window.showMemberDetailsModal = showMemberDetailsModal;
@@ -219,6 +220,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         appLoader.classList.add('hidden');
     }
 
+    // 公式データの更新件数をヘッダーバッジに表示（失敗しても無視）
+    refreshOfficialSyncBadge();
+
     // Sidebar toggle
     document.getElementById('menu-toggle')?.addEventListener('click', openSidebar);
     document.getElementById('sidebar-close')?.addEventListener('click', closeSidebar);
@@ -266,6 +270,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('import-btn')?.addEventListener('click', () => {
         document.getElementById('import-file').click();
         closeSidebar();
+    });
+
+    // Official Live Sync (乃木坂46 / 櫻坂46)
+    document.getElementById('official-sync-btn')?.addEventListener('click', () => {
+        showOfficialSyncModal().catch(err => {
+            console.error('official sync failed:', err);
+            showToast('公式データの読み込みに失敗しました', 'error');
+        });
     });
 
     document.getElementById('import-file')?.addEventListener('change', (e) => {
