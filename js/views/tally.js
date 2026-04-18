@@ -5,7 +5,7 @@ import { getLives, getMembers, getDatesForLive, setDayAttendance, getDayAttendan
 import { showToast } from '../utils.js';
 import { formatDateRange, extractPrefecture, getLiveIconHtml, getEventTypeBadgeExport } from './lives.js';
 
-let tallyStatusFilter = 'all'; // 'all' | 'upcoming' | 'past'
+let tallyStatusFilter = 'upcoming'; // デフォルトは予定。大量ライブ時の負荷軽減
 
 function getTallyUrlParams() {
   const hash = window.location.hash || '';
@@ -82,6 +82,32 @@ export function renderTally() {
   const filteredLives = tallyStatusFilter === 'upcoming' ? upcomingLives
                       : tallyStatusFilter === 'past'     ? pastLives
                       : lives;
+
+  // メモリ保護: あまりに多い場合は警告を表示して描画を抑える
+  const totalRowEstimate = filteredLives.reduce((sum, l) => sum + Math.max(1, safeGetDates(l).length), 0);
+  if (totalRowEstimate > 500) {
+    content.innerHTML = `
+      <div class="card empty-state">
+        <p class="empty-state-text" style="color:var(--accent-amber);">
+          表示対象が多すぎます（${totalRowEstimate}行）。<br>
+          「予定」や「終了」で絞り込むか、月指定で表示してください。
+        </p>
+        <div class="live-filter-bar" style="margin-top:16px;">
+          <button class="live-filter-btn${tallyStatusFilter === 'all'      ? ' active' : ''}" data-status-filter="all">全て <span class="filter-count">${lives.length}</span></button>
+          <button class="live-filter-btn${tallyStatusFilter === 'upcoming' ? ' active' : ''}" data-status-filter="upcoming">予定 <span class="filter-count">${upcomingLives.length}</span></button>
+          <button class="live-filter-btn${tallyStatusFilter === 'past'     ? ' active' : ''}" data-status-filter="past">終了 <span class="filter-count">${pastLives.length}</span></button>
+        </div>
+      </div>
+    `;
+    document.querySelectorAll('[data-status-filter]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        tallyStatusFilter = btn.dataset.statusFilter;
+        updateTallyUrl();
+        renderTally();
+      });
+    });
+    return;
+  }
 
   content.innerHTML = `
     <!-- ステータスフィルター -->
