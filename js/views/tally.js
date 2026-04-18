@@ -1,11 +1,11 @@
 // ============================================
 // Tally View (集計表) - 日程別参戦対応
 // ============================================
-import { getLives, getMembers, getDatesForLive, setDayAttendance, getDayAttendanceStatus } from '../store.js';
+import { getLives, getMembers, getDatesForLive, setDayAttendance, getDayAttendanceStatus, buildAttendanceLookup, lookupDayAttendance } from '../store.js';
 import { showToast } from '../utils.js';
 import { formatDateRange, extractPrefecture, getLiveIconHtml, getEventTypeBadgeExport } from './lives.js';
 
-let tallyStatusFilter = 'all'; // 'all' | 'upcoming' | 'past'
+let tallyStatusFilter = 'upcoming'; // デフォルトは予定。大量ライブ時の負荷軽減
 
 function getTallyUrlParams() {
   const hash = window.location.hash || '';
@@ -28,6 +28,26 @@ function updateTallyUrl() {
 
 function liveIconHtml(live, size = 16) {
   return getLiveIconHtml(live, size);
+}
+
+/**
+ * getDatesForLive の安全ラッパー。
+ * スクレイプ由来などで dateStart/dateEnd が極端に離れているライブは
+ * 何千日分のセルを作って UI を固まらせるので、50 日超なら初日のみに切り詰める。
+ */
+function safeGetDates(live) {
+  const start = live.dateStart || live.date;
+  const end   = live.dateEnd   || live.date || start;
+  if (!start) return [];
+  const s = new Date(start);
+  const e = new Date(end);
+  if (isNaN(s) || isNaN(e)) return getDatesForLive(live);
+  const days = (e - s) / 86400000;
+  if (!isFinite(days) || days > 50) {
+    // 異常なスパンは初日だけ扱う
+    return getDatesForLive({ ...live, dateEnd: start });
+  }
+  return getDatesForLive(live);
 }
 
 export function renderTally() {
@@ -62,6 +82,32 @@ export function renderTally() {
   const filteredLives = tallyStatusFilter === 'upcoming' ? upcomingLives
                       : tallyStatusFilter === 'past'     ? pastLives
                       : lives;
+
+  // メモリ保護: あまりに多い場合は警告を表示して描画を抑える
+  const totalRowEstimate = filteredLives.reduce((sum, l) => sum + Math.max(1, safeGetDates(l).length), 0);
+  if (totalRowEstimate > 500) {
+    content.innerHTML = `
+      <div class="card empty-state">
+        <p class="empty-state-text" style="color:var(--accent-amber);">
+          表示対象が多すぎます（${totalRowEstimate}行）。<br>
+          「予定」や「終了」で絞り込むか、月指定で表示してください。
+        </p>
+        <div class="live-filter-bar" style="margin-top:16px;">
+          <button class="live-filter-btn${tallyStatusFilter === 'all'      ? ' active' : ''}" data-status-filter="all">全て <span class="filter-count">${lives.length}</span></button>
+          <button class="live-filter-btn${tallyStatusFilter === 'upcoming' ? ' active' : ''}" data-status-filter="upcoming">予定 <span class="filter-count">${upcomingLives.length}</span></button>
+          <button class="live-filter-btn${tallyStatusFilter === 'past'     ? ' active' : ''}" data-status-filter="past">終了 <span class="filter-count">${pastLives.length}</span></button>
+        </div>
+      </div>
+    `;
+    document.querySelectorAll('[data-status-filter]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        tallyStatusFilter = btn.dataset.statusFilter;
+        updateTallyUrl();
+        renderTally();
+      });
+    });
+    return;
+  }
 
   content.innerHTML = `
     <!-- ステータスフィルター -->
@@ -128,9 +174,13 @@ function buildTallyTable(lives, members) {
   const now = new Date();
   now.setHours(0, 0, 0, 0);
 
+  // 大量のセル走査前に attendance を 1 回だけ読んで Map 化する
+  const attMap = buildAttendanceLookup();
+
   const rows = [];
   lives.forEach(live => {
-    const dates = getDatesForLive(live);
+    // 極端に長い日程範囲（50日以上）はデータ不整合として初日のみ扱う
+    const dates = safeGetDates(live);
     const isMultiDay = dates.length > 1;
 
     dates.forEach(({ dateStr, dayNum, date }) => {
@@ -153,7 +203,7 @@ function buildTallyTable(lives, members) {
 
   rows.forEach(row => {
     members.forEach(member => {
-      const status = getDayAttendanceStatus(row.live.id, row.dateStr, member.id);
+      const status = lookupDayAttendance(attMap, row.live.id, row.dateStr, member.id);
       if (status === 'going') {
         colTotals[member.id]++;
         grandTotal++;
@@ -190,7 +240,7 @@ function buildTallyTable(lives, members) {
     let rowTotal = 0;
 
     const cells = members.map(member => {
-      const status = getDayAttendanceStatus(row.live.id, row.dateStr, member.id);
+      const status = lookupDayAttendance(attMap, row.live.id, row.dateStr, member.id);
       if (status === 'going') rowTotal++;
       const display = status === 'going' ? '✓' : status === 'planned' ? '◯' : status === 'not_going' ? '✕' : '？';
       return `
@@ -281,9 +331,10 @@ function buildTallyCards(lives, members) {
   const now = new Date();
   now.setHours(0, 0, 0, 0);
 
+  const attMap = buildAttendanceLookup();
   const rows = [];
   lives.forEach(live => {
-    const dates = getDatesForLive(live);
+    const dates = safeGetDates(live);
     const isMultiDay = dates.length > 1;
     dates.forEach(({ dateStr, dayNum, date }) => {
       rows.push({ live, dateStr, dayNum, date, isMultiDay });
@@ -300,7 +351,7 @@ function buildTallyCards(lives, members) {
 
     const memberData = members.map(member => ({
       member,
-      status: getDayAttendanceStatus(row.live.id, row.dateStr, member.id)
+      status: lookupDayAttendance(attMap, row.live.id, row.dateStr, member.id)
     }));
     memberData.forEach(({ status }) => { if (status === 'going') rowTotal++; });
     const statusOrder = { going: 0, planned: 1, undecided: 2, not_going: 3 };

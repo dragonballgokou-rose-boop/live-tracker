@@ -35,6 +35,9 @@ alter table lives add column if not exists parent_id   text;
 alter table lives add column if not exists open_time   text;
 alter table lives add column if not exists start_time  text;
 alter table lives add column if not exists day_times   text;
+-- 公式ライブ情報との紐付け用 ID（重複追加/再マッチを防ぐ）
+alter table lives add column if not exists official_id text;
+create index if not exists lives_official_id_idx on lives (official_id);
 
 create table if not exists members (
   id          text primary key,
