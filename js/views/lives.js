@@ -119,7 +119,8 @@ let livesTypeFilter = 'all';  // 'all' | 'live' | 'event'
 let livesViewMode = 'tl';     // 'tl' | 'calendar'
 let livesCalendarDate = new Date();
 let activeFilterMemberIds = new Set();
-let activeTourFilterId = null; // null = 全て、string = ツアーIDで絞り込み
+let activeTourFilterId = null;     // null = 全て、string = ツアーIDで絞り込み
+let activeArtistFilter = '';       // '' = 全て、文字列 = アーティスト名で絞り込み
 
 // 折りたたみ状態（ツアーID→展開中かどうか）
 const tourExpandState = new Map();
@@ -212,6 +213,11 @@ export function renderLives() {
       if (livesTypeFilter === 'event') return l.eventType === 'event';
       return l.eventType !== 'event'; // 'live': イベント以外
     });
+  }
+
+  // アーティストフィルター
+  if (activeArtistFilter) {
+    filtered = filtered.filter(l => (l.artist || '') === activeArtistFilter);
   }
 
   // カウント（ツアー自体は除いて子livesを数える）
@@ -535,6 +541,26 @@ export function renderLives() {
     </div>
   ` : '';
 
+  // アーティストフィルターチップ
+  const artistCounts = new Map();
+  allLives.forEach(l => {
+    const a = (l.artist || '').trim();
+    if (!a) return;
+    artistCounts.set(a, (artistCounts.get(a) || 0) + 1);
+  });
+  const artists = [...artistCounts.entries()].sort((a, b) => b[1] - a[1]);
+  const artistFilterHtml = artists.length > 1 ? `
+    <div class="history-filter" style="gap:6px;margin-bottom:4px;">
+      <span style="font-size:11px;color:var(--text-tertiary);align-self:center;flex-shrink:0;">アーティスト:</span>
+      <button class="history-chip${!activeArtistFilter ? ' history-chip-active' : ''}" data-artist-filter="">すべて</button>
+      ${artists.map(([name, count]) => `
+        <button class="history-chip${activeArtistFilter === name ? ' history-chip-active' : ''}" data-artist-filter="${escapeAttr(name)}">
+          ${escapeHtml(name)} <span style="opacity:0.6;font-size:10px;">${count}</span>
+        </button>
+      `).join('')}
+    </div>
+  ` : '';
+
   // メンバーフィルターチップ
   const memberFilterHtml = members.length > 0 ? `
     <div class="history-filter">
@@ -604,6 +630,7 @@ export function renderLives() {
       </div>
     </div>
 
+    ${artistFilterHtml}
     ${tourFilterHtml}
     ${memberFilterHtml}
 
@@ -656,6 +683,14 @@ export function renderLives() {
     chip.addEventListener('click', () => {
       const tourId = chip.dataset.tourFilter;
       activeTourFilterId = tourId || null;
+      renderLives();
+    });
+  });
+
+  // アーティストフィルターチップ
+  content.querySelectorAll('[data-artist-filter]').forEach(chip => {
+    chip.addEventListener('click', () => {
+      activeArtistFilter = chip.dataset.artistFilter || '';
       renderLives();
     });
   });

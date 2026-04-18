@@ -21,6 +21,24 @@ export const DIFF_FIELDS = [
   'eventType',
 ];
 
+/** eventType は日本語/英語が混在するので等価判定を正規化する */
+function normalizeEventType(v) {
+  const s = String(v ?? '').trim().toLowerCase();
+  if (!s) return '';
+  if (s === 'ライブ' || s === 'live' || s === 'コンサート' || s === 'concert') return 'live';
+  if (s === 'イベント' || s === 'event' || s === 'ミーグリ' || s === '握手') return 'event';
+  if (s === 'ツアー' || s === 'tour') return 'tour';
+  return s;
+}
+
+/** 差分判定: フィールドに応じた正規化を適用した比較 */
+function fieldsDiffer(field, a, b) {
+  if (field === 'eventType') {
+    return normalizeEventType(a) !== normalizeEventType(b);
+  }
+  return String(a ?? '').trim() !== String(b ?? '').trim();
+}
+
 // ---------- fetch ----------
 
 let _cached = null;
@@ -181,7 +199,7 @@ export function computeDiff(officialLives, localLives) {
     for (const field of DIFF_FIELDS) {
       const a = local[field] ?? '';
       const b = official[field] ?? '';
-      if (String(a).trim() !== String(b).trim()) {
+      if (fieldsDiffer(field, a, b)) {
         diffs.push({ field, from: a, to: b });
       }
     }
