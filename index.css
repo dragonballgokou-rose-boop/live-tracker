@@ -2177,8 +2177,9 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
    ③ tab-indicator: 白いガラスピル + 物理ベーススペキュラー
    ============================================================ */
 
-/* ① Ambient colour blob — ガラス越しに歪んで見える液体光源（より鮮やか） */
+/* Apple Music 風 flat nav のため color blob は隠す */
 .nav-blob {
+  display: none;
   position: fixed;
   bottom: max(6px, calc(-4px + env(safe-area-inset-bottom, 0px)));
   transform: translate3d(-50%, 0, 0);
@@ -2259,103 +2260,45 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
   right: 16px;
   max-width: 480px;
   margin: 0 auto;
-  height: 64px;
+  height: 62px;
 
   display: flex;
   align-items: center;
   padding: 0 4px;
 
-  /* iOS Safari の rubber-band / hide-chrome で位置がズレないように
-     GPU 層に固定する。これで scroll 時にナビが消える現象を防ぐ */
+  /* GPU 層に固定して rubber-band でも安定 */
   transform: translateZ(0);
   -webkit-transform: translate3d(0, 0, 0);
   will-change: transform;
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
 
-  /* 背景を十分不透明に → ラベルに後ろのテキストが透けないように */
-  background: rgba(10, 10, 24, 0.78);
-
-  /* Fallback frosted glass — 強ブラーで後ろのコンテンツを確実に溶かす */
-  backdrop-filter: blur(40px) saturate(200%);
-  -webkit-backdrop-filter: blur(40px) saturate(200%);
+  /* Apple Music 風: ほぼ完全不透明 + フラットな黒 */
+  background: rgba(18, 18, 22, 0.96);
+  backdrop-filter: blur(30px) saturate(180%);
+  -webkit-backdrop-filter: blur(30px) saturate(180%);
 
   border-radius: 32px;
-  border: 1px solid rgba(255, 255, 255, 0.22);
+  border: 1px solid rgba(255, 255, 255, 0.06);
 
+  /* Apple Music 風: シンプルなドロップシャドウのみ、specular なし */
   box-shadow:
-    0 24px 72px rgba(0, 0, 0, 0.70),
-    0 6px 20px rgba(0, 0, 0, 0.45),
-    inset 0 1.5px 0 rgba(255, 255, 255, 0.42),   /* 上縁ハイライト（水面の反射） */
-    inset 0 -1px 0 rgba(0, 0, 0, 0.28),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.06);   /* 薄いリムライト */
+    0 10px 30px rgba(0, 0, 0, 0.50),
+    0 2px 6px rgba(0, 0, 0, 0.30);
 
   z-index: 101;
   overflow: hidden;
   isolation: isolate;
 }
 
-/* 上縁スペキュラー帯（水面反射グラデーション） */
-.bottom-nav::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 40px;
-  border-radius: 32px 32px 0 0;
-  background: linear-gradient(
-    180deg,
-    rgba(255, 255, 255, 0.20) 0%,
-    rgba(255, 255, 255, 0.05) 50%,
-    rgba(255, 255, 255, 0) 100%
-  );
-  pointer-events: none;
-  z-index: 2;
-}
+/* Apple Music 風はスペキュラー帯を外す */
+.bottom-nav::after { content: none; }
 
-/* ── Chrome: Liquid Glass SVG filter (Snell's Law + specular)
-   ボトムナビとインジケーターのみ — iOS 26 の tab bar ガラス感 */
-@supports (backdrop-filter: url('#')) {
-  .liquid-glass-ready .bottom-nav {
-    backdrop-filter: url(#liquid-glass-nav);
-    -webkit-backdrop-filter: url(#liquid-glass-nav);
-  }
-}
+/* Apple Music 風の flat nav では SVG liquid-glass を適用しない */
 
-/* ③ Liquid Glass sliding indicator — 白いガラスピル（強スペキュラー） */
+/* Apple Music 風: スライドインジケーター無し。active は色変更のみ */
 .tab-indicator {
-  position: absolute;
-  top: 4px;
-  height: 56px;
-  border-radius: 28px;
-
-  background:
-    linear-gradient(180deg,
-      rgba(255, 255, 255, 0.22) 0%,
-      rgba(255, 255, 255, 0.10) 45%,
-      rgba(255, 255, 255, 0.04) 100%);
-
-  /* Fallback */
-  backdrop-filter: blur(24px) brightness(1.4) saturate(180%);
-  -webkit-backdrop-filter: blur(24px) brightness(1.4) saturate(180%);
-
-  border: 1px solid rgba(255, 255, 255, 0.40);
-
-  box-shadow:
-    inset 0 2px 0 rgba(255, 255, 255, 0.80),    /* 強い上縁ハイライト */
-    inset 0 -1px 0 rgba(0, 0, 0, 0.18),
-    inset 0 0 22px rgba(255, 255, 255, 0.10),   /* 内側の柔らかいグロー */
-    0 0 32px rgba(167, 139, 250, 0.32),
-    0 6px 20px rgba(0, 0, 0, 0.40);
-
-  pointer-events: none;
-  z-index: 0;
-
-  transition:
-    left  0.45s cubic-bezier(0.34, 1.56, 0.64, 1),
-    width 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
-  will-change: left, width;
+  display: none;
 }
 
 /* Chrome: Snell's Law displacement + specular */
@@ -2370,18 +2313,24 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
   transition: none !important;
 }
 
-/* ── Tab items ── */
+/* ── Tab items ── Apple Music 風 */
 .bottom-nav-item {
   flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 64px;
-  color: rgba(255, 255, 255, 0.38);
+  height: 62px;
+  color: rgba(255, 255, 255, 0.55);
   text-decoration: none;
   position: relative;
   z-index: 1;
-  transition: color 0.2s ease;
+  transition: color 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.bottom-nav-item:active {
+  opacity: 0.6;
+  transition: opacity 0.05s ease;
 }
 
 /* Layout wrapper (background はインジケーターが担当) */
@@ -2411,11 +2360,16 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
 }
 
 .bottom-nav-item:hover {
-  color: rgba(255, 255, 255, 0.7);
+  color: rgba(255, 255, 255, 0.85);
 }
 
 .bottom-nav-item.active {
-  color: #A78BFA;
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.bottom-nav-item.active .nav-label {
+  font-weight: 700;
 }
 
 /* content padding adjustment because nav is fixed at bottom */
