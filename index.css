@@ -2254,8 +2254,8 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
 */
 .bottom-nav {
   position: fixed;
-  /* iOS safe-area を考慮。home indicator と被らない位置。最低 34px 確保 */
-  bottom: max(34px, calc(18px + env(safe-area-inset-bottom, 0px)));
+  /* 画面下にしっかり寄せつつ home indicator と被らない位置 */
+  bottom: calc(8px + env(safe-area-inset-bottom, 8px));
   left: 16px;
   right: 16px;
   max-width: 480px;
@@ -2328,10 +2328,7 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
   -webkit-tap-highlight-color: transparent;
 }
 
-.bottom-nav-item:active {
-  opacity: 0.6;
-  transition: opacity 0.05s ease;
-}
+/* タップ時は svg のスケールで押し込み感を出す（下の svg rule 参照） */
 
 /* Layout wrapper (background はインジケーターが担当) */
 .item-inner {
@@ -2348,7 +2345,13 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
 
 .bottom-nav-item svg {
   flex-shrink: 0;
-  transition: color 0.2s ease;
+  transition: color 0.18s ease, filter 0.18s ease, transform 0.12s ease;
+}
+
+/* タップ中のシャキッとした押し込み感（Apple Music ライク） */
+.bottom-nav-item:active svg {
+  transform: scale(0.88);
+  transition-duration: 0.06s;
 }
 
 .nav-label {
@@ -2360,16 +2363,21 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
 }
 
 .bottom-nav-item:hover {
-  color: rgba(255, 255, 255, 0.85);
+  color: rgba(255, 255, 255, 0.75);
 }
 
+/* Apple Music 風: active は乃木坂紫で色だけ変える（背景・ピル無し） */
 .bottom-nav-item.active {
-  color: #ffffff;
-  font-weight: 700;
+  color: #a78bfa;
+}
+
+.bottom-nav-item.active svg {
+  filter: drop-shadow(0 0 6px rgba(167, 139, 250, 0.45));
 }
 
 .bottom-nav-item.active .nav-label {
   font-weight: 700;
+  color: #a78bfa;
 }
 
 /* content padding adjustment because nav is fixed at bottom */
