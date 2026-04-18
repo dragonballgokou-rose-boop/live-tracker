@@ -7,6 +7,16 @@ const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
 // カレンダー表示月（モーダル間で保持）
 let memberCalDate = new Date();
 
+/** エスケープしつつ URL をリンクに変換する（memo 用） */
+function linkifyEscaped(text) {
+    if (!text) return '';
+    const escaped = escapeHtml(text);
+    return escaped.replace(
+        /(https?:\/\/[^\s<]+?)(?=[.,;:!?)）」』]*(?:\s|$))/g,
+        '<a href="$1" target="_blank" rel="noopener noreferrer" style="color:var(--accent-cyan);text-decoration:underline;word-break:break-all;">$1</a>'
+    );
+}
+
 function escapeHtml(text) {
     if (!text) return '';
     return String(text)
@@ -66,7 +76,7 @@ export function showLiveDetailsModal(liveId) {
             html += `<div style="display:flex;align-items:center;gap:8px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><span style="color:var(--text-secondary);">${parts.join('　')}</span></div>`;
         }
     }
-    if (live.memo) html += `<div style="margin-top:4px;padding:8px;background:rgba(255,255,255,0.04);border-radius:6px;font-size:12px;color:var(--text-tertiary);white-space:pre-wrap;">${escapeHtml(live.memo)}</div>`;
+    if (live.memo) html += `<div style="margin-top:4px;padding:8px;background:rgba(255,255,255,0.04);border-radius:6px;font-size:12px;color:var(--text-tertiary);white-space:pre-wrap;word-break:break-word;">${linkifyEscaped(live.memo)}</div>`;
     html += `</div>`;
 
     // ── 参戦スケジュール（全メンバー × 全日程）──
