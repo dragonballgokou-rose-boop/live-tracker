@@ -174,29 +174,32 @@ function parseScheduleJson(body, { artist, idPrefix, url }) {
       const dateStart = perKouen[0].dateStart;
       const dateEnd   = perKouen[perKouen.length - 1].dateStart;
 
-      if (perKouen.length === 1) {
-        // 単独日程 → 通常の live として登録
-        const only = perKouen[0];
+      // 同一会場かつ連続日付なら multi-day single live 扱い（例: XX BIRTHDAY LIVE Day1-3）
+      const isMultiDaySingleLive = perKouen.length > 1
+        && isSameVenueConsecutive(perKouen);
+
+      if (perKouen.length === 1 || isMultiDaySingleLive) {
+        const first = perKouen[0];
         results.push({
           officialId: `${idPrefix}-${item.code || dateStart}-${slugify(title)}`,
           artist,
           name: title,
-          venue: only.venue,
-          prefecture: only.prefecture,
+          venue: first.venue,
+          prefecture: first.prefecture,
           dateStart,
-          dateEnd,
+          dateEnd,   // multi-day の場合は最終日
           eventType: mapCategory(item.cate || item.category || ''),
           iconImg: item.img || item.image || item.thumbnail || null,
           sourceUrl: item.link || url,
           scrapedAt: new Date().toISOString(),
         });
       } else {
-        // 複数日程 → ツアー親 + 子公演として出力
+        // 複数会場 or 非連続日 → 本物のツアー
         results.push({
           officialId: `${idPrefix}-${item.code || dateStart}-${slugify(title)}`,
           artist,
           name: title,
-          venue: null,           // ツアーは会場複数なので親は null
+          venue: null,
           prefecture: null,
           dateStart,
           dateEnd,
@@ -583,6 +586,32 @@ function normalizeDate(raw) {
   const mm = String(m[2]).padStart(2, '0');
   const dd = String(m[3]).padStart(2, '0');
   return `${y}-${mm}-${dd}`;
+}
+
+/**
+ * 複数日程を「ツアー」ではなく「multi-day single live」として扱うべきか判定する。
+ *
+ * 14th YEAR BIRTHDAY LIVE (5/19, 5/20, 5/21 @東京ドーム) のような
+ * 同一会場での連続開催は、ツアーではなく 1 つのライブの複数日程。
+ *
+ * 判定: 全公演の会場が同じ AND 日付が 1 日以内のギャップで連続している
+ * どちらかを満たさないなら本物のツアーとして扱う。
+ */
+function isSameVenueConsecutive(perKouen) {
+  if (perKouen.length <= 1) return true;
+
+  // 会場が1種類に絞れるか（nullは同一扱い）
+  const venues = new Set(perKouen.map(p => p.venue || '').filter(v => v !== ''));
+  if (venues.size > 1) return false;
+
+  // 日付が前日比 1 日以内で連続しているか
+  for (let i = 1; i < perKouen.length; i++) {
+    const prev = new Date(perKouen[i - 1].dateStart + 'T00:00:00');
+    const cur  = new Date(perKouen[i].dateStart + 'T00:00:00');
+    const gapDays = (cur - prev) / 86400000;
+    if (!isFinite(gapDays) || gapDays > 1) return false;
+  }
+  return true;
 }
 
 function mapCategory(raw) {
