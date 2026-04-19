@@ -165,6 +165,8 @@ function parseScheduleJson(body, { artist, idPrefix, url }) {
             dateEnd:    date,
             venue:      cleanText(k.place || k.venue || k.hall || '') || null,
             prefecture: cleanText(k.area || k.prefecture || k.pref || '') || null,
+            openTime:   normalizeTime(k.open || k.kaijo || k.door || k.open_time || k.doorOpen || k.gate || k.kaijyo) || null,
+            startTime:  normalizeTime(k.start || k.kaien || k.start_time || k.show || k.showStart || k.performance) || null,
           };
         })
         .filter(Boolean)
@@ -185,6 +187,18 @@ function parseScheduleJson(body, { artist, idPrefix, url }) {
         const eventType = looksLikeStage(title)
           ? 'stage'
           : mapCategory(item.cate || item.category || '');
+        // multi-day 単独ライブの場合、各日の open/start を dayTimes にまとめる
+        const dayTimes = [];
+        for (const k of perKouen) {
+          if (k.openTime || k.startTime) {
+            dayTimes.push({
+              date: k.dateStart,
+              openTime:  k.openTime  || undefined,
+              startTime: k.startTime || undefined,
+            });
+          }
+        }
+        const hasDayTimes = dayTimes.length > 0;
         results.push({
           officialId: `${idPrefix}-${item.code || dateStart}-${slugify(title)}`,
           artist,
@@ -197,6 +211,9 @@ function parseScheduleJson(body, { artist, idPrefix, url }) {
           iconImg: item.img || item.image || item.thumbnail || null,
           sourceUrl: item.link || url,
           scrapedAt: new Date().toISOString(),
+          openTime:  perKouen.length === 1 ? (first.openTime  || null) : null,
+          startTime: perKouen.length === 1 ? (first.startTime || null) : null,
+          dayTimes:  hasDayTimes ? dayTimes : undefined,
         });
       } else {
         // 複数会場 or 非連続日 → 本物のツアー
@@ -222,6 +239,9 @@ function parseScheduleJson(body, { artist, idPrefix, url }) {
             dateEnd:    leg.dateEnd,
             venue:      leg.venue,
             prefecture: leg.prefecture,
+            openTime:   leg.openTime  || null,
+            startTime:  leg.startTime || null,
+            dayTimes:   leg.dayTimes  || undefined,
           })),
         });
       }
@@ -585,6 +605,17 @@ function slugify(s) {
     .slice(0, 40) || 'x';
 }
 
+function normalizeTime(raw) {
+  if (!raw) return '';
+  const s = cleanText(raw);
+  // "17:30" "17時30分" "17:30:00" "5:30 PM" いずれも HH:MM に揃える
+  const m = s.match(/(\d{1,2})[:時](\d{1,2})/);
+  if (!m) return '';
+  const h = Math.max(0, Math.min(23, parseInt(m[1], 10)));
+  const mm = Math.max(0, Math.min(59, parseInt(m[2], 10)));
+  return `${String(h).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
+}
+
 function normalizeDate(raw) {
   if (!raw) return null;
   const s = cleanText(raw);
@@ -653,6 +684,14 @@ function groupIntoLegs(perKouen) {
     })();
     if (cur && sameVenue && consecutive) {
       cur.dateEnd = k.dateStart; // レグ延長
+      if (k.openTime || k.startTime) {
+        cur.dayTimes = cur.dayTimes || [];
+        cur.dayTimes.push({
+          date: k.dateStart,
+          openTime:  k.openTime  || undefined,
+          startTime: k.startTime || undefined,
+        });
+      }
     } else {
       if (cur) legs.push(cur);
       cur = {
@@ -660,7 +699,16 @@ function groupIntoLegs(perKouen) {
         dateEnd:    k.dateStart,
         venue:      k.venue,
         prefecture: k.prefecture,
+        openTime:   k.openTime,
+        startTime:  k.startTime,
       };
+      if (k.openTime || k.startTime) {
+        cur.dayTimes = [{
+          date: k.dateStart,
+          openTime:  k.openTime  || undefined,
+          startTime: k.startTime || undefined,
+        }];
+      }
     }
   }
   if (cur) legs.push(cur);

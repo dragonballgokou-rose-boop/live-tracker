@@ -260,6 +260,9 @@ export function applyNewTourChildren(
       eventType:  'live',
       iconImg:    official.iconImg      ?? null,
       parentId:   parent.id,
+      openTime:   c.openTime            ?? null,
+      startTime:  c.startTime           ?? null,
+      dayTimes:   c.dayTimes            ?? null,
       memo:       c.dayLabel ? `${c.dayLabel}` : null,
       officialId: official.officialId
         ? `${official.officialId}-${c.dateStart}`
@@ -287,6 +290,9 @@ export function applyAdditionAsChild(official: OfficialLive, parentTour: Live): 
     eventType:  'live',
     iconImg:    official.iconImg      ?? null,
     parentId:   parentTour.id,
+    openTime:   official.openTime     ?? null,
+    startTime:  official.startTime    ?? null,
+    dayTimes:   official.dayTimes     ?? null,
     memo:       buildEvidenceMemo(official),
     officialId: official.officialId   ?? null,
   });
@@ -338,6 +344,9 @@ export function applyAddition(official: OfficialLive): Live {
     dateEnd:    official.dateEnd      ?? null,
     eventType:  (official.eventType   ?? 'live') as string,
     iconImg:    official.iconImg      ?? null,
+    openTime:   official.openTime     ?? null,
+    startTime:  official.startTime    ?? null,
+    dayTimes:   official.dayTimes     ?? null,
     memo:       buildEvidenceMemo(official),
     officialId: official.officialId   ?? null,
   });
@@ -355,6 +364,9 @@ export function applyAddition(official: OfficialLive): Live {
         eventType:  'live',
         iconImg:    official.iconImg      ?? null,
         parentId:   parent.id,
+        openTime:   child.openTime        ?? null,
+        startTime:  child.startTime       ?? null,
+        dayTimes:   child.dayTimes        ?? null,
         memo:       child.dayLabel ? `${child.dayLabel}` : null,
         officialId: official.officialId
           ? `${official.officialId}-${child.dateStart}`

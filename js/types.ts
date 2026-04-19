@@ -31,7 +31,7 @@ export interface Live {
   openTime?: string | null;
   startTime?: string | null;
   /** 日付別の開場・開演時刻マップ（JSON 文字列ではなくオブジェクトで保持） */
-  dayTimes?: Record<string, { open?: string; start?: string }> | null;
+  dayTimes?: { date: string; openTime?: string; startTime?: string }[] | null;
   /** 公式データ由来の場合の stable ID。memo 内の `[official-id:xxx]` にも記録される */
   officialId?: string | null;
   createdAt?: string | null;
@@ -66,6 +66,12 @@ export interface OfficialChildPerformance {
   prefecture?: string | null;
   /** 表示ラベル補助（例: "Day1"、無くても可） */
   dayLabel?: string | null;
+  /** 開場時刻 "HH:MM" */
+  openTime?: string | null;
+  /** 開演時刻 "HH:MM" */
+  startTime?: string | null;
+  /** 複数日レグで日毎に時刻が違うとき */
+  dayTimes?: { date: string; openTime?: string; startTime?: string }[];
 }
 
 /** 公式ライブ JSON（public/official-lives.json の各エントリ） */
@@ -89,6 +95,12 @@ export interface OfficialLive {
    * 追加時に parentId でリンクされた子 live も同時に作成する。
    */
   children?: OfficialChildPerformance[];
+  /** 単独公演の場合の開場時刻 */
+  openTime?: string | null;
+  /** 単独公演の場合の開演時刻 */
+  startTime?: string | null;
+  /** multi-day 単独ライブでの日別時刻 */
+  dayTimes?: { date: string; openTime?: string; startTime?: string }[];
 }
 
 export interface OfficialLivesFile {
