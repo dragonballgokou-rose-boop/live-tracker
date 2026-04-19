@@ -347,18 +347,35 @@ export function findCandidateTourParent(official: OfficialLive, localLives: Live
  */
 export function applyAddition(official: OfficialLive, eventTypeOverride?: string | null): Live {
   const effectiveType = (eventTypeOverride || official.eventType || 'live') as string;
+  // ツアーを舞台/ライブ/イベントに切り替えた場合:
+  //   公式ツアー親は venue が null だが、舞台は会場固定の公演なので
+  //   最初の child の venue/prefecture/時刻を親に吸収して情報欠落を防ぐ
+  const absorbingTourIntoSingle =
+    official.eventType === 'tour' &&
+    effectiveType !== 'tour' &&
+    Array.isArray(official.children) && official.children.length > 0;
+  const firstChild = absorbingTourIntoSingle ? official.children![0] : null;
+
   const parent = addLive({
     name:       official.name,
     artist:     official.artist       ?? null,
-    venue:      official.venue        ?? null,
-    prefecture: official.prefecture   ?? null,
+    venue:      firstChild?.venue     ?? official.venue        ?? null,
+    prefecture: firstChild?.prefecture?? official.prefecture   ?? null,
     dateStart:  official.dateStart    ?? null,
     dateEnd:    official.dateEnd      ?? null,
     eventType:  effectiveType,
     iconImg:    official.iconImg      ?? null,
-    openTime:   official.openTime     ?? null,
-    startTime:  official.startTime    ?? null,
-    dayTimes:   official.dayTimes     ?? null,
+    openTime:   firstChild?.openTime  ?? official.openTime     ?? null,
+    startTime:  firstChild?.startTime ?? official.startTime    ?? null,
+    dayTimes:   (absorbingTourIntoSingle
+                  ? official.children!
+                      .filter(c => c.openTime || c.startTime)
+                      .map(c => ({
+                        date: c.dateStart,
+                        openTime: c.openTime || undefined,
+                        startTime: c.startTime || undefined,
+                      }))
+                  : official.dayTimes) ?? null,
     memo:       buildEvidenceMemo(official),
     officialId: official.officialId   ?? null,
   });
@@ -395,6 +412,12 @@ export function applyAddition(official: OfficialLive, eventTypeOverride?: string
 /**
  * ローカルのライブを公式データで部分更新する。
  * 選択された field のみ上書き（全上書きではない）。
+ *
+ * ライブ→ツアーへの種別変更時（eventTypeOverride === 'tour'）:
+ * - 既存の venue / prefecture はツアー親には不要なので null に畳む
+ *   （各公演は children 側に残る）
+ * - 公式に children があればそれを子ライブとして追加して parentId で紐付ける
+ *   （既に parentId で紐づく子がある場合は重複追加しないよう date 範囲で判定）
  */
 export function applyUpdate(
   localLive: Live, official: OfficialLive, fieldsToApply: string[],
@@ -407,11 +430,90 @@ export function applyUpdate(
   if (eventTypeOverride) {
     (updates as any).eventType = eventTypeOverride;
   }
+  const wasNotTour = localLive.eventType !== 'tour';
+  const becomingTour = eventTypeOverride === 'tour';
+  if (becomingTour && wasNotTour) {
+    // ツアー親は venue を持たない想定。既存 venue/prefecture は children へ委譲
+    (updates as any).venue      = null;
+    (updates as any).prefecture = null;
+    (updates as any).openTime   = null;
+    (updates as any).startTime  = null;
+    (updates as any).dayTimes   = null;
+  }
   const appendedMemo = appendEvidenceMemo(localLive.memo, official);
   if (appendedMemo !== localLive.memo) updates.memo = appendedMemo;
   updates.officialId = localLive.officialId || official.officialId || null;
 
-  return updateLive(localLive.id, updates);
+  const updated = updateLive(localLive.id, updates);
+  if (!updated) return null;
+
+  // ツアーへ変換したら公式 children を子公演として追加
+  if (becomingTour && wasNotTour && Array.isArray(official.children) && official.children.length > 0) {
+    // 既にこの親に紐づく子ライブ（他経路で追加されている可能性）があれば重複回避
+    const existingChildRanges = getLives()
+      .filter(l => l.parentId === updated.id)
+      .map(l => ({
+        start: (l.dateStart || l.date || '').slice(0, 10),
+        end:   (l.dateEnd   || l.dateStart || l.date || '').slice(0, 10),
+      }))
+      .filter(r => r.start);
+    // ローカル自身の旧 venue/日付を吸収した子（Day1 相当）を作るかどうか:
+    // 公式の children に既存ローカルの日付と重なるものが無い場合のみ、
+    // 「元の live を Day として残す」子を作る
+    const localStart = (localLive.dateStart || localLive.date || '').slice(0, 10);
+    const localEnd   = (localLive.dateEnd   || localStart || '').slice(0, 10);
+    const overlapsWithOfficial = official.children.some(c => {
+      const s = (c.dateStart || '').slice(0, 10);
+      const e = (c.dateEnd   || s).slice(0, 10);
+      return !!(localStart && s && localStart <= e && s <= localEnd);
+    });
+    if (!overlapsWithOfficial && localStart && (localLive.venue || localLive.openTime)) {
+      addLive({
+        name:       localLive.name,
+        artist:     localLive.artist      ?? official.artist ?? null,
+        venue:      localLive.venue       ?? null,
+        prefecture: localLive.prefecture  ?? null,
+        dateStart:  localStart,
+        dateEnd:    localEnd || localStart,
+        eventType:  'live',
+        iconImg:    localLive.iconImg     ?? official.iconImg ?? null,
+        parentId:   updated.id,
+        openTime:   localLive.openTime    ?? null,
+        startTime:  localLive.startTime   ?? null,
+        dayTimes:   localLive.dayTimes    ?? null,
+        memo:       null,
+        officialId: null,
+      });
+      existingChildRanges.push({ start: localStart, end: localEnd || localStart });
+    }
+    for (const c of official.children) {
+      const s = (c.dateStart || '').slice(0, 10);
+      const e = (c.dateEnd   || s).slice(0, 10);
+      if (!s) continue;
+      const dup = existingChildRanges.some(r => s <= r.end && r.start <= e);
+      if (dup) continue;
+      addLive({
+        name:       official.name,
+        artist:     official.artist       ?? localLive.artist ?? null,
+        venue:      c.venue               ?? null,
+        prefecture: c.prefecture          ?? null,
+        dateStart:  c.dateStart,
+        dateEnd:    c.dateEnd ?? c.dateStart,
+        eventType:  'live',
+        iconImg:    official.iconImg      ?? null,
+        parentId:   updated.id,
+        openTime:   c.openTime            ?? null,
+        startTime:  c.startTime           ?? null,
+        dayTimes:   c.dayTimes            ?? null,
+        memo:       c.dayLabel ? `${c.dayLabel}` : null,
+        officialId: official.officialId
+          ? `${official.officialId}-${c.dateStart}`
+          : null,
+      });
+    }
+  }
+
+  return updated;
 }
 
 /**

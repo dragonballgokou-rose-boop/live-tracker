@@ -8,10 +8,21 @@ const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
 // カレンダー表示月（モーダル間で保持）
 let memberCalDate = new Date();
 
+/** 表示用の memo から内部マーカー（[stage], [official-id:...]）を除去する */
+function stripInternalMarkers(text) {
+    if (!text) return '';
+    return String(text)
+        .replace(/\[stage\]/g, '')
+        .replace(/\[official-id:[^\]\s]+\]/g, '')
+        .replace(/\n{3,}/g, '\n\n')
+        .trim();
+}
+
 /** エスケープしつつ URL をリンクに変換する（memo 用） */
 function linkifyEscaped(text) {
-    if (!text) return '';
-    const escaped = escapeHtml(text);
+    const cleaned = stripInternalMarkers(text);
+    if (!cleaned) return '';
+    const escaped = escapeHtml(cleaned);
     return escaped.replace(
         /(https?:\/\/[^\s<]+?)(?=[.,;:!?)）」』]*(?:\s|$))/g,
         '<a href="$1" target="_blank" rel="noopener noreferrer" style="color:var(--accent-cyan);text-decoration:underline;word-break:break-all;">$1</a>'
@@ -101,7 +112,7 @@ export function showLiveDetailsModal(liveId) {
             html += `<div style="display:flex;align-items:center;gap:8px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><span style="color:var(--text-secondary);">${parts.join('　')}</span></div>`;
         }
     }
-    if (live.memo) html += `<div style="margin-top:4px;padding:8px;background:rgba(255,255,255,0.04);border-radius:6px;font-size:12px;color:var(--text-tertiary);white-space:pre-wrap;word-break:break-word;">${linkifyEscaped(live.memo)}</div>`;
+    if (live.memo && stripInternalMarkers(live.memo)) html += `<div style="margin-top:4px;padding:8px;background:rgba(255,255,255,0.04);border-radius:6px;font-size:12px;color:var(--text-tertiary);white-space:pre-wrap;word-break:break-word;">${linkifyEscaped(live.memo)}</div>`;
     html += `</div>`;
 
     // ── 参戦スケジュール（全メンバー × 全日程）──
@@ -221,7 +232,11 @@ export function showLiveDetailsModal(liveId) {
     }
 
     html += `</div>`;
-    const detailTitle = live.eventType === 'event' ? `イベント詳細：${live.name}` : `ライブ詳細：${live.name}`;
+    const detailTitle =
+        live.eventType === 'event' ? `イベント詳細：${live.name}` :
+        live.eventType === 'stage' ? `舞台詳細：${live.name}` :
+        live.eventType === 'tour'  ? `ツアー詳細：${live.name}` :
+        `ライブ詳細：${live.name}`;
     showModal(detailTitle, html);
 }
 
