@@ -3909,6 +3909,25 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
   text-transform: uppercase;
 }
 
+.os-type-row {
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.os-type-select {
+  width: auto;
+  min-width: 100px;
+  padding: 4px 26px 4px 10px;
+  font-size: 12px;
+  height: auto;
+}
+
+.os-type-hint {
+  font-size: 10px;
+  color: var(--text-tertiary);
+}
+
 .os-diffs {
   margin-top: 6px;
   padding: 8px 10px;
