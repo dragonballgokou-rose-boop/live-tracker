@@ -13,6 +13,7 @@ import type {
   Live, OfficialLive, OfficialLivesFile, OfficialChildPerformance,
   DiffFieldName, FieldDiff, DiffResult, DiffAddItem,
   DiffUpdateItem, DiffSkipItem, SimilarLocalLive,
+  ChildReconcileItem, ChildReconcileField,
 } from './types.js';
 
 const OFFICIAL_URL = './official-lives.json';
@@ -210,6 +211,67 @@ function findNewOfficialChildren(
   });
 }
 
+/**
+ * ツアー: 公式 child と日付重なりのある既存 local 子公演を突き合わせ、
+ * venue / prefecture / dateEnd / 時刻 / dayTimes が空または不足している
+ * ものを「補完で埋められる」候補として返す。
+ *
+ * 典型ケース: 昔のスクレイプで venue=null, dateEnd=dateStart で作られた
+ * 子が残っており、現在の公式には venue と 2days の dateEnd が揃っている。
+ *
+ * 1 つの公式 child に 2 以上の local 子が重なる場合は競合とみなし提案しない。
+ */
+function findChildrenToReconcile(
+  official: OfficialLive, parentLocal: Live, localLives: Live[],
+): ChildReconcileItem[] {
+  if (official.eventType !== 'tour' || !Array.isArray(official.children)) return [];
+  const localChildren = localLives.filter(l => l.parentId === parentLocal.id);
+  const results: ChildReconcileItem[] = [];
+  for (const c of official.children) {
+    const s = (c.dateStart || '').slice(0, 10);
+    const e = (c.dateEnd   || c.dateStart || '').slice(0, 10);
+    if (!s) continue;
+    const matches = localChildren.filter(l => {
+      const ls = (l.dateStart || l.date || '').slice(0, 10);
+      const le = (l.dateEnd   || l.dateStart || l.date || '').slice(0, 10);
+      if (!ls) return false;
+      return ls <= e && s <= le;
+    });
+    if (matches.length !== 1) continue;
+    const localChild = matches[0];
+    const fieldsToFill: ChildReconcileField[] = [];
+    if (!localChild.venue      && !!c.venue)      fieldsToFill.push('venue');
+    if (!localChild.prefecture && !!c.prefecture) fieldsToFill.push('prefecture');
+    const localEnd = (localChild.dateEnd || localChild.dateStart || localChild.date || '').slice(0, 10);
+    if (e && localEnd && localEnd < e)            fieldsToFill.push('dateEnd');
+    if (!localChild.openTime   && !!c.openTime)   fieldsToFill.push('openTime');
+    if (!localChild.startTime  && !!c.startTime)  fieldsToFill.push('startTime');
+    if ((!localChild.dayTimes || localChild.dayTimes.length === 0)
+        && Array.isArray(c.dayTimes) && c.dayTimes.length > 0) {
+      fieldsToFill.push('dayTimes');
+    }
+    if (fieldsToFill.length > 0) {
+      results.push({ localChild, officialChild: c, fieldsToFill });
+    }
+  }
+  return results;
+}
+
+/** 単一の child reconciliation を反映する */
+export function applyChildReconciliation(item: ChildReconcileItem): Live | null {
+  const { localChild, officialChild: c, fieldsToFill } = item;
+  const updates: Partial<Live> = {};
+  for (const f of fieldsToFill) {
+    if      (f === 'venue')      updates.venue      = c.venue      ?? null;
+    else if (f === 'prefecture') updates.prefecture = c.prefecture ?? null;
+    else if (f === 'dateEnd')    updates.dateEnd    = c.dateEnd    ?? c.dateStart ?? null;
+    else if (f === 'openTime')   updates.openTime   = c.openTime   ?? null;
+    else if (f === 'startTime')  updates.startTime  = c.startTime  ?? null;
+    else if (f === 'dayTimes')   updates.dayTimes   = c.dayTimes   ?? null;
+  }
+  return updateLive(localChild.id, updates);
+}
+
 export function computeDiff(
   officialLives: OfficialLive[], localLives: Live[],
 ): DiffResult {
@@ -234,6 +296,8 @@ export function computeDiff(
     }
     // ツアー: 公式に新しく追加された子公演があれば差分として扱う
     const newChildren = findNewOfficialChildren(official, local, localLives);
+    // ツアー: 既存のローカル子公演で公式と重なるが venue/dateEnd 等が不足しているもの
+    const childUpdates = findChildrenToReconcile(official, local, localLives);
 
     // 種別が違う場合は差分扱い（ユーザーがモーダルで種別を切替できるように toUpdate に流す）
     // 常にではなく、実際にアクションが必要そうな時のみフラグする:
@@ -260,10 +324,10 @@ export function computeDiff(
       )
     ) || canAbsorbVenue;
 
-    if (diffs.length === 0 && newChildren.length === 0 && !typeMismatch) {
+    if (diffs.length === 0 && newChildren.length === 0 && childUpdates.length === 0 && !typeMismatch) {
       toSkip.push({ official, local });
     } else {
-      toUpdate.push({ official, local, diffs, newChildren, canAbsorbVenue });
+      toUpdate.push({ official, local, diffs, newChildren, canAbsorbVenue, childUpdates });
     }
   }
 

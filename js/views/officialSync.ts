@@ -10,6 +10,7 @@ import {
   applyAddition,
   applyAdditionAsChild,
   applyNewTourChildren,
+  applyChildReconciliation,
   applyUpdate,
   mergeIntoExisting,
   findCandidateTourParent,
@@ -647,6 +648,34 @@ function attachHandlers({ toAdd, toUpdate }: HandlerCtx): void {
       }
     });
   });
+
+  // 既存の子公演に不足フィールド（venue/dateEnd/時刻等）を公式データで補完
+  document.querySelectorAll<HTMLButtonElement>('[data-action="reconcile-children"]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const i = Number(btn.dataset.index);
+      const item = toUpdate[i];
+      if (!item || !item.childUpdates || item.childUpdates.length === 0) return;
+      let n = 0;
+      try {
+        for (const u of item.childUpdates) {
+          if (applyChildReconciliation(u)) n++;
+        }
+      } catch (err: unknown) {
+        console.error('applyChildReconciliation failed', err);
+        showToast(`補完失敗: ${errMsg(err)}`, 'error');
+        return;
+      }
+      showToast(`${n}件の子公演を補完しました`, 'success');
+      refreshDiffFromStore();
+      refreshOfficialSyncBadge();
+      renderModal();
+
+      const res = await flushSyncNow();
+      if (res && res.ok === false && res.reason === 'sync-failed') {
+        showToast(`Supabase同期失敗: ${errMsg(res.error)}`, 'error');
+      }
+    });
+  });
 }
 
 // ---------- アイテムレンダリング ----------
@@ -790,9 +819,19 @@ function renderMergePickerList(addIndex: number, query: string): string {
   }).join('');
 }
 
+const CHILD_FIELD_LABEL: Record<string, string> = {
+  venue:      '会場',
+  prefecture: '都道府県',
+  dateEnd:    '終了日',
+  openTime:   '開場',
+  startTime:  '開演',
+  dayTimes:   '日別時刻',
+};
+
 function renderUpdateItem(item: DiffUpdateItem, i: number): string {
   const { official: o, local: l, diffs } = item;
   const newChildren = item.newChildren ?? [];
+  const childUpdates = item.childUpdates ?? [];
   const diffRows = diffs.map(d => `
     <label class="os-diff-row">
       <input type="checkbox" data-field="${escapeHtml(d.field)}" checked />
@@ -820,6 +859,31 @@ function renderUpdateItem(item: DiffUpdateItem, i: number): string {
           </li>
         `).join('')}
         ${newChildren.length > 8 ? `<li style="color:var(--text-tertiary);">…他 ${newChildren.length - 8} 件</li>` : ''}
+      </ul>
+    </div>
+  ` : '';
+
+  const childUpdatesBlock = childUpdates.length > 0 ? `
+    <div class="os-new-children" style="border-color:rgba(74,222,128,0.35);background:rgba(74,222,128,0.06);">
+      <div class="os-new-children-head">
+        <span>🔧 既存の子公演で情報が不足している ${childUpdates.length} 件を公式データで補完できます</span>
+        <button type="button" class="btn btn-primary btn-sm"
+                data-action="reconcile-children" data-index="${i}">
+          ${childUpdates.length}件まとめて補完
+        </button>
+      </div>
+      <ul class="os-new-children-list">
+        ${childUpdates.slice(0, 8).map(u => {
+          const c = u.officialChild;
+          const fields = u.fieldsToFill.map(f => CHILD_FIELD_LABEL[f] || f).join(' / ');
+          return `
+          <li>
+            <span class="os-new-child-date">${escapeHtml(formatDateRange(c.dateStart, c.dateEnd))}</span>
+            <span class="os-new-child-venue">${escapeHtml(c.venue || '—')}${c.prefecture ? `（${escapeHtml(c.prefecture)}）` : ''}</span>
+            <span style="color:var(--text-tertiary);font-size:11px;margin-left:6px;">補完: ${escapeHtml(fields)}</span>
+          </li>`;
+        }).join('')}
+        ${childUpdates.length > 8 ? `<li style="color:var(--text-tertiary);">…他 ${childUpdates.length - 8} 件</li>` : ''}
       </ul>
     </div>
   ` : '';
@@ -895,6 +959,7 @@ function renderUpdateItem(item: DiffUpdateItem, i: number): string {
         ${absorbVenueBanner}
         ${typeMismatchBanner}
         ${newChildrenBlock}
+        ${childUpdatesBlock}
         ${diffBlock}
         ${renderSourceLine(o)}
       </div>
