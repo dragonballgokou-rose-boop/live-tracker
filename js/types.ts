@@ -185,6 +185,8 @@ export interface DiffUpdateItem {
   diffs: FieldDiff[];
   /** ツアー: 公式の children の中でローカルにまだ存在しない日程 */
   newChildren?: OfficialChildPerformance[];
+  /** 公式ツアー→ローカル舞台/ライブ等で、会場情報を children から吸収できる場合 true */
+  canAbsorbVenue?: boolean;
 }
 
 export interface DiffSkipItem {

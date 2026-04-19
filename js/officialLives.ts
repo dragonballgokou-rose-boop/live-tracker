@@ -240,19 +240,30 @@ export function computeDiff(
     //   - 公式がツアーでローカルが非ツアー（ツアー化候補）
     //   - ローカルと公式の両方が明示設定されていて違う時
     // 例外: ローカルが 'stage'（舞台）は ユーザーが明示的に選んだ結果なので
-    //       公式側が別種別でも再プロンプトしない
+    //       通常は再プロンプトしないが、venue/時刻などが空で公式から埋められる
+    //       場合のみ 差分あり に出して吸収できるようにする
     const localType    = normalizeEventType(local.eventType);
     const officialType = normalizeEventType(official.eventType);
-    const userExplicitOverride = localType === 'stage';
-    const typeMismatch = !userExplicitOverride && (
-      (officialType === 'tour' && localType !== 'tour') ||
-      (!!officialType && !!localType && localType !== officialType)
-    );
+    const userExplicitStage = localType === 'stage';
+    const firstChild = Array.isArray(official.children) ? official.children[0] : null;
+    const canAbsorbVenue =
+      userExplicitStage &&
+      officialType === 'tour' &&
+      (
+        (!local.venue      && !!firstChild?.venue) ||
+        (!local.prefecture && !!firstChild?.prefecture)
+      );
+    const typeMismatch = (
+      !userExplicitStage && (
+        (officialType === 'tour' && localType !== 'tour') ||
+        (!!officialType && !!localType && localType !== officialType)
+      )
+    ) || canAbsorbVenue;
 
     if (diffs.length === 0 && newChildren.length === 0 && !typeMismatch) {
       toSkip.push({ official, local });
     } else {
-      toUpdate.push({ official, local, diffs, newChildren });
+      toUpdate.push({ official, local, diffs, newChildren, canAbsorbVenue });
     }
   }
 
@@ -453,6 +464,33 @@ export function applyUpdate(
     (updates as any).openTime   = null;
     (updates as any).startTime  = null;
     (updates as any).dayTimes   = null;
+  }
+
+  // 公式がツアー(children持ち) なのにユーザーが舞台/ライブ/イベント に
+  // 切り替えた場合、親の venue が空のまま残らないよう children から吸収する。
+  // これで「同じ劇場の連続公演を 舞台 にした」系の場所情報欠落を防ぐ。
+  // eventTypeOverride が無くても（既に 舞台 の item を再反映する場合）吸収する。
+  const effectiveType = eventTypeOverride || localLive.eventType;
+  const absorbingTourIntoSingle =
+    official.eventType === 'tour' &&
+    !!effectiveType && effectiveType !== 'tour' &&
+    Array.isArray(official.children) && official.children.length > 0;
+  if (absorbingTourIntoSingle) {
+    const firstChild = official.children![0];
+    if (!localLive.venue      && firstChild.venue)      (updates as any).venue      = firstChild.venue;
+    if (!localLive.prefecture && firstChild.prefecture) (updates as any).prefecture = firstChild.prefecture;
+    if (!localLive.openTime   && firstChild.openTime)   (updates as any).openTime   = firstChild.openTime;
+    if (!localLive.startTime  && firstChild.startTime)  (updates as any).startTime  = firstChild.startTime;
+    if (!localLive.dayTimes || localLive.dayTimes.length === 0) {
+      const dayTimes = official.children!
+        .filter(c => c.openTime || c.startTime)
+        .map(c => ({
+          date: c.dateStart,
+          openTime: c.openTime || undefined,
+          startTime: c.startTime || undefined,
+        }));
+      if (dayTimes.length > 0) (updates as any).dayTimes = dayTimes;
+    }
   }
   const appendedMemo = appendEvidenceMemo(localLive.memo, official);
   if (appendedMemo !== localLive.memo) updates.memo = appendedMemo;
