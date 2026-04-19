@@ -212,6 +212,59 @@ export function computeDiff(
 // ---------- 反映 ----------
 
 /**
+ * 公式の単発ライブをローカルの既存ツアーの子公演として追加する。
+ * 例: 「真夏の全国ツアー2025」がローカルにツアー登録済みで、
+ *     「真夏の全国ツアー2025 ~ツアーファイナル~」が公式から別エントリで来た場合に
+ *     これを呼んで parentId で紐付ける。
+ */
+export function applyAdditionAsChild(official: OfficialLive, parentTour: Live): Live {
+  return addLive({
+    name:       official.name,
+    artist:     official.artist       ?? parentTour.artist ?? null,
+    venue:      official.venue        ?? null,
+    prefecture: official.prefecture   ?? null,
+    dateStart:  official.dateStart    ?? null,
+    dateEnd:    official.dateEnd      ?? null,
+    eventType:  'live',
+    iconImg:    official.iconImg      ?? null,
+    parentId:   parentTour.id,
+    memo:       buildEvidenceMemo(official),
+    officialId: official.officialId   ?? null,
+  });
+}
+
+/**
+ * 公式ライブの名前が、ローカルにある既存ツアーの名前で始まるかを調べて
+ * 「追加公演として入れられる」候補のツアーを返す。
+ * 例: ローカルに tour 「真夏の全国ツアー2025」があり、
+ *     official.name が 「真夏の全国ツアー2025 ~ツアーファイナル~」なら match。
+ * - 公式自体がツアー(children持ち)の場合は候補としない（親に親はない）
+ * - 複数該当する時は最も長い（= より具体的な）名前の tour を優先
+ */
+export function findCandidateTourParent(official: OfficialLive, localLives: Live[]): Live | null {
+  if (official.eventType === 'tour') return null;
+  const oName = (official.name || '').trim();
+  if (!oName) return null;
+  const oArtist = normalize(official.artist);
+
+  const matches = localLives.filter(l => {
+    if (l.eventType !== 'tour') return false;
+    const ln = (l.name || '').trim();
+    if (!ln || ln.length >= oName.length) return false;
+    if (!oName.startsWith(ln)) return false;
+    // suffix が空白・記号で始まる（本当に拡張された名前）ことを軽く確認
+    const suffix = oName.slice(ln.length);
+    if (!/^[\s〜~\-_（(【「『]/.test(suffix)) return false;
+    // アーティストが両方ある時だけ一致必須
+    const la = normalize(l.artist);
+    if (oArtist && la && oArtist !== la) return false;
+    return true;
+  });
+
+  return matches.sort((a, b) => (b.name?.length || 0) - (a.name?.length || 0))[0] || null;
+}
+
+/**
  * 公式の新規ライブをローカルに追加する。
  * officialId を保存して将来の再照合に使えるようにする。
  * ツアー（children 付き）の場合は親 tour + 子 live をまとめて登録する。

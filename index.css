@@ -4298,3 +4298,29 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
 .os-item-tour {
   border-left: 3px solid rgba(99, 102, 241, 0.55);
 }
+
+/* ---------- Official Sync: ツアー追加公演の提案バナー ---------- */
+.os-tour-link-suggest {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  margin-bottom: 6px;
+  background: rgba(99, 102, 241, 0.08);
+  border: 1px solid rgba(99, 102, 241, 0.28);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  color: #a5b4fc;
+}
+
+.os-tour-link-suggest > span {
+  flex: 1;
+  min-width: 0;
+  line-height: 1.5;
+}
+
+.os-tour-link-suggest strong {
+  color: var(--text-primary);
+  word-break: break-word;
+}

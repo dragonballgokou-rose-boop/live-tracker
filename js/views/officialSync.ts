@@ -8,8 +8,10 @@ import {
   fetchOfficialLives,
   computeDiff,
   applyAddition,
+  applyAdditionAsChild,
   applyUpdate,
   mergeIntoExisting,
+  findCandidateTourParent,
 } from '../officialLives.js';
 import type {
   Live, OfficialLive, OfficialLivesFile, DiffResult,
@@ -303,6 +305,42 @@ function attachHandlers({ toAdd, toUpdate }: HandlerCtx): void {
     });
   });
 
+  // 既存ツアーの追加公演として入れる
+  document.querySelectorAll<HTMLButtonElement>('[data-action="add-as-child"]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const i = Number(btn.dataset.index);
+      const parentId = btn.dataset.parentId;
+      const official = toAdd[i]?.official;
+      if (!official || !parentId) return;
+      const parent = getLives().find(l => l.id === parentId);
+      if (!parent) {
+        showToast('親ツアーが見つかりません', 'error');
+        return;
+      }
+      let added: Live | null = null;
+      try {
+        added = applyAdditionAsChild(official, parent);
+      } catch (err: unknown) {
+        console.error('applyAdditionAsChild failed', err);
+        showToast(`追加失敗: ${errMsg(err)}`, 'error');
+        return;
+      }
+      if (!added) {
+        showToast('追加に失敗しました', 'error');
+        return;
+      }
+      showToast(`「${parent.name}」の追加公演として登録: ${official.name}`, 'success');
+      refreshDiffFromStore();
+      refreshOfficialSyncBadge();
+      renderModal();
+
+      const res = await flushSyncNow();
+      if (res && res.ok === false && res.reason === 'sync-failed') {
+        showToast(`Supabase同期失敗: ${errMsg(res.error)}`, 'error');
+      }
+    });
+  });
+
   // 類似既存ライブと統合（ローカルの既存ライブを公式で更新）
   document.querySelectorAll<HTMLButtonElement>('[data-action="merge"]').forEach(btn => {
     btn.addEventListener('click', async () => {
@@ -550,6 +588,21 @@ function renderAddItem(item: DiffAddItem, i: number): string {
   const isTour = o.eventType === 'tour';
   const childCount = Array.isArray(o.children) ? o.children.length : 0;
 
+  // ツアーファイナル等で、既存ローカルツアーの追加公演にできる場合の候補
+  const parentTourCandidate = !isTour ? findCandidateTourParent(o, getLives()) : null;
+  const parentTourSuggestion = parentTourCandidate ? `
+    <div class="os-tour-link-suggest">
+      <span>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px;"><path d="M3 11l19-9-9 19-2-8-8-2z"/></svg>
+        既存ツアー <strong>${escapeHtml(parentTourCandidate.name)}</strong> の追加公演として入れられます
+      </span>
+      <button type="button" class="btn btn-secondary btn-sm"
+              data-action="add-as-child" data-index="${i}" data-parent-id="${escapeHtml(parentTourCandidate.id)}">
+        ツアーに追加
+      </button>
+    </div>
+  ` : '';
+
   // ツアーは venue が空、会場一覧を先頭3件まで展開して代わりに表示
   const venueLineHtml = isTour
     ? (childCount > 0
@@ -573,6 +626,7 @@ function renderAddItem(item: DiffAddItem, i: number): string {
       </div>
       <div class="os-item-body">
         ${similarWarning}
+        ${parentTourSuggestion}
         <div class="os-row"><span class="os-label">日程</span> ${escapeHtml(formatDateRange(o.dateStart, o.dateEnd))}</div>
         ${venueLineHtml}
         <div class="os-row"><span class="os-label">種別</span> ${escapeHtml(eventTypeLabel(o.eventType))}</div>
