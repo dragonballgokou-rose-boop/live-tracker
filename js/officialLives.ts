@@ -10,7 +10,7 @@
 
 import { getLives, addLive, updateLive } from './store.js';
 import type {
-  Live, OfficialLive, OfficialLivesFile,
+  Live, OfficialLive, OfficialLivesFile, OfficialChildPerformance,
   DiffFieldName, FieldDiff, DiffResult, DiffAddItem,
   DiffUpdateItem, DiffSkipItem, SimilarLocalLive,
 } from './types.js';
@@ -177,6 +177,27 @@ function isSameLive(localLive: Live, officialLive: OfficialLive): boolean {
 
 // ---------- diff ----------
 
+/**
+ * ツアー: 公式 children のうち、ローカルにまだ存在しない日程を抽出する。
+ * ローカル側の子公演は parentId で紐付いた live を対象にし、dateStart 一致で判定。
+ * 既に存在する日程は提案しない（上書き/重複を避ける）。
+ */
+function findNewOfficialChildren(
+  official: OfficialLive, parentLocal: Live, localLives: Live[],
+) {
+  if (official.eventType !== 'tour' || !Array.isArray(official.children)) return [];
+  const existingDates = new Set(
+    localLives
+      .filter(l => l.parentId === parentLocal.id)
+      .map(l => (l.dateStart || '').slice(0, 10))
+      .filter(Boolean),
+  );
+  return official.children.filter(c => {
+    const d = (c.dateStart || '').slice(0, 10);
+    return d && !existingDates.has(d);
+  });
+}
+
 export function computeDiff(
   officialLives: OfficialLive[], localLives: Live[],
 ): DiffResult {
@@ -199,10 +220,13 @@ export function computeDiff(
         diffs.push({ field, from: a, to: b });
       }
     }
-    if (diffs.length === 0) {
+    // ツアー: 公式に新しく追加された子公演があれば差分として扱う
+    const newChildren = findNewOfficialChildren(official, local, localLives);
+
+    if (diffs.length === 0 && newChildren.length === 0) {
       toSkip.push({ official, local });
     } else {
-      toUpdate.push({ official, local, diffs });
+      toUpdate.push({ official, local, diffs, newChildren });
     }
   }
 
@@ -210,6 +234,36 @@ export function computeDiff(
 }
 
 // ---------- 反映 ----------
+
+/**
+ * ツアー親 (local) に、公式から新しく追加された children[] を子公演として追加する。
+ * 既存の local 子公演は触らない。
+ */
+export function applyNewTourChildren(
+  parent: Live, official: OfficialLive, children: OfficialChildPerformance[],
+): number {
+  let n = 0;
+  for (const c of children) {
+    if (!c.dateStart) continue;
+    addLive({
+      name:       official.name,
+      artist:     official.artist       ?? parent.artist ?? null,
+      venue:      c.venue               ?? null,
+      prefecture: c.prefecture          ?? null,
+      dateStart:  c.dateStart,
+      dateEnd:    c.dateEnd ?? c.dateStart,
+      eventType:  'live',
+      iconImg:    official.iconImg      ?? null,
+      parentId:   parent.id,
+      memo:       c.dayLabel ? `${c.dayLabel}` : null,
+      officialId: official.officialId
+        ? `${official.officialId}-${c.dateStart}`
+        : null,
+    });
+    n++;
+  }
+  return n;
+}
 
 /**
  * 公式の単発ライブをローカルの既存ツアーの子公演として追加する。
