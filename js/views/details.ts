@@ -110,18 +110,53 @@ export function showLiveDetailsModal(liveId) {
     if (dates.length === 0 || members.length === 0) {
         html += `<p style="color:var(--text-tertiary);font-size:13px;">日程またはメンバーが未登録です</p>`;
     } else {
+        // ツアー親の場合、日付 → 子ライブ のマップを作っておき、
+        // 各 Day の見出しに会場・都道府県を表示できるようにする
+        const tourChildByDate = new Map();
+        if (live.eventType === 'tour') {
+            const allLives = getLives();
+            allLives.filter(l => l.parentId === live.id).forEach(child => {
+                const cs = (child.dateStart || child.date || '').slice(0, 10);
+                const ce = (child.dateEnd || child.dateStart || child.date || '').slice(0, 10);
+                if (!cs) return;
+                // 子ライブが範囲を持つ場合、その範囲の各日にマップする
+                const start = new Date(cs);
+                const end = ce ? new Date(ce) : new Date(cs);
+                start.setHours(0, 0, 0, 0);
+                end.setHours(0, 0, 0, 0);
+                const cur = new Date(start);
+                while (cur <= end) {
+                    const y = cur.getFullYear();
+                    const m = String(cur.getMonth() + 1).padStart(2, '0');
+                    const dd = String(cur.getDate()).padStart(2, '0');
+                    tourChildByDate.set(`${y}-${m}-${dd}`, child);
+                    cur.setDate(cur.getDate() + 1);
+                }
+            });
+        }
+
         dates.forEach(dateObj => {
             const dateStr = dateObj.dateStr;
             const d = dateObj.date;
             const dateLabel = `${d.getMonth() + 1}/${d.getDate()}(${WEEKDAYS[d.getDay()]})`;
-            // 当日の時間（dayTimesから取得、なければトップレベル）
+            // ツアーの場合、この日の子ライブから時間/会場を取る
+            const childForDay = tourChildByDate.get(dateStr) || null;
+            // 当日の時間（ツアーの子 → 子の dayTimes → トップレベル の順）
             const dt = (live.dayTimes || []).find(t => t.date === dateStr);
-            const openTime  = dt?.openTime  || (dates.length === 1 ? live.openTime  : '') || '';
-            const startTime = dt?.startTime || (dates.length === 1 ? live.startTime : '') || '';
+            const childDt = childForDay && (childForDay.dayTimes || []).find(t => t.date === dateStr);
+            const openTime  = childDt?.openTime  || childForDay?.openTime  || dt?.openTime  || (dates.length === 1 ? live.openTime  : '') || '';
+            const startTime = childDt?.startTime || childForDay?.startTime || dt?.startTime || (dates.length === 1 ? live.startTime : '') || '';
             const timeParts = [];
             if (openTime)  timeParts.push(`開場 ${openTime}`);
             if (startTime) timeParts.push(`開演 ${startTime}`);
             const timeStr = timeParts.length > 0 ? `　<span style="font-size:11px;font-weight:400;color:var(--text-tertiary);">${timeParts.join('　')}</span>` : '';
+            // 会場ラベル（ツアーの子から取得）
+            let venueStr = '';
+            if (childForDay && childForDay.venue) {
+                const childPref = childForDay.prefecture || extractPrefecture(childForDay.venue || '');
+                const venueText = childPref ? `${childForDay.venue}（${childPref}）` : childForDay.venue;
+                venueStr = `<div style="font-size:11px;font-weight:400;color:var(--text-secondary);margin-top:2px;display:flex;align-items:center;gap:4px;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>${escapeHtml(venueText)}</div>`;
+            }
             const dayLabel = dates.length > 1
                 ? `Day${dateObj.dayNum}　${dateLabel}${timeStr}`
                 : `${dateLabel}${timeStr}`;
@@ -139,7 +174,7 @@ export function showLiveDetailsModal(liveId) {
             });
 
             html += `<div style="margin-bottom:12px;padding:12px;background:rgba(0,0,0,0.2);border:1px solid var(--border-color);border-radius:8px;">`;
-            html += `<div style="font-weight:700;font-size:13px;color:var(--accent-purple-light);margin-bottom:10px;">${dayLabel}　<span style="font-weight:400;font-size:12px;color:var(--text-tertiary);">参戦確定 ${going.length}人　参戦予定 ${planned.length}人</span></div>`;
+            html += `<div style="font-weight:700;font-size:13px;color:var(--accent-purple-light);margin-bottom:10px;">${dayLabel}　<span style="font-weight:400;font-size:12px;color:var(--text-tertiary);">参戦確定 ${going.length}人　参戦予定 ${planned.length}人</span>${venueStr}</div>`;
 
             // 参戦確定 ○
             if (going.length > 0) {
