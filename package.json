@@ -7,11 +7,13 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
     "build:cap": "BUILD_TARGET=capacitor vite build",
     "cap:sync": "npm run build:cap && npx cap sync",
     "cap:ios": "npm run build:cap && npx cap sync && npx cap open ios"
   },
   "devDependencies": {
+    "typescript": "^6.0.3",
     "vite": "^6.0.0"
   },
   "dependencies": {

@@ -9,12 +9,19 @@
 //   ・自動上書きもしない — 必ずユーザーが確認してから反映
 
 import { getLives, addLive, updateLive } from './store.js';
+import type {
+  Live, OfficialLive, OfficialLivesFile,
+  DiffFieldName, FieldDiff, DiffResult, DiffAddItem,
+  DiffUpdateItem, DiffSkipItem, SimilarLocalLive,
+} from './types.js';
 
 const OFFICIAL_URL = './official-lives.json';
 
-// 比較対象のフィールド（officialLive と localLive 間で差分判定する）
-// 注: name と dateStart は「同一性の判定」に使うので diff 対象には入れない
-export const DIFF_FIELDS = [
+/**
+ * 比較対象のフィールド（officialLive と localLive 間で差分判定する）
+ * 注: name と dateStart は「同一性の判定」に使うので diff 対象には入れない
+ */
+export const DIFF_FIELDS: readonly DiffFieldName[] = [
   'venue',
   'prefecture',
   'dateEnd',
@@ -22,7 +29,7 @@ export const DIFF_FIELDS = [
 ];
 
 /** eventType は日本語/英語が混在するので等価判定を正規化する */
-function normalizeEventType(v) {
+function normalizeEventType(v: unknown): string {
   const s = String(v ?? '').trim().toLowerCase();
   if (!s) return '';
   if (s === 'ライブ' || s === 'live' || s === 'コンサート' || s === 'concert') return 'live';
@@ -32,7 +39,7 @@ function normalizeEventType(v) {
 }
 
 /** 差分判定: フィールドに応じた正規化を適用した比較 */
-function fieldsDiffer(field, a, b) {
+function fieldsDiffer(field: DiffFieldName, a: unknown, b: unknown): boolean {
   if (field === 'eventType') {
     return normalizeEventType(a) !== normalizeEventType(b);
   }
@@ -41,81 +48,80 @@ function fieldsDiffer(field, a, b) {
 
 // ---------- fetch ----------
 
-let _cached = null;
-export async function fetchOfficialLives({ noCache = false } = {}) {
-  if (_cached && !noCache) return _cached;
+let _cached: OfficialLivesFile | null = null;
+
+export async function fetchOfficialLives(
+  opts: { noCache?: boolean } = {},
+): Promise<OfficialLivesFile> {
+  if (_cached && !opts.noCache) return _cached;
   const url = `${OFFICIAL_URL}?v=${Date.now()}`; // cache-bust
   const res = await fetch(url);
   if (!res.ok) throw new Error(`公式データの取得に失敗しました (${res.status})`);
-  const data = await res.json();
+  const data = await res.json() as OfficialLivesFile;
   _cached = data;
   return data;
 }
 
 // ---------- 正規化 ----------
 
-// よく混入するアーティスト名のプレフィックス候補
 const ARTIST_PREFIX_RE = /^(?:乃木坂46|櫻坂46|欅坂46|日向坂46|sakurazaka46|nogizaka46)\s*/i;
 
-function normalize(str) {
+function normalize(str: unknown): string {
   if (!str) return '';
   return String(str)
     .trim()
     .toLowerCase()
-    // 全角→半角
     .replace(/[Ａ-Ｚａ-ｚ０-９]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0xfee0))
-    // 記号統一
     .replace(/[〜～]/g, '-')
     .replace(/[（）]/g, m => (m === '（' ? '(' : ')'))
     .replace(/[「」『』"']/g, '')
-    // 空白・区切り記号を除去（マッチング用）
     .replace(/[\s\-_:：、。・／\/]+/g, '');
 }
 
-/** アーティスト名プレフィックスをタイトルから取り除いた形で正規化する */
-function normalizeName(name) {
+function normalizeName(name: unknown): string {
   if (!name) return '';
   const stripped = String(name).trim().replace(ARTIST_PREFIX_RE, '');
   return normalize(stripped);
 }
 
-/** 「一致候補」をいくつか作る — 同じライブでもフィールドのズレを吸収 */
-function nameCandidates(live) {
-  const candidates = new Set();
+type LiveLike = Pick<Live, 'name' | 'artist' | 'dateStart' | 'dateEnd' | 'date' | 'officialId'>;
+
+function nameCandidates(live: Pick<LiveLike, 'name'>): string[] {
+  const candidates = new Set<string>();
   const rawName = live.name || '';
   candidates.add(normalizeName(rawName));
   candidates.add(normalize(rawName));
-  // サブタイトルや日数表記 (Day1/Day2) を削った形も候補に
   candidates.add(normalize(rawName.replace(/\s*(day\s*\d+|第\d+日|\d+日目)/gi, '')));
   candidates.delete('');
   return [...candidates];
 }
 
-/** 日付範囲が重なるかチェック（date range overlap） */
-function datesOverlap(aStart, aEnd, bStart, bEnd) {
+function datesOverlap(
+  aStart?: string | null, aEnd?: string | null,
+  bStart?: string | null, bEnd?: string | null,
+): boolean {
   const s1 = (aStart || '').slice(0, 10);
-  const e1 = (aEnd   || aStart || '').slice(0, 10);
+  const e1 = (aEnd || aStart || '').slice(0, 10);
   const s2 = (bStart || '').slice(0, 10);
-  const e2 = (bEnd   || bStart || '').slice(0, 10);
+  const e2 = (bEnd || bStart || '').slice(0, 10);
   if (!s1 || !s2) return false;
   return s1 <= e2 && s2 <= e1;
 }
 
 /** あいまい類似検索: 明確な同一ではないが「似ている」ローカルライブを列挙する */
-export function findSimilarLocalLives(officialLive, localLives) {
+export function findSimilarLocalLives(
+  officialLive: OfficialLive, localLives: Live[],
+): SimilarLocalLive[] {
   const officialNames = nameCandidates(officialLive);
   const officialArtist = normalize(officialLive.artist);
-  const results = [];
+  const results: SimilarLocalLive[] = [];
   for (const local of localLives) {
-    // 厳密な「同じ」は別タブで扱うので除外
     if (isSameLive(local, officialLive)) continue;
 
     const localArtist = normalize(local.artist);
-    // アーティストが両方あって違えば非類似
     if (localArtist && officialArtist && localArtist !== officialArtist) continue;
 
     const localNames = nameCandidates(local);
-    // タイトルに 4文字以上の共通部分があれば「似てる」とみなす
     const nameSimilar = localNames.some(ln =>
       officialNames.some(on => {
         if (!ln || !on) return false;
@@ -123,15 +129,14 @@ export function findSimilarLocalLives(officialLive, localLives) {
         const shorter = ln.length < on.length ? ln : on;
         const longer  = ln.length < on.length ? on : ln;
         return shorter.length >= 4 && longer.includes(shorter);
-      })
+      }),
     );
     if (!nameSimilar) continue;
 
-    // 日付が近い (90日以内) か、一方が同じ年・月か
     const lDate = (local.dateStart || local.date || '').slice(0, 10);
     const oDate = (officialLive.dateStart || '').slice(0, 10);
     if (!lDate || !oDate) continue;
-    const diffDays = Math.abs((new Date(lDate) - new Date(oDate)) / 86400000);
+    const diffDays = Math.abs((+new Date(lDate) - +new Date(oDate)) / 86400000);
     if (!isFinite(diffDays) || diffDays > 120) continue;
 
     results.push({ local, diffDays: Math.round(diffDays) });
@@ -140,8 +145,7 @@ export function findSimilarLocalLives(officialLive, localLives) {
 }
 
 /** 2つのライブが「同じ」と判定できるか */
-function isSameLive(localLive, officialLive) {
-  // officialId が両方にあって一致すれば即 true（統合済みマーカー）
+function isSameLive(localLive: Live, officialLive: OfficialLive): boolean {
   if (localLive.officialId && officialLive.officialId &&
       localLive.officialId === officialLive.officialId) {
     return true;
@@ -149,18 +153,16 @@ function isSameLive(localLive, officialLive) {
 
   const localArtist    = normalize(localLive.artist);
   const officialArtist = normalize(officialLive.artist);
-  // アーティスト片方でも空なら無視、両方あれば一致してる必要
   if (localArtist && officialArtist && localArtist !== officialArtist) return false;
 
   const localNames    = nameCandidates(localLive);
   const officialNames = nameCandidates(officialLive);
-  // 名前候補のどれか1ペアが一致するか、substring 関係にあれば OK
   const nameMatch = localNames.some(ln =>
     officialNames.some(on =>
       ln === on ||
       (ln.length >= 6 && on.includes(ln)) ||
-      (on.length >= 6 && ln.includes(on))
-    )
+      (on.length >= 6 && ln.includes(on)),
+    ),
   );
   if (!nameMatch) return false;
 
@@ -174,31 +176,24 @@ function isSameLive(localLive, officialLive) {
 
 // ---------- diff ----------
 
-/**
- * @returns {{
- *   toAdd:    Array<{ official }>,
- *   toUpdate: Array<{ official, local, diffs: Array<{ field, from, to }> }>,
- *   toSkip:   Array<{ official, local }>,
- * }}
- */
-export function computeDiff(officialLives, localLives) {
-  const toAdd = [];
-  const toUpdate = [];
-  const toSkip = [];
+export function computeDiff(
+  officialLives: OfficialLive[], localLives: Live[],
+): DiffResult {
+  const toAdd: DiffAddItem[] = [];
+  const toUpdate: DiffUpdateItem[] = [];
+  const toSkip: DiffSkipItem[] = [];
 
   for (const official of officialLives) {
-    // localLives を全走査してマッチ探索（柔軟マッチ優先）
     const local = localLives.find(l => isSameLive(l, official));
     if (!local) {
-      // 厳密には一致しないが類似したローカルライブがあれば警告用に添える
       const similar = findSimilarLocalLives(official, localLives);
       toAdd.push({ official, similar });
       continue;
     }
-    const diffs = [];
+    const diffs: FieldDiff[] = [];
     for (const field of DIFF_FIELDS) {
-      const a = local[field] ?? '';
-      const b = official[field] ?? '';
+      const a = (local as any)[field] ?? '';
+      const b = (official as any)[field] ?? '';
       if (fieldsDiffer(field, a, b)) {
         diffs.push({ field, from: a, to: b });
       }
@@ -219,7 +214,7 @@ export function computeDiff(officialLives, localLives) {
  * 公式の新規ライブをローカルに追加する。
  * officialId を保存して将来の再照合に使えるようにする。
  */
-export function applyAddition(official) {
+export function applyAddition(official: OfficialLive): Live {
   return addLive({
     name:       official.name,
     artist:     official.artist       ?? null,
@@ -238,12 +233,13 @@ export function applyAddition(official) {
  * ローカルのライブを公式データで部分更新する。
  * 選択された field のみ上書き（全上書きではない）。
  */
-export function applyUpdate(localLive, official, fieldsToApply) {
-  const updates = {};
+export function applyUpdate(
+  localLive: Live, official: OfficialLive, fieldsToApply: string[],
+): Live | null {
+  const updates: Partial<Live> = {};
   for (const field of fieldsToApply) {
-    updates[field] = official[field] ?? null;
+    (updates as any)[field] = (official as any)[field] ?? null;
   }
-  // 既存 memo に根拠追記（上書きしない）
   const appendedMemo = appendEvidenceMemo(localLive.memo, official);
   if (appendedMemo !== localLive.memo) updates.memo = appendedMemo;
   updates.officialId = localLive.officialId || official.officialId || null;
@@ -257,20 +253,21 @@ export function applyUpdate(localLive, official, fieldsToApply) {
  * - 既存値がある場合は既存優先（勝手に上書きしない）
  * - iconImg / 根拠 memo は追記
  */
-export function mergeIntoExisting(localLive, official) {
-  const updates = {};
-  // 空フィールドだけ埋める戦略
-  const fillIfEmpty = (field, value) => {
+export function mergeIntoExisting(localLive: Live, official: OfficialLive): Live | null {
+  const updates: Partial<Live> = {};
+  const fillIfEmpty = <K extends keyof Live>(field: K, value: Live[K] | undefined) => {
     const cur = localLive[field];
-    if ((cur == null || cur === '') && value) updates[field] = value;
+    if ((cur == null || cur === '') && value) {
+      (updates as any)[field] = value;
+    }
   };
-  fillIfEmpty('artist', official.artist);
-  fillIfEmpty('venue', official.venue);
+  fillIfEmpty('artist',     official.artist);
+  fillIfEmpty('venue',      official.venue);
   fillIfEmpty('prefecture', official.prefecture);
-  fillIfEmpty('dateStart', official.dateStart);
-  fillIfEmpty('dateEnd', official.dateEnd);
-  fillIfEmpty('eventType', official.eventType);
-  fillIfEmpty('iconImg', official.iconImg);
+  fillIfEmpty('dateStart',  official.dateStart);
+  fillIfEmpty('dateEnd',    official.dateEnd);
+  fillIfEmpty('eventType',  official.eventType);
+  fillIfEmpty('iconImg',    official.iconImg);
 
   updates.memo       = appendEvidenceMemo(localLive.memo, official);
   updates.officialId = localLive.officialId || official.officialId || null;
@@ -278,9 +275,9 @@ export function mergeIntoExisting(localLive, official) {
   return updateLive(localLive.id, updates);
 }
 
-// ---------- 根拠（evidence）記録 ----------
+// ---------- evidence memo ----------
 
-function formatDate(iso) {
+function formatDate(iso?: string | null): string {
   if (!iso) return '';
   try {
     const d = new Date(iso);
@@ -288,21 +285,22 @@ function formatDate(iso) {
     const m = String(d.getMonth() + 1).padStart(2, '0');
     const dd = String(d.getDate()).padStart(2, '0');
     return `${y}-${m}-${dd}`;
-  } catch { return iso.slice(0, 10); }
+  } catch {
+    return String(iso).slice(0, 10);
+  }
 }
 
-function buildEvidenceMemo(official) {
+function buildEvidenceMemo(official: OfficialLive): string {
   const src = official.sourceUrl || '';
   const at  = formatDate(official.scrapedAt);
   const oid = official.officialId ? `\n[official-id:${official.officialId}]` : '';
   return `[公式データ由来] ${at} 取得\nソース: ${src}${oid}`;
 }
 
-function appendEvidenceMemo(existing, official) {
+function appendEvidenceMemo(existing: string | null | undefined, official: OfficialLive): string {
   const oidTag = official.officialId ? ` [official-id:${official.officialId}]` : '';
   const note = `[公式データ由来] ${formatDate(official.scrapedAt)} 取得 — ${official.sourceUrl || ''}${oidTag}`;
   if (!existing) return note;
-  // 既に同じ officialId が記録済みなら追記しない
   if (official.officialId && existing.includes(`[official-id:${official.officialId}]`)) return existing;
   if (!official.officialId && existing.includes('[公式データ由来]')) return existing;
   return `${existing}\n${note}`;
