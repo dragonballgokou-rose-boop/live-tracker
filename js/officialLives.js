@@ -294,12 +294,16 @@ function formatDate(iso) {
 function buildEvidenceMemo(official) {
   const src = official.sourceUrl || '';
   const at  = formatDate(official.scrapedAt);
-  return `[公式データ由来] ${at} 取得\nソース: ${src}`;
+  const oid = official.officialId ? `\n[official-id:${official.officialId}]` : '';
+  return `[公式データ由来] ${at} 取得\nソース: ${src}${oid}`;
 }
 
 function appendEvidenceMemo(existing, official) {
-  const note = `[公式データ由来] ${formatDate(official.scrapedAt)} 取得 — ${official.sourceUrl || ''}`;
+  const oidTag = official.officialId ? ` [official-id:${official.officialId}]` : '';
+  const note = `[公式データ由来] ${formatDate(official.scrapedAt)} 取得 — ${official.sourceUrl || ''}${oidTag}`;
   if (!existing) return note;
-  if (existing.includes('[公式データ由来]')) return existing; // 既に記録済み
+  // 既に同じ officialId が記録済みなら追記しない
+  if (official.officialId && existing.includes(`[official-id:${official.officialId}]`)) return existing;
+  if (!official.officialId && existing.includes('[公式データ由来]')) return existing;
   return `${existing}\n${note}`;
 }
