@@ -2,7 +2,7 @@
 // ============================================
 // Chart View
 // ============================================
-import { getLives, getMembers, getDayAttendanceStatus, getDatesForLive } from '../store.js';
+import { getLives, getMembers, getDayAttendanceStatus, getDatesForLive, buildAttendanceLookup, lookupDayAttendance } from '../store.js';
 import { showMemberDetailsModal, showLiveDetailsModal } from './details.js';
 import { formatDateRange } from './lives.js';
 
@@ -10,6 +10,9 @@ export function renderChart() {
   const members = getMembers();
   const lives = getLives();
   const content = document.getElementById('page-content');
+
+  // 参戦ルックアップを 1 回だけ構築 — メンバー×ライブ×日付の大量ループで使い回す
+  const attMap = buildAttendanceLookup();
 
   if (members.length === 0 || lives.length === 0) {
     content.innerHTML = `
@@ -35,7 +38,7 @@ export function renderChart() {
     lives.forEach(live => {
       getDatesForLive(live).forEach(d => {
         totalDays++;
-        if (getDayAttendanceStatus(live.id, d.dateStr, member.id) === 'going') goingCount++;
+        if (lookupDayAttendance(attMap, live.id, d.dateStr, member.id) === 'going') goingCount++;
       });
     });
     const rate = totalDays > 0 ? Math.round((goingCount / totalDays) * 100) : 0;
@@ -57,7 +60,7 @@ export function renderChart() {
       members.forEach(member => {
         if (!memberMonthStats[member.id][key]) memberMonthStats[member.id][key] = { going: 0, total: 0 };
         memberMonthStats[member.id][key].total++;
-        if (getDayAttendanceStatus(live.id, d.dateStr, member.id) === 'going') {
+        if (lookupDayAttendance(attMap, live.id, d.dateStr, member.id) === 'going') {
           monthMap[key].going++;
           memberMonthStats[member.id][key].going++;
         }
@@ -73,7 +76,7 @@ export function renderChart() {
     const goingSet = new Set();
     getDatesForLive(live).forEach(d => {
       members.forEach(member => {
-        if (getDayAttendanceStatus(live.id, d.dateStr, member.id) === 'going') goingSet.add(member.id);
+        if (lookupDayAttendance(attMap, live.id, d.dateStr, member.id) === 'going') goingSet.add(member.id);
       });
     });
     return { ...live, goingCount: goingSet.size };
@@ -91,7 +94,7 @@ export function renderChart() {
     if (!venueMap[live.venue]) venueMap[live.venue] = { venue: live.venue, going: 0 };
     getDatesForLive(live).forEach(d => {
       members.forEach(member => {
-        if (getDayAttendanceStatus(live.id, d.dateStr, member.id) === 'going') venueMap[live.venue].going++;
+        if (lookupDayAttendance(attMap, live.id, d.dateStr, member.id) === 'going') venueMap[live.venue].going++;
       });
     });
   });
@@ -106,7 +109,7 @@ export function renderChart() {
   });
   lives.forEach(live => {
     getDatesForLive(live).forEach(d => {
-      const goingHere = members.filter(m => getDayAttendanceStatus(live.id, d.dateStr, m.id) === 'going');
+      const goingHere = members.filter(m => lookupDayAttendance(attMap, live.id, d.dateStr, m.id) === 'going');
       for (let i = 0; i < goingHere.length; i++) {
         for (let j = 0; j < goingHere.length; j++) {
           if (i !== j) coMatrix[goingHere[i].id][goingHere[j].id]++;

@@ -576,6 +576,9 @@ export function getStats(): Stats {
   const upcomingLives = lives.filter(l => new Date(l.dateEnd || l.dateStart || l.date || 0) >= now);
   const pastLives     = lives.filter(l => new Date(l.dateEnd || l.dateStart || l.date || 0) < now);
 
+  // 性能: N×M 回の localStorage 読み出しを避けるため 1 回だけ Map 化する
+  const attMap = buildAttendanceLookup();
+
   let goingCount = 0;
   let totalPossibleSchedules = 0;
 
@@ -584,7 +587,7 @@ export function getStats(): Stats {
     totalPossibleSchedules += dates.length;
     dates.forEach(d => {
       members.forEach(m => {
-        if (getDayAttendanceStatus(live.id, d.dateStr, m.id) === 'going') {
+        if (lookupDayAttendance(attMap, live.id, d.dateStr, m.id) === 'going') {
           goingCount++;
         }
       });
