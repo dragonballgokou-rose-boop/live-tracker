@@ -227,23 +227,56 @@ function findChildrenToReconcile(
   if (official.eventType !== 'tour' || !Array.isArray(official.children)) return [];
   const localChildren = localLives.filter(l => l.parentId === parentLocal.id);
   const results: ChildReconcileItem[] = [];
+  const usedLocalIds = new Set<string>();
+
+  // 1回のパスで official child と local child を突き合わせる。
+  // 複数の local が1つの official に重なる場合（＝phantom が全日を覆ってる）は
+  //   (a) dateStart が一致する local を最優先
+  //   (b) venue が空の local を次に優先（phantom ほぼ）
+  //   (c) fallback: 最初の重なり
+  // 既に他の official と紐付けた local は再使用しない（1対1写像を作る）。
   for (const c of official.children) {
     const s = (c.dateStart || '').slice(0, 10);
     const e = (c.dateEnd   || c.dateStart || '').slice(0, 10);
     if (!s) continue;
-    const matches = localChildren.filter(l => {
+    const overlapping = localChildren.filter(l => {
+      if (usedLocalIds.has(l.id)) return false;
       const ls = (l.dateStart || l.date || '').slice(0, 10);
       const le = (l.dateEnd   || l.dateStart || l.date || '').slice(0, 10);
       if (!ls) return false;
       return ls <= e && s <= le;
     });
-    if (matches.length !== 1) continue;
-    const localChild = matches[0];
+    if (overlapping.length === 0) continue;
+
+    const localChild =
+      overlapping.find(l => (l.dateStart || l.date || '').slice(0, 10) === s) ||
+      overlapping.find(l => !l.venue) ||
+      overlapping[0];
+    usedLocalIds.add(localChild.id);
+
     const fieldsToFill: ChildReconcileField[] = [];
     if (!localChild.venue      && !!c.venue)      fieldsToFill.push('venue');
     if (!localChild.prefecture && !!c.prefecture) fieldsToFill.push('prefecture');
-    const localEnd = (localChild.dateEnd || localChild.dateStart || localChild.date || '').slice(0, 10);
-    if (e && localEnd && localEnd < e)            fieldsToFill.push('dateEnd');
+
+    // dateEnd:
+    //   - 延長: local の dateEnd が match より短ければ伸ばす
+    //   - 縮小: local の範囲が match より 30 日以上広い場合は phantom とみなして縮める
+    const ls = (localChild.dateStart || localChild.date || '').slice(0, 10);
+    const le = (localChild.dateEnd   || localChild.dateStart || localChild.date || '').slice(0, 10);
+    if (e && le) {
+      const diffDays = (+new Date(le) - +new Date(e)) / 86400000;
+      if (le < e || (isFinite(diffDays) && diffDays > 30)) {
+        fieldsToFill.push('dateEnd');
+      }
+    } else if (e && !le) {
+      fieldsToFill.push('dateEnd');
+    }
+    // dateStart がずれてる場合も phantom の兆候。localChild は (a) の候補でなく
+    // (b)(c) で選ばれた時、その dateStart を match のものに揃える
+    if (ls && s && ls !== s) {
+      fieldsToFill.push('dateStart');
+    }
+
     if (!localChild.openTime   && !!c.openTime)   fieldsToFill.push('openTime');
     if (!localChild.startTime  && !!c.startTime)  fieldsToFill.push('startTime');
     if ((!localChild.dayTimes || localChild.dayTimes.length === 0)
@@ -264,6 +297,7 @@ export function applyChildReconciliation(item: ChildReconcileItem): Live | null 
   for (const f of fieldsToFill) {
     if      (f === 'venue')      updates.venue      = c.venue      ?? null;
     else if (f === 'prefecture') updates.prefecture = c.prefecture ?? null;
+    else if (f === 'dateStart')  updates.dateStart  = c.dateStart  ?? null;
     else if (f === 'dateEnd')    updates.dateEnd    = c.dateEnd    ?? c.dateStart ?? null;
     else if (f === 'openTime')   updates.openTime   = c.openTime   ?? null;
     else if (f === 'startTime')  updates.startTime  = c.startTime  ?? null;

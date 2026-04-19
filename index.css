@@ -2273,21 +2273,22 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
 
-  /* iOS デフォルトアプリ風: 柔らかい半透明ガラス + 強めの blur */
-  background: rgba(28, 28, 34, 0.62);
-  backdrop-filter: blur(36px) saturate(180%);
-  -webkit-backdrop-filter: blur(36px) saturate(180%);
+  /* iOS デフォルトアプリ風: 半透明ガラス + 強めの blur */
+  background: rgba(30, 30, 36, 0.55);
+  backdrop-filter: blur(40px) saturate(200%);
+  -webkit-backdrop-filter: blur(40px) saturate(200%);
 
-  /* ピル型の優しい枠 */
+  /* ピル型のはっきり見える優しい枠 */
   border-radius: 34px;
-  border: 1px solid rgba(255, 255, 255, 0.10);
+  border: 1.5px solid rgba(255, 255, 255, 0.18);
 
-  /* iOS 風: 柔らかい内側ハイライト + 軽い落ち影 */
+  /* iOS 風: 内側ハイライト + 外側のソフトハロー + 落ち影 */
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.08),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.25),
-    0 8px 28px rgba(0, 0, 0, 0.35),
-    0 2px 6px rgba(0, 0, 0, 0.22);
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.28),
+    0 0 0 1px rgba(255, 255, 255, 0.05),
+    0 10px 34px rgba(0, 0, 0, 0.42),
+    0 2px 8px rgba(0, 0, 0, 0.28);
 
   z-index: 101;
   overflow: hidden;
