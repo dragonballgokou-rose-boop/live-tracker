@@ -15,30 +15,36 @@ import { showToast } from './js/utils.js';
 import { showLiveDetailsModal, showMemberDetailsModal } from './js/views/details.js';
 import { showOfficialSyncModal, refreshOfficialSyncBadge } from './js/views/officialSync.js';
 
-window.showLiveDetailsModal = showLiveDetailsModal;
+// 既存のインラインHTML (onclick="...Modal(...)") 互換のため window にぶら下げる
+declare global {
+    interface Window {
+        showLiveDetailsModal:   typeof showLiveDetailsModal;
+        showMemberDetailsModal: typeof showMemberDetailsModal;
+    }
+}
+window.showLiveDetailsModal   = showLiveDetailsModal;
 window.showMemberDetailsModal = showMemberDetailsModal;
 
 // ---------- Page Titles ----------
-const pageTitles = {
-    '/': 'ダッシュボード',
-    '/tally': '集計表',
-    '/lives': 'ライブ管理',
-    '/members': 'メンバー管理',
-    '/chart': 'グラフ',
-    '/history': 'ライブ管理'
+const pageTitles: Record<string, string> = {
+    '/':         'ダッシュボード',
+    '/tally':    '集計表',
+    '/lives':    'ライブ管理',
+    '/members':  'メンバー管理',
+    '/chart':    'グラフ',
+    '/history':  'ライブ管理',
 };
 
 // ---------- BottomTabBar instance ----------
-let bottomTabBar = null;
+let bottomTabBar: BottomTabBar | null = null;
 
 // ---------- Navigation ----------
-function updateNav(path) {
-    // Delegate bottom-tab active state to the component
+function updateNav(path: string): void {
     bottomTabBar?.setActiveByPath(path);
 
-    document.getElementById('page-title').textContent = pageTitles[path] || 'LIVE TRACKER';
+    const titleEl = document.getElementById('page-title');
+    if (titleEl) titleEl.textContent = pageTitles[path] || 'LIVE TRACKER';
 
-    // Close sidebar on mobile
     closeSidebar();
 }
 
@@ -54,16 +60,17 @@ function closeSidebar() {
 }
 
 // ---------- Top Progress Bar ----------
-function showTopProgress() {
+function showTopProgress(): void {
     const bar = document.getElementById('top-progress-bar');
     if (!bar) return;
-    bar.querySelector('#top-progress-fill').style.width = '0%';
+    const fill = bar.querySelector<HTMLElement>('#top-progress-fill');
+    if (fill) fill.style.width = '0%';
     bar.classList.remove('indeterminate');
     bar.classList.add('active', 'indeterminate');
 }
 
-function setTopProgressValue(v) { // 0–1
-    const bar = document.getElementById('top-progress-bar');
+function setTopProgressValue(v: number): void { // 0–1
+    const bar  = document.getElementById('top-progress-bar');
     const fill = document.getElementById('top-progress-fill');
     if (!bar || !fill) return;
     bar.classList.remove('indeterminate');
@@ -71,8 +78,8 @@ function setTopProgressValue(v) { // 0–1
     fill.style.width = `${Math.min(v, 1) * 100}%`;
 }
 
-function hideTopProgress() {
-    const bar = document.getElementById('top-progress-bar');
+function hideTopProgress(): void {
+    const bar  = document.getElementById('top-progress-bar');
     const fill = document.getElementById('top-progress-fill');
     if (!bar) return;
     bar.classList.remove('active', 'indeterminate');
@@ -80,19 +87,16 @@ function hideTopProgress() {
 }
 
 // ---------- Sync Indicator (Header) ----------
-function showSyncIndicator(text = '同期中...') {
+function showSyncIndicator(text: string = '同期中...'): void {
     const indicator = document.getElementById('sync-indicator');
-    if (indicator) {
-        indicator.querySelector('.sync-text').textContent = text;
-        indicator.classList.remove('hidden');
-    }
+    if (!indicator) return;
+    const textEl = indicator.querySelector<HTMLElement>('.sync-text');
+    if (textEl) textEl.textContent = text;
+    indicator.classList.remove('hidden');
 }
 
-function hideSyncIndicator() {
-    const indicator = document.getElementById('sync-indicator');
-    if (indicator) {
-        indicator.classList.add('hidden');
-    }
+function hideSyncIndicator(): void {
+    document.getElementById('sync-indicator')?.classList.add('hidden');
 }
 
 window.addEventListener('livetracker:sync-start', () => {
@@ -111,19 +115,21 @@ window.addEventListener('livetracker:sync-error', () => {
 });
 
 // ---------- Pull to Refresh ----------
-function initPullToRefresh(router) {
+function initPullToRefresh(router: Router): void {
     const THRESHOLD = 70;
     let startY = 0;
     let pulling = false;
 
     document.addEventListener('touchstart', (e) => {
-        startY = e.touches[0].clientY;
+        startY = e.touches[0]?.clientY ?? 0;
         pulling = window.scrollY === 0;
     }, { passive: true });
 
     document.addEventListener('touchmove', (e) => {
         if (!pulling) return;
-        const dy = e.touches[0].clientY - startY;
+        const t = e.touches[0];
+        if (!t) return;
+        const dy = t.clientY - startY;
         if (dy <= 0) { pulling = false; return; }
         setTopProgressValue(Math.min(dy / THRESHOLD, 1));
     }, { passive: true });
@@ -131,7 +137,9 @@ function initPullToRefresh(router) {
     document.addEventListener('touchend', async (e) => {
         if (!pulling) return;
         pulling = false;
-        const dy = e.changedTouches[0].clientY - startY;
+        const t = e.changedTouches[0];
+        if (!t) return;
+        const dy = t.clientY - startY;
 
         if (dy >= THRESHOLD) {
             showTopProgress(); // indeterminate while loading
@@ -193,9 +201,13 @@ const router = new Router([
 
 // ---------- Event Listeners ----------
 document.addEventListener('DOMContentLoaded', async () => {
-    // Mount BottomTabBar component
+    const container = document.getElementById('bottom-nav-container');
+    if (!container) {
+        console.error('bottom-nav-container not found');
+        return;
+    }
     bottomTabBar = new BottomTabBar({
-        container: document.getElementById('bottom-nav-container'),
+        container,
         activeTab: 'top',
     });
 
@@ -235,8 +247,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (navigator.share) {
             try {
                 await navigator.share({ title, url });
-            } catch (e) {
-                if (e.name !== 'AbortError') showToast('共有に失敗しました', 'error');
+            } catch (e: unknown) {
+                if ((e as Error)?.name !== 'AbortError') showToast('共有に失敗しました', 'error');
             }
         } else {
             try {
@@ -268,7 +280,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Import
     document.getElementById('import-btn')?.addEventListener('click', () => {
-        document.getElementById('import-file').click();
+        document.getElementById('import-file')?.click();
         closeSidebar();
     });
 
@@ -281,23 +293,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     document.getElementById('import-file')?.addEventListener('change', (e) => {
-        const file = e.target.files[0];
+        const input = e.target as HTMLInputElement;
+        const file = input.files?.[0];
         if (!file) return;
 
         const reader = new FileReader();
         reader.onload = (ev) => {
             try {
-                importData(ev.target.result);
+                importData(ev.target?.result as string);
                 showToast('データをインポートしました', 'success');
                 // Re-render current page
                 router.currentRoute = null;
                 router.resolve();
-            } catch (err) {
-                showToast('インポートに失敗しました: ' + err.message, 'error');
+            } catch (err: unknown) {
+                const msg = err instanceof Error ? err.message : String(err);
+                showToast('インポートに失敗しました: ' + msg, 'error');
             }
         };
         reader.readAsText(file);
-        e.target.value = '';
+        input.value = '';
     });
 
     // Initialize router

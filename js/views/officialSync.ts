@@ -11,6 +11,27 @@ import {
   applyUpdate,
   mergeIntoExisting,
 } from '../officialLives.js';
+import type {
+  Live, OfficialLive, OfficialLivesFile, DiffResult,
+  DiffAddItem, DiffUpdateItem, DiffSkipItem,
+} from '../types.js';
+
+type ArtistFilter = 'all' | string;
+type ActiveTab = 'add' | 'update' | 'skip';
+
+interface ModalState {
+  data: OfficialLivesFile;
+  diff: DiffResult;
+  filter: ArtistFilter;
+  activeTab: ActiveTab;
+}
+
+/** Extract a human-readable error message from any caught value */
+function errMsg(e: unknown): string {
+  if (e instanceof Error) return e.message;
+  if (typeof e === 'string') return e;
+  try { return JSON.stringify(e).slice(0, 200); } catch { return String(e); }
+}
 
 // ---------- ヘッダーボタンのバッジ更新 ----------
 /**
@@ -18,14 +39,14 @@ import {
  * 「新規+差分」の件数バッジを表示する。
  * 非同期だが失敗しても何もしない（静かに飲み込む）。
  */
-export async function refreshOfficialSyncBadge() {
+export async function refreshOfficialSyncBadge(): Promise<void> {
   const btn = document.getElementById('official-sync-btn');
   if (!btn) return;
   try {
     const data = await fetchOfficialLives({ noCache: false });
     const diff = computeDiff(data.lives || [], getLives());
     const pending = diff.toAdd.length + diff.toUpdate.length;
-    let badge = btn.querySelector('.os-header-badge');
+    let badge = btn.querySelector<HTMLSpanElement>('.os-header-badge');
     if (pending > 0) {
       if (!badge) {
         badge = document.createElement('span');
@@ -43,7 +64,7 @@ export async function refreshOfficialSyncBadge() {
 
 // ---------- 表示用ヘルパー ----------
 
-const FIELD_LABEL = {
+const FIELD_LABEL: Record<string, string> = {
   venue:      '会場',
   prefecture: '都道府県',
   dateEnd:    '終了日',
@@ -54,39 +75,38 @@ const ARTIST_OPTIONS = [
   { value: 'all',      label: 'すべて' },
   { value: '乃木坂46', label: '乃木坂46' },
   { value: '櫻坂46',   label: '櫻坂46' },
-];
+] as const;
 
 // モーダル開いてる間だけ保持するステート
-let _state = null; // { data, diff, filter, activeTab }
+let _state: ModalState | null = null;
 
-function escapeHtml(s) {
+function escapeHtml(s: unknown): string {
   if (s == null) return '';
   return String(s)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
-function eventTypeLabel(v) {
-  // DB に格納される値は live/event/tour 。UI 表示用に日本語へ
+function eventTypeLabel(v: unknown): string {
   if (v === 'event' || v === 'イベント') return 'イベント';
   if (v === 'tour')  return 'ツアー';
   return 'ライブ';
 }
 
-function formatDateRange(startIso, endIso) {
+function formatDateRange(startIso?: string | null, endIso?: string | null): string {
   if (!startIso) return '';
   if (!endIso || endIso === startIso) return startIso.slice(0, 10);
   return `${startIso.slice(0, 10)} 〜 ${endIso.slice(0, 10)}`;
 }
 
-function filterByArtist(items, artist) {
+function filterByArtist<T extends { official: OfficialLive }>(items: T[], artist: ArtistFilter): T[] {
   if (artist === 'all') return items;
   return items.filter(it => (it.official?.artist || '') === artist);
 }
 
 // ---------- メイン ----------
 
-export async function showOfficialSyncModal() {
+export async function showOfficialSyncModal(): Promise<void> {
   showModal('公式ライブ情報の同期', `
     <div class="official-sync-loading" style="text-align:center;padding:40px 0;color:var(--text-secondary);">
       <div class="loader-spinner" style="margin:0 auto 12px;"></div>
@@ -94,17 +114,17 @@ export async function showOfficialSyncModal() {
     </div>
   `);
 
-  let data;
+  let data: OfficialLivesFile;
   try {
     data = await fetchOfficialLives({ noCache: true });
-  } catch (e) {
+  } catch (e: unknown) {
     showModal('公式ライブ情報の同期', `
       <div style="padding:20px;text-align:center;">
-        <p style="margin-bottom:16px;color:var(--accent-red);">${escapeHtml(e.message)}</p>
+        <p style="margin-bottom:16px;color:var(--accent-red);">${escapeHtml(errMsg(e))}</p>
         <button type="button" class="btn btn-secondary" id="sync-close">閉じる</button>
       </div>
     `);
-    document.getElementById('sync-close').addEventListener('click', closeModal);
+    document.getElementById('sync-close')?.addEventListener('click', closeModal);
     return;
   }
 
@@ -115,7 +135,8 @@ export async function showOfficialSyncModal() {
   renderModal();
 }
 
-function renderModal() {
+function renderModal(): void {
+  if (!_state) return;
   const { data, diff, filter, activeTab } = _state;
   const updatedAt = data.updatedAt
     ? new Date(data.updatedAt).toLocaleString('ja-JP', { dateStyle: 'medium', timeStyle: 'short' })
@@ -206,27 +227,34 @@ function refreshDiffFromStore() {
   _state.diff = computeDiff(_state.data.lives || [], getLives());
 }
 
-function attachHandlers({ toAdd, toUpdate }) {
+interface HandlerCtx {
+  toAdd:    DiffAddItem[];
+  toUpdate: DiffUpdateItem[];
+}
+
+function attachHandlers({ toAdd, toUpdate }: HandlerCtx): void {
   // グループフィルター
   document.getElementById('os-artist-select')?.addEventListener('change', e => {
-    _state.filter = e.target.value;
+    if (!_state) return;
+    _state.filter = (e.target as HTMLSelectElement).value;
     renderModal();
   });
 
   // 再チェック（公式データを再取得 + 差分再計算）
   document.getElementById('os-recheck')?.addEventListener('click', async () => {
-    const btn = document.getElementById('os-recheck');
+    const btn = document.getElementById('os-recheck') as HTMLButtonElement | null;
     if (!btn) return;
     btn.disabled = true;
     btn.textContent = '読み込み中…';
     try {
       const data = await fetchOfficialLives({ noCache: true });
       const localLives = getLives();
+      if (!_state) return;
       _state.data = data;
       _state.diff = computeDiff(data.lives || [], localLives);
       renderModal();
       showToast('最新データで差分を再計算しました', 'success');
-    } catch (e) {
+    } catch {
       showToast('公式データの再取得に失敗しました', 'error');
       btn.disabled = false;
       btn.textContent = '再チェック';
@@ -234,28 +262,29 @@ function attachHandlers({ toAdd, toUpdate }) {
   });
 
   // タブ切替
-  document.querySelectorAll('.os-tab').forEach(btn => {
+  document.querySelectorAll<HTMLButtonElement>('.os-tab').forEach(btn => {
     btn.addEventListener('click', () => {
-      _state.activeTab = btn.dataset.tab;
+      if (!_state) return;
+      _state.activeTab = btn.dataset.tab as ActiveTab;
       document.querySelectorAll('.os-tab').forEach(b => b.classList.toggle('active', b === btn));
-      document.querySelectorAll('.os-panel').forEach(p => {
-        p.classList.toggle('hidden', p.dataset.panel !== _state.activeTab);
+      document.querySelectorAll<HTMLElement>('.os-panel').forEach(p => {
+        p.classList.toggle('hidden', p.dataset.panel !== _state!.activeTab);
       });
     });
   });
 
   // 個別追加
-  document.querySelectorAll('[data-action="add"]').forEach(btn => {
+  document.querySelectorAll<HTMLButtonElement>('[data-action="add"]').forEach(btn => {
     btn.addEventListener('click', async () => {
       const i = Number(btn.dataset.index);
       const official = toAdd[i]?.official;
       if (!official) return;
-      let added = null;
+      let added: Live | null = null;
       try {
         added = applyAddition(official);
-      } catch (err) {
+      } catch (err: unknown) {
         console.error('applyAddition failed', err);
-        showToast(`追加失敗: ${err.message || err}`, 'error');
+        showToast(`追加失敗: ${errMsg(err)}`, 'error');
         return;
       }
       if (!added) {
@@ -267,29 +296,27 @@ function attachHandlers({ toAdd, toUpdate }) {
       refreshOfficialSyncBadge();
       renderModal();
 
-      // デバウンスを飛ばして即 Supabase 同期。失敗したら toast で明示
       const res = await flushSyncNow();
       if (res && res.ok === false && res.reason === 'sync-failed') {
-        const msg = res.error?.message || res.error?.details || JSON.stringify(res.error || {}).slice(0, 120);
-        showToast(`Supabase同期失敗: ${msg}`, 'error');
+        showToast(`Supabase同期失敗: ${errMsg(res.error)}`, 'error');
       }
     });
   });
 
   // 類似既存ライブと統合（ローカルの既存ライブを公式で更新）
-  document.querySelectorAll('[data-action="merge"]').forEach(btn => {
+  document.querySelectorAll<HTMLButtonElement>('[data-action="merge"]').forEach(btn => {
     btn.addEventListener('click', async () => {
       const i = Number(btn.dataset.index);
       const sIdx = Number(btn.dataset.similar);
       const item = toAdd[i];
       const target = item?.similar?.[sIdx]?.local;
       if (!item || !target) return;
-      let merged = null;
+      let merged: Live | null = null;
       try {
         merged = mergeIntoExisting(target, item.official);
-      } catch (err) {
+      } catch (err: unknown) {
         console.error('mergeIntoExisting failed', err);
-        showToast(`統合失敗: ${err.message || err}`, 'error');
+        showToast(`統合失敗: ${errMsg(err)}`, 'error');
         return;
       }
       if (!merged) {
@@ -303,26 +330,25 @@ function attachHandlers({ toAdd, toUpdate }) {
 
       const res = await flushSyncNow();
       if (res && res.ok === false && res.reason === 'sync-failed') {
-        const msg = res.error?.message || JSON.stringify(res.error || {}).slice(0, 120);
-        showToast(`Supabase同期失敗: ${msg}`, 'error');
+        showToast(`Supabase同期失敗: ${errMsg(res.error)}`, 'error');
       }
     });
   });
 
   // ピッカーで選択された任意の既存ライブと統合
-  document.querySelectorAll('[data-action="merge-picked"]').forEach(btn => {
+  document.querySelectorAll<HTMLButtonElement>('[data-action="merge-picked"]').forEach(btn => {
     btn.addEventListener('click', async () => {
       const i = Number(btn.dataset.index);
       const localIdx = Number(btn.dataset.localIdx);
       const official = toAdd[i]?.official;
       const target = getLives()[localIdx];
       if (!official || !target) return;
-      let merged = null;
+      let merged: Live | null = null;
       try {
         merged = mergeIntoExisting(target, official);
-      } catch (err) {
+      } catch (err: unknown) {
         console.error('mergeIntoExisting failed', err);
-        showToast(`統合失敗: ${err.message || err}`, 'error');
+        showToast(`統合失敗: ${errMsg(err)}`, 'error');
         return;
       }
       if (!merged) {
@@ -336,29 +362,28 @@ function attachHandlers({ toAdd, toUpdate }) {
 
       const res = await flushSyncNow();
       if (res && res.ok === false && res.reason === 'sync-failed') {
-        const msg = res.error?.message || JSON.stringify(res.error || {}).slice(0, 120);
-        showToast(`Supabase同期失敗: ${msg}`, 'error');
+        showToast(`Supabase同期失敗: ${errMsg(res.error)}`, 'error');
       }
     });
   });
 
   // 統合ピッカーの検索
-  document.querySelectorAll('.os-merge-search').forEach(input => {
+  document.querySelectorAll<HTMLInputElement>('.os-merge-search').forEach(input => {
     input.addEventListener('input', e => {
-      const i = Number(e.target.dataset.index);
-      const list = document.querySelector(`.os-merge-picker-list[data-index="${i}"]`);
+      const target = e.target as HTMLInputElement;
+      const i = Number(target.dataset.index);
+      const list = document.querySelector<HTMLElement>(`.os-merge-picker-list[data-index="${i}"]`);
       if (!list) return;
-      list.innerHTML = renderMergePickerList(i, e.target.value);
-      // 新しいボタンにハンドラを付け直す
-      list.querySelectorAll('[data-action="merge-picked"]').forEach(btn => {
+      list.innerHTML = renderMergePickerList(i, target.value);
+      list.querySelectorAll<HTMLButtonElement>('[data-action="merge-picked"]').forEach(btn => {
         btn.addEventListener('click', () => {
           const official = toAdd[Number(btn.dataset.index)]?.official;
           const target = getLives()[Number(btn.dataset.localIdx)];
           if (!official || !target) return;
           try {
             mergeIntoExisting(target, official);
-          } catch (err) {
-            showToast(`統合失敗: ${err.message || err}`, 'error');
+          } catch (err: unknown) {
+            showToast(`統合失敗: ${errMsg(err)}`, 'error');
             return;
           }
           showToast(`既存ライブと統合しました: ${target.name}`, 'success');
@@ -371,11 +396,11 @@ function attachHandlers({ toAdd, toUpdate }) {
   });
 
   // チェックボックスの状態管理
-  const updateCheckedCountUI = () => {
-    const boxes = [...document.querySelectorAll('.os-item-check')];
+  const updateCheckedCountUI = (): void => {
+    const boxes = [...document.querySelectorAll<HTMLInputElement>('.os-item-check')];
     const checked = boxes.filter(b => b.checked && !b.disabled);
-    const checkAll = document.getElementById('os-check-all');
-    const addBtn = document.getElementById('os-add-checked');
+    const checkAll = document.getElementById('os-check-all') as HTMLInputElement | null;
+    const addBtn   = document.getElementById('os-add-checked') as HTMLButtonElement | null;
     if (addBtn) {
       addBtn.disabled = checked.length === 0;
       addBtn.textContent = `選択した${checked.length}件を追加`;
@@ -388,14 +413,14 @@ function attachHandlers({ toAdd, toUpdate }) {
   };
 
   // 個別チェックボックス
-  document.querySelectorAll('.os-item-check').forEach(cb => {
+  document.querySelectorAll<HTMLInputElement>('.os-item-check').forEach(cb => {
     cb.addEventListener('change', updateCheckedCountUI);
   });
 
   // 全選択チェックボックス
   document.getElementById('os-check-all')?.addEventListener('change', e => {
-    const on = e.target.checked;
-    document.querySelectorAll('.os-item-check').forEach(cb => {
+    const on = (e.target as HTMLInputElement).checked;
+    document.querySelectorAll<HTMLInputElement>('.os-item-check').forEach(cb => {
       if (!cb.disabled) cb.checked = on;
     });
     updateCheckedCountUI();
@@ -404,8 +429,8 @@ function attachHandlers({ toAdd, toUpdate }) {
   // チェックした分だけ一括追加
   document.getElementById('os-add-checked')?.addEventListener('click', async () => {
     let n = 0;
-    const failures = [];
-    document.querySelectorAll('.os-item-check:checked').forEach(cb => {
+    const failures: string[] = [];
+    document.querySelectorAll<HTMLInputElement>('.os-item-check:checked').forEach(cb => {
       if (cb.disabled) return;
       const i = Number(cb.dataset.index);
       const official = toAdd[i]?.official;
@@ -413,9 +438,9 @@ function attachHandlers({ toAdd, toUpdate }) {
       try {
         const added = applyAddition(official);
         if (!added) throw new Error('addLive returned falsy');
-      } catch (err) {
+      } catch (err: unknown) {
         console.error('applyAddition failed', err);
-        failures.push(`${official.name}: ${err.message || err}`);
+        failures.push(`${official.name}: ${errMsg(err)}`);
         return;
       }
       n++;
@@ -434,29 +459,30 @@ function attachHandlers({ toAdd, toUpdate }) {
 
     const res = await flushSyncNow();
     if (res && res.ok === false && res.reason === 'sync-failed') {
-      const msg = res.error?.message || res.error?.details || JSON.stringify(res.error || {}).slice(0, 120);
-      showToast(`Supabase同期失敗: ${msg}`, 'error');
+      showToast(`Supabase同期失敗: ${errMsg(res.error)}`, 'error');
     }
   });
 
   // 差分の反映（選択フィールド）
-  document.querySelectorAll('[data-action="apply-diff"]').forEach(btn => {
+  document.querySelectorAll<HTMLButtonElement>('[data-action="apply-diff"]').forEach(btn => {
     btn.addEventListener('click', async () => {
       const i = Number(btn.dataset.index);
       const item = toUpdate[i];
       if (!item) return;
       const container = btn.closest('.os-item');
-      const checkedFields = [...container.querySelectorAll('input[type=checkbox]:checked')]
-        .map(cb => cb.dataset.field);
+      if (!container) return;
+      const checkedFields = [...container.querySelectorAll<HTMLInputElement>('input[type=checkbox]:checked')]
+        .map(cb => cb.dataset.field)
+        .filter((f): f is string => Boolean(f));
       if (checkedFields.length === 0) {
         showToast('反映するフィールドを選択してください', 'info');
         return;
       }
       try {
         applyUpdate(item.local, item.official, checkedFields);
-      } catch (err) {
+      } catch (err: unknown) {
         console.error('applyUpdate failed', err);
-        showToast(`反映失敗: ${err.message || err}`, 'error');
+        showToast(`反映失敗: ${errMsg(err)}`, 'error');
         return;
       }
       showToast(`更新: ${item.official.name}`, 'success');
@@ -466,8 +492,7 @@ function attachHandlers({ toAdd, toUpdate }) {
 
       const res = await flushSyncNow();
       if (res && res.ok === false && res.reason === 'sync-failed') {
-        const msg = res.error?.message || JSON.stringify(res.error || {}).slice(0, 120);
-        showToast(`Supabase同期失敗: ${msg}`, 'error');
+        showToast(`Supabase同期失敗: ${errMsg(res.error)}`, 'error');
       }
     });
   });
@@ -475,7 +500,7 @@ function attachHandlers({ toAdd, toUpdate }) {
 
 // ---------- アイテムレンダリング ----------
 
-function renderSourceLine(official) {
+function renderSourceLine(official: OfficialLive): string {
   const src = official.sourceUrl
     ? `<a href="${escapeHtml(official.sourceUrl)}" target="_blank" rel="noopener noreferrer" class="os-source">根拠URL ↗</a>`
     : '';
@@ -485,14 +510,14 @@ function renderSourceLine(official) {
   return `<div class="os-source-line">${src} ${scrapedAt}</div>`;
 }
 
-function renderAddItem(item, i) {
+function renderAddItem(item: DiffAddItem, i: number): string {
   const o = item.official;
   const similar = Array.isArray(item.similar) ? item.similar : [];
   const similarWarning = similar.length > 0 ? `
     <div class="os-similar-warn">
       ⚠ 既存に似たライブがあります（${similar.length}件）。重複を避けたい場合は「既存と統合」を使ってください:
       <ul class="os-similar-list">
-        ${similar.slice(0, 3).map((s, sIdx) => `
+        ${similar.slice(0, 3).map((s, sIdx: number) => `
           <li>
             <span class="os-similar-name">「${escapeHtml(s.local.name || '')}」</span>
             <span class="os-similar-date">${escapeHtml((s.local.dateStart || '').slice(0, 10))}</span>
@@ -552,7 +577,7 @@ function renderAddItem(item, i) {
  * 任意の既存ライブを絞り込んで統合候補として表示する。
  * query が与えられた場合は name/artist/date に対する部分一致で絞り込む。
  */
-function renderMergePickerList(addIndex, query) {
+function renderMergePickerList(addIndex: number, query: string): string {
   const localLives = getLives();
   const q = (query || '').trim().toLowerCase();
   const filtered = q
@@ -584,7 +609,7 @@ function renderMergePickerList(addIndex, query) {
   }).join('');
 }
 
-function renderUpdateItem(item, i) {
+function renderUpdateItem(item: DiffUpdateItem, i: number): string {
   const { official: o, local: l, diffs } = item;
   const diffRows = diffs.map(d => `
     <label class="os-diff-row">
@@ -618,7 +643,7 @@ function renderUpdateItem(item, i) {
   `;
 }
 
-function renderSkipItem(item) {
+function renderSkipItem(item: DiffSkipItem): string {
   const { official: o } = item;
   return `
     <div class="os-item os-skip">

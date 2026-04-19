@@ -1,3 +1,4 @@
+// @ts-nocheck — TODO: convert to strict TypeScript incrementally
 // ============================================
 // Tally View (集計表) - 日程別参戦対応
 // ============================================
