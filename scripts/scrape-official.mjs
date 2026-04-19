@@ -180,6 +180,11 @@ function parseScheduleJson(body, { artist, idPrefix, url }) {
 
       if (perKouen.length === 1 || isMultiDaySingleLive) {
         const first = perKouen[0];
+        // カテゴリ判定: 名前に舞台系キーワードがある時だけ 'stage'
+        // （ライブ系キーワードやデフォルトはすべて 'live'）
+        const eventType = looksLikeStage(title)
+          ? 'stage'
+          : mapCategory(item.cate || item.category || '');
         results.push({
           officialId: `${idPrefix}-${item.code || dateStart}-${slugify(title)}`,
           artist,
@@ -188,7 +193,7 @@ function parseScheduleJson(body, { artist, idPrefix, url }) {
           prefecture: first.prefecture,
           dateStart,
           dateEnd,   // multi-day の場合は最終日
-          eventType: mapCategory(item.cate || item.category || ''),
+          eventType,
           iconImg: item.img || item.image || item.thumbnail || null,
           sourceUrl: item.link || url,
           scrapedAt: new Date().toISOString(),
@@ -612,6 +617,23 @@ function isSameVenueConsecutive(perKouen) {
     if (!isFinite(gapDays) || gapDays > 1) return false;
   }
   return true;
+}
+
+/**
+ * 名前ベースで「舞台」と判定するヒューリスティック。
+ * 演目名（プリンシパル等）や 舞台/ミュージカル 等の明示的キーワードのみ。
+ * - 「ライブ / LIVE / コンサート」を含む場合は舞台ではない (e.g., アンダーライブ セカンド・シーズン)
+ * - 「プリンシパル / 舞台 / 演劇 / ミュージカル」等が含まれる時だけ true
+ * 判定を誤ったら手動で eventType を変更可能なので、保守的にデフォルト live に倒す
+ */
+function looksLikeStage(name) {
+  if (!name) return false;
+  const n = String(name);
+  // ライブ系キーワードを含むなら舞台ではない
+  if (/ライブ|ＬＩＶＥ|LIVE|コンサート|CONCERT|Concert|Anniversary|BIRTHDAY|Festival|フェス/i.test(n)) return false;
+  // 舞台系キーワード（16人のプリンシパル など）
+  if (/プリンシパル|舞台|演劇|ミュージカル|Musical|公演「|朗読劇|3Bjunior|16人の/i.test(n)) return true;
+  return false;
 }
 
 function mapCategory(raw) {

@@ -3,7 +3,7 @@
 // ============================================
 
 /** ライブの種別。Supabase の lives_event_type_check 制約と一致。 */
-export type EventType = 'live' | 'event' | 'tour';
+export type EventType = 'live' | 'event' | 'tour' | 'stage';
 
 /** 参戦ステータス。Supabase の status_check と一致。 */
 export type AttendanceStatus = 'going' | 'not_going' | 'undecided' | 'planned';
