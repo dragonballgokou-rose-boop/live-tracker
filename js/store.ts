@@ -493,6 +493,48 @@ export interface DateInfo {
   date: Date;
 }
 
+/**
+ * ツアーの場合は子ライブ（parentId で紐付く live）の各日程を返す。
+ * 単独公演なら dateStart〜dateEnd を 1 日ずつ展開。
+ * 範囲が異常に広い（51日以上）場合は初日のみに切り詰める。
+ */
+export function getEffectiveDatesForLive(live: Live): DateInfo[] {
+  // ツアー親の場合 → 子ライブを集める
+  if (live.eventType === 'tour') {
+    const children = getAll<Live>(STORAGE_KEYS.LIVES).filter(l => l.parentId === live.id);
+    if (children.length > 0) {
+      const dates: DateInfo[] = [];
+      children
+        .sort((a, b) => (a.dateStart || '').localeCompare(b.dateStart || ''))
+        .forEach((child, idx) => {
+          const d = new Date(child.dateStart || child.date || 0);
+          if (isNaN(+d)) return;
+          d.setHours(0, 0, 0, 0);
+          const y  = d.getFullYear();
+          const m  = String(d.getMonth() + 1).padStart(2, '0');
+          const dd = String(d.getDate()).padStart(2, '0');
+          dates.push({
+            dateStr: `${y}-${m}-${dd}`,
+            dayNum:  idx + 1,
+            date:    new Date(d),
+          });
+        });
+      return dates;
+    }
+  }
+
+  // スパンが異常に広いものはデータ不整合の可能性が高いので初日のみ
+  const s = new Date(live.dateStart || live.date || 0);
+  const e = new Date(live.dateEnd || live.dateStart || live.date || 0);
+  if (!isNaN(+s) && !isNaN(+e)) {
+    const days = (+e - +s) / 86400000;
+    if (isFinite(days) && days > 50) {
+      return getDatesForLive({ ...live, dateEnd: live.dateStart || live.date || null });
+    }
+  }
+  return getDatesForLive(live);
+}
+
 export function getDatesForLive(live: Live): DateInfo[] {
   const start = new Date(live.dateStart || live.date || 0);
   const end = live.dateEnd ? new Date(live.dateEnd) : new Date(start);

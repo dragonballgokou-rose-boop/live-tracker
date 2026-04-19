@@ -155,30 +155,64 @@ function parseScheduleJson(body, { artist, idPrefix, url }) {
                     : null;
 
     if (kouenArr && kouenArr.length > 0) {
-      // 複数公演 → ツアー全体を1エントリに集約
-      const dates = kouenArr.map(k => normalizeDate(k.date || k.day)).filter(Boolean).sort();
-      if (dates.length === 0) continue;
-      const dateStart = dates[0];
-      const dateEnd   = dates[dates.length - 1];
+      // 各 kouen を個別日程として保持（連続日でないツアーを正しく扱うため）
+      const perKouen = kouenArr
+        .map(k => {
+          const date = normalizeDate(k.date || k.day);
+          if (!date) return null;
+          return {
+            dateStart:  date,
+            dateEnd:    date,
+            venue:      cleanText(k.place || k.venue || k.hall || '') || null,
+            prefecture: cleanText(k.area || k.prefecture || k.pref || '') || null,
+          };
+        })
+        .filter(Boolean)
+        .sort((a, b) => a.dateStart.localeCompare(b.dateStart));
+      if (perKouen.length === 0) continue;
 
-      // 会場は最初のものを代表として採用（ツアーは複数会場だが1つに集約）
-      const firstKouen = kouenArr[0] || {};
-      const venue = cleanText(firstKouen.place || firstKouen.venue || firstKouen.hall || '');
-      const prefecture = cleanText(firstKouen.area || firstKouen.prefecture || firstKouen.pref || '');
+      const dateStart = perKouen[0].dateStart;
+      const dateEnd   = perKouen[perKouen.length - 1].dateStart;
 
-      results.push({
-        officialId: `${idPrefix}-${item.code || dateStart}-${slugify(title)}`,
-        artist,
-        name: title,
-        venue: venue || null,
-        prefecture: prefecture || null,
-        dateStart,
-        dateEnd,
-        eventType: mapCategory(item.cate || item.category || ''),
-        iconImg: item.img || item.image || item.thumbnail || null,
-        sourceUrl: item.link || url,
-        scrapedAt: new Date().toISOString(),
-      });
+      if (perKouen.length === 1) {
+        // 単独日程 → 通常の live として登録
+        const only = perKouen[0];
+        results.push({
+          officialId: `${idPrefix}-${item.code || dateStart}-${slugify(title)}`,
+          artist,
+          name: title,
+          venue: only.venue,
+          prefecture: only.prefecture,
+          dateStart,
+          dateEnd,
+          eventType: mapCategory(item.cate || item.category || ''),
+          iconImg: item.img || item.image || item.thumbnail || null,
+          sourceUrl: item.link || url,
+          scrapedAt: new Date().toISOString(),
+        });
+      } else {
+        // 複数日程 → ツアー親 + 子公演として出力
+        results.push({
+          officialId: `${idPrefix}-${item.code || dateStart}-${slugify(title)}`,
+          artist,
+          name: title,
+          venue: null,           // ツアーは会場複数なので親は null
+          prefecture: null,
+          dateStart,
+          dateEnd,
+          eventType: 'tour',
+          iconImg: item.img || item.image || item.thumbnail || null,
+          sourceUrl: item.link || url,
+          scrapedAt: new Date().toISOString(),
+          children: perKouen.map((p, idx) => ({
+            dateStart: p.dateStart,
+            dateEnd:   p.dateEnd,
+            venue:     p.venue,
+            prefecture: p.prefecture,
+            dayLabel:  `Day${idx + 1}`,
+          })),
+        });
+      }
     } else {
       // 単独公演フォーマット（API により違う）
       const dateRaw = item.startDate || item.start_date || item.date || item.day;
