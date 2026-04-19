@@ -865,12 +865,17 @@ const EVENT_SVG_ICONS = [
 ];
 
 // アイコンHTML生成（絵文字 / SVG / 画像 を統一的に扱う）
-// 子ライブで icon 未設定のときは 親ツアーの iconImg/icon を継承する
+// 子ライブで iconImg 未設定のときは 親ツアーの iconImg を優先的に継承する
+// （子が 'svg:flag' 等のデフォルトアイコンを持っていても親の画像があればそちらを使う）
 export function getLiveIconHtml(live, size = 22) {
   let eff = live;
-  if (!live.iconImg && !live.icon && live.parentId) {
+  if (live.parentId && !live.iconImg) {
     const parent = getLives().find(l => l.id === live.parentId);
-    if (parent && (parent.iconImg || parent.icon)) eff = parent;
+    if (parent?.iconImg) {
+      eff = { ...live, iconImg: parent.iconImg };
+    } else if (parent?.icon && !live.icon) {
+      eff = { ...live, icon: parent.icon, color: live.color || parent.color };
+    }
   }
   if (eff.iconImg) {
     return `<img src="${eff.iconImg}" class="live-icon-img" data-live-logo="${eff.iconImg}" style="width:${size}px;height:${size}px;border-radius:5px;object-fit:cover;flex-shrink:0;margin-right:5px;vertical-align:middle;cursor:zoom-in;" />`;
