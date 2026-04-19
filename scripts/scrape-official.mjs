@@ -200,6 +200,11 @@ function parseScheduleJson(body, { artist, idPrefix, url }) {
         });
       } else {
         // 複数会場 or 非連続日 → 本物のツアー
+        // 連続同一会場の日程を「レグ」に畳む
+        // 例: 7/14福井, 7/15福井, 7/17宮城, 7/18宮城
+        //     → 福井 7/14〜7/15 / 宮城 7/17〜7/18 の 2 レグ
+        const legs = groupIntoLegs(perKouen);
+
         results.push({
           officialId: `${idPrefix}-${item.code || dateStart}-${slugify(title)}`,
           artist,
@@ -212,12 +217,11 @@ function parseScheduleJson(body, { artist, idPrefix, url }) {
           iconImg: item.img || item.image || item.thumbnail || null,
           sourceUrl: item.link || url,
           scrapedAt: new Date().toISOString(),
-          children: perKouen.map((p, idx) => ({
-            dateStart: p.dateStart,
-            dateEnd:   p.dateEnd,
-            venue:     p.venue,
-            prefecture: p.prefecture,
-            dayLabel:  `Day${idx + 1}`,
+          children: legs.map((leg) => ({
+            dateStart:  leg.dateStart,
+            dateEnd:    leg.dateEnd,
+            venue:      leg.venue,
+            prefecture: leg.prefecture,
           })),
         });
       }
@@ -626,6 +630,43 @@ function isSameVenueConsecutive(perKouen) {
  * - 「プリンシパル / 舞台 / 演劇 / ミュージカル」等が含まれる時だけ true
  * 判定を誤ったら手動で eventType を変更可能なので、保守的にデフォルト live に倒す
  */
+/**
+ * 連続日付 × 同一会場 の公演をまとめて「レグ」にする。
+ * 例: [7/14福井, 7/15福井, 7/17宮城, 7/18宮城, 8/14愛知]
+ *     → [{dateStart:7/14, dateEnd:7/15, venue:福井},
+ *         {dateStart:7/17, dateEnd:7/18, venue:宮城},
+ *         {dateStart:8/14, dateEnd:8/14, venue:愛知}]
+ * ツアーの children はレグ単位で持つことで、UI が「福井 6/13〜14 / 神奈川 6/24〜25」の
+ * ように見やすくなり、手動で作ったツアーと同じ構造になる。
+ */
+function groupIntoLegs(perKouen) {
+  const legs = [];
+  let cur = null;
+  for (const k of perKouen) {
+    const sameVenue = cur && (cur.venue || '') === (k.venue || '')
+                   && (cur.prefecture || '') === (k.prefecture || '');
+    const consecutive = cur && (() => {
+      const prev = new Date(cur.dateEnd + 'T00:00:00');
+      const next = new Date(k.dateStart + 'T00:00:00');
+      const gap = (next - prev) / 86400000;
+      return isFinite(gap) && gap > 0 && gap <= 1;
+    })();
+    if (cur && sameVenue && consecutive) {
+      cur.dateEnd = k.dateStart; // レグ延長
+    } else {
+      if (cur) legs.push(cur);
+      cur = {
+        dateStart:  k.dateStart,
+        dateEnd:    k.dateStart,
+        venue:      k.venue,
+        prefecture: k.prefecture,
+      };
+    }
+  }
+  if (cur) legs.push(cur);
+  return legs;
+}
+
 function looksLikeStage(name) {
   if (!name) return false;
   const n = String(name);
