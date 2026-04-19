@@ -2,8 +2,15 @@
 // ============================================
 // Members Management View
 // ============================================
-import { getMembers, addMember, updateMember, deleteMember, getAttendanceByMember, getLives, getDatesForLive, getDayAttendanceStatus, buildAttendanceLookup, lookupDayAttendance } from '../store.js';
+import {
+  getMembers, addMember, updateMember, deleteMember,
+  getAttendanceByMember, getLives, getDatesForLive, getDayAttendanceStatus,
+  buildAttendanceLookup, lookupDayAttendance,
+  getFavoriteMemberId, setFavoriteMemberId,
+  getOfficialLink, setOfficialLink,
+} from '../store.js';
 import { showModal, closeModal, showToast, showConfirm, memberAvatarHtml, resizeImageToBase64 } from '../utils.js';
+import { fetchOfficialMembers, buildOfficialBlogUrl, findOfficialMemberByName } from '../officialMembers.js';
 
 const MEMBER_COLORS = [
   // パープル・バイオレット
@@ -38,6 +45,7 @@ export function renderMembers() {
 
   // 参戦ルックアップを 1 回だけ構築
   const attMap = buildAttendanceLookup();
+  const favoriteId = getFavoriteMemberId();
 
   content.innerHTML = `
     <div class="section-header">
@@ -70,12 +78,15 @@ export function renderMembers() {
 
     const rate = totalPossibleSchedules > 0 ? Math.round((goingCount / totalPossibleSchedules) * 100) : 0;
 
+    const link = getOfficialLink(member.id);
+    const blogUrl = buildOfficialBlogUrl(link?.officialCode, link?.officialGroup);
+    const isFavorite = favoriteId === member.id;
     return `
-          <div class="card member-card" style="cursor: pointer; --member-color: ${member.color};" onclick="showMemberDetailsModal('${member.id}')" title="メンバー詳細を見る">
+          <div class="card member-card${isFavorite ? ' is-favorite' : ''}" style="cursor: pointer; --member-color: ${member.color};" onclick="showMemberDetailsModal('${member.id}')" title="メンバー詳細を見る">
             <div class="member-card-top">
               ${memberAvatarHtml(member, 44)}
               <div class="member-info">
-                <div class="member-name">${escapeHtml(member.name)}</div>
+                <div class="member-name">${escapeHtml(member.name)}${isFavorite ? ' <span class="oshi-badge" title="推しメン">★</span>' : ''}</div>
                 ${member.nickname ? `<div class="member-nickname">@${escapeHtml(member.nickname)}</div>` : ''}
               </div>
               <div class="member-rate-badge" style="color: ${member.color};">${rate}%</div>
@@ -88,6 +99,14 @@ export function renderMembers() {
                 <span class="member-stat-label">${goingCount} / ${totalPossibleSchedules} 回</span>
               </div>
               <div class="member-card-actions">
+                <button class="btn btn-icon${isFavorite ? ' btn-primary' : ' btn-secondary'} favorite-member-btn" data-id="${member.id}" title="${isFavorite ? '推しメン解除' : '推しメンに設定'}" onclick="event.stopPropagation()">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="${isFavorite ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                </button>
+                ${blogUrl ? `
+                <a class="btn btn-icon btn-secondary blog-member-btn" href="${blogUrl}" target="_blank" rel="noopener noreferrer" title="公式ブログを開く" onclick="event.stopPropagation()">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                </a>
+                ` : ''}
                 <button class="btn btn-icon btn-secondary edit-member-btn" data-id="${member.id}" title="編集" onclick="event.stopPropagation()">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                 </button>
@@ -112,6 +131,23 @@ export function renderMembers() {
   // Events
   document.getElementById('add-member-btn')?.addEventListener('click', () => openMemberModal());
 
+  content.querySelectorAll('.favorite-member-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.id;
+      if (!id) return;
+      const cur = getFavoriteMemberId();
+      if (cur === id) {
+        setFavoriteMemberId(null);
+        showToast('推しメンを解除しました', 'info');
+      } else {
+        setFavoriteMemberId(id);
+        const m = getMembers().find(x => x.id === id);
+        showToast(`★ ${m?.name ?? ''} を推しメンに設定しました`, 'success');
+      }
+      renderMembers();
+    });
+  });
+
   content.querySelectorAll('.edit-member-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const member = getMembers().find(m => m.id === btn.dataset.id);
@@ -134,6 +170,7 @@ function openMemberModal(member = null) {
   const isEdit = !!member;
   const title = isEdit ? 'メンバーを編集' : 'メンバーを追加';
   const selectedColor = member?.color || MEMBER_COLORS[Math.floor(Math.random() * MEMBER_COLORS.length)];
+  const existingLink = isEdit ? getOfficialLink(member.id) : null;
 
   const avatarPreviewHtml = member?.avatar
     ? `<img class="avatar-preview" id="avatar-preview-img" src="${member.avatar}" />`
@@ -163,6 +200,14 @@ function openMemberModal(member = null) {
         <p style="font-size:11px;color:var(--text-tertiary);margin-top:2px;">JPG・PNG・GIF など（推奨: 正方形）</p>
       </div>
       <div class="form-group">
+        <label class="form-label" for="member-official">公式メンバー紐付け（推しメンの公式ブログを開くために使用）</label>
+        <select id="member-official" class="form-input">
+          <option value="">— 未設定 —</option>
+          <option value="__loading__">公式一覧を読み込み中…</option>
+        </select>
+        <p style="font-size:11px;color:var(--text-tertiary);margin-top:2px;">端末ごとに保存。Supabase には同期されません。</p>
+      </div>
+      <div class="form-group">
         <label class="form-label">アイコンカラー</label>
         <div class="color-picker" id="color-picker">
           ${MEMBER_COLORS.map(color => `
@@ -186,6 +231,42 @@ function openMemberModal(member = null) {
       </div>
     </form>
   `);
+
+  // 公式メンバーピッカーを非同期で populate
+  (async () => {
+    const sel = document.getElementById('member-official');
+    if (!sel) return;
+    try {
+      const data = await fetchOfficialMembers();
+      const members = Array.isArray(data.members) ? data.members : [];
+      const nogi = members.filter(m => m.group === 'nogi' && !m.graduated);
+      const saku = members.filter(m => m.group === 'saku' && !m.graduated);
+      const grad = members.filter(m => m.graduated);
+      const currentKey = existingLink
+        ? `${existingLink.officialGroup}:${existingLink.officialCode}`
+        : '';
+      const suggested = !existingLink && isEdit
+        ? findOfficialMemberByName(member?.name || '', members)
+        : null;
+      const suggestedKey = suggested ? `${suggested.group}:${suggested.code}` : '';
+      const opt = (m) => {
+        const key = `${m.group}:${m.code}`;
+        const label = [m.name || m.eng || m.code, m.kana ? `（${m.kana}）` : ''].join('');
+        const sel = key === currentKey || (!currentKey && key === suggestedKey);
+        return `<option value="${key}"${sel ? ' selected' : ''}>${escapeHtml(label)}</option>`;
+      };
+      const optgroup = (label, list) => list.length === 0 ? '' :
+        `<optgroup label="${escapeHtml(label)}">${list.map(opt).join('')}</optgroup>`;
+      sel.innerHTML =
+        `<option value=""${!currentKey && !suggestedKey ? ' selected' : ''}>— 未設定 —</option>` +
+        optgroup('乃木坂46', nogi) +
+        optgroup('櫻坂46', saku) +
+        optgroup('卒業メンバー', grad);
+    } catch (e) {
+      sel.innerHTML = `<option value="">— 公式一覧の取得に失敗 —</option>`;
+      console.warn('[members] fetchOfficialMembers failed', e);
+    }
+  })();
 
   // Color picker (palette)
   function applyColor(color) {
@@ -276,13 +357,28 @@ function openMemberModal(member = null) {
       return;
     }
 
+    const officialKey = (document.getElementById('member-official')?.value || '').trim();
+    let officialGroup = null;
+    let officialCode = null;
+    if (officialKey && officialKey !== '__loading__') {
+      const ix = officialKey.indexOf(':');
+      if (ix > 0) {
+        officialGroup = officialKey.slice(0, ix);
+        officialCode  = officialKey.slice(ix + 1);
+      }
+    }
+
+    let savedId;
     if (isEdit) {
       updateMember(member.id, data);
+      savedId = member.id;
       showToast('メンバーを更新しました', 'success');
     } else {
-      addMember(data);
+      const created = addMember(data);
+      savedId = created.id;
       showToast('メンバーを追加しました', 'success');
     }
+    setOfficialLink(savedId, officialCode, officialGroup);
 
     closeModal();
     renderMembers();
