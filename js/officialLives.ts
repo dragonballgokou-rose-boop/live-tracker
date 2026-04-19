@@ -39,12 +39,19 @@ function normalizeEventType(v: unknown): string {
   return s;
 }
 
-/** 差分判定: フィールドに応じた正規化を適用した比較 */
+/** 差分判定: フィールドに応じた正規化を適用した比較
+ *  ルール: ローカルに値があって公式が空/null なら「差分」とはみなさない。
+ *  （公式に情報が無いだけでローカルを空にするのは破壊的なので提案しない）
+ */
 function fieldsDiffer(field: DiffFieldName, a: unknown, b: unknown): boolean {
   if (field === 'eventType') {
     return normalizeEventType(a) !== normalizeEventType(b);
   }
-  return String(a ?? '').trim() !== String(b ?? '').trim();
+  const aStr = String(a ?? '').trim();
+  const bStr = String(b ?? '').trim();
+  // ローカルに値があるのに公式が空 → 上書き提案しない
+  if (aStr && !bStr) return false;
+  return aStr !== bStr;
 }
 
 // ---------- fetch ----------
@@ -333,8 +340,13 @@ export function findCandidateTourParent(official: OfficialLive, localLives: Live
  * 公式の新規ライブをローカルに追加する。
  * officialId を保存して将来の再照合に使えるようにする。
  * ツアー（children 付き）の場合は親 tour + 子 live をまとめて登録する。
+ *
+ * @param eventTypeOverride ユーザーが同期モーダルで選び直した種別。
+ *   指定がない場合は official.eventType を使う。
+ *   'stage'（舞台）を選んだ場合、親の種別のみ上書きし子公演は 'live' のまま。
  */
-export function applyAddition(official: OfficialLive): Live {
+export function applyAddition(official: OfficialLive, eventTypeOverride?: string | null): Live {
+  const effectiveType = (eventTypeOverride || official.eventType || 'live') as string;
   const parent = addLive({
     name:       official.name,
     artist:     official.artist       ?? null,
@@ -342,7 +354,7 @@ export function applyAddition(official: OfficialLive): Live {
     prefecture: official.prefecture   ?? null,
     dateStart:  official.dateStart    ?? null,
     dateEnd:    official.dateEnd      ?? null,
-    eventType:  (official.eventType   ?? 'live') as string,
+    eventType:  effectiveType,
     iconImg:    official.iconImg      ?? null,
     openTime:   official.openTime     ?? null,
     startTime:  official.startTime    ?? null,
@@ -352,7 +364,9 @@ export function applyAddition(official: OfficialLive): Live {
   });
 
   // ツアー(children 2件以上) の場合、子公演をそれぞれ個別の live として追加して parentId で繋ぐ
-  if (Array.isArray(official.children) && official.children.length > 0) {
+  // 舞台などへユーザーが種別変更した場合、children は親に紐づけず展開しない
+  const keepTourChildren = effectiveType === 'tour';
+  if (keepTourChildren && Array.isArray(official.children) && official.children.length > 0) {
     for (const child of official.children) {
       addLive({
         name:       official.name, // 同じ名前を継承（表示はツアー側でラベル補助）
@@ -384,10 +398,14 @@ export function applyAddition(official: OfficialLive): Live {
  */
 export function applyUpdate(
   localLive: Live, official: OfficialLive, fieldsToApply: string[],
+  eventTypeOverride?: string | null,
 ): Live | null {
   const updates: Partial<Live> = {};
   for (const field of fieldsToApply) {
     (updates as any)[field] = (official as any)[field] ?? null;
+  }
+  if (eventTypeOverride) {
+    (updates as any).eventType = eventTypeOverride;
   }
   const appendedMemo = appendEvidenceMemo(localLive.memo, official);
   if (appendedMemo !== localLive.memo) updates.memo = appendedMemo;

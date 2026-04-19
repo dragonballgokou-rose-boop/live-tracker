@@ -93,7 +93,31 @@ function escapeHtml(s: unknown): string {
 function eventTypeLabel(v: unknown): string {
   if (v === 'event' || v === 'イベント') return 'イベント';
   if (v === 'tour')  return 'ツアー';
+  if (v === 'stage' || v === '舞台') return '舞台';
   return 'ライブ';
+}
+
+const EVENT_TYPE_OPTIONS: { value: string; label: string }[] = [
+  { value: 'live',  label: 'ライブ' },
+  { value: 'event', label: 'イベント' },
+  { value: 'tour',  label: 'ツアー' },
+  { value: 'stage', label: '舞台' },
+];
+
+function renderEventTypeSelect(id: string, selected: string): string {
+  const opts = EVENT_TYPE_OPTIONS.map(o =>
+    `<option value="${o.value}"${o.value === selected ? ' selected' : ''}>${o.label}</option>`,
+  ).join('');
+  return `<select class="form-input os-type-select" id="${id}">${opts}</select>`;
+}
+
+function normalizeEventTypeValue(v: unknown): string {
+  const s = String(v ?? '').trim().toLowerCase();
+  if (s === 'ライブ' || s === 'live') return 'live';
+  if (s === 'イベント' || s === 'event') return 'event';
+  if (s === 'ツアー' || s === 'tour') return 'tour';
+  if (s === '舞台' || s === 'stage') return 'stage';
+  return 'live';
 }
 
 function formatDateRange(startIso?: string | null, endIso?: string | null): string {
@@ -282,9 +306,11 @@ function attachHandlers({ toAdd, toUpdate }: HandlerCtx): void {
       const i = Number(btn.dataset.index);
       const official = toAdd[i]?.official;
       if (!official) return;
+      const typeSel = document.getElementById(`os-add-type-${i}`) as HTMLSelectElement | null;
+      const override = typeSel?.value || null;
       let added: Live | null = null;
       try {
-        added = applyAddition(official);
+        added = applyAddition(official, override);
       } catch (err: unknown) {
         console.error('applyAddition failed', err);
         showToast(`追加失敗: ${errMsg(err)}`, 'error');
@@ -474,8 +500,10 @@ function attachHandlers({ toAdd, toUpdate }: HandlerCtx): void {
       const i = Number(cb.dataset.index);
       const official = toAdd[i]?.official;
       if (!official) return;
+      const typeSel = document.getElementById(`os-add-type-${i}`) as HTMLSelectElement | null;
+      const override = typeSel?.value || null;
       try {
-        const added = applyAddition(official);
+        const added = applyAddition(official, override);
         if (!added) throw new Error('addLive returned falsy');
       } catch (err: unknown) {
         console.error('applyAddition failed', err);
@@ -513,12 +541,17 @@ function attachHandlers({ toAdd, toUpdate }: HandlerCtx): void {
       const checkedFields = [...container.querySelectorAll<HTMLInputElement>('input[type=checkbox]:checked')]
         .map(cb => cb.dataset.field)
         .filter((f): f is string => Boolean(f));
-      if (checkedFields.length === 0) {
-        showToast('反映するフィールドを選択してください', 'info');
+      const typeSel = document.getElementById(`os-upd-type-${i}`) as HTMLSelectElement | null;
+      const selectedType = typeSel?.value ?? null;
+      const currentType = normalizeEventTypeValue(item.local.eventType || item.official.eventType);
+      // 種別が変わっていれば override として渡す
+      const typeOverride = (selectedType && selectedType !== currentType) ? selectedType : null;
+      if (checkedFields.length === 0 && !typeOverride) {
+        showToast('反映するフィールドまたは種別変更を選択してください', 'info');
         return;
       }
       try {
-        applyUpdate(item.local, item.official, checkedFields);
+        applyUpdate(item.local, item.official, checkedFields, typeOverride);
       } catch (err: unknown) {
         console.error('applyUpdate failed', err);
         showToast(`反映失敗: ${errMsg(err)}`, 'error');
@@ -657,7 +690,10 @@ function renderAddItem(item: DiffAddItem, i: number): string {
         ${parentTourSuggestion}
         <div class="os-row"><span class="os-label">日程</span> ${escapeHtml(formatDateRange(o.dateStart, o.dateEnd))}</div>
         ${venueLineHtml}
-        <div class="os-row"><span class="os-label">種別</span> ${escapeHtml(eventTypeLabel(o.eventType))}</div>
+        <div class="os-row os-type-row">
+          <span class="os-label">種別</span>
+          ${renderEventTypeSelect(`os-add-type-${i}`, normalizeEventTypeValue(o.eventType))}
+        </div>
         ${pickerHtml}
         ${renderSourceLine(o)}
       </div>
@@ -735,11 +771,11 @@ function renderUpdateItem(item: DiffUpdateItem, i: number): string {
     </div>
   ` : '';
 
-  // 差分が空で新規子公演のみの場合、「選択を反映」ボタンは不要
-  const applyBtnHtml = diffs.length > 0 ? `
+  // 種別変更できるように反映ボタンは常に表示
+  const applyBtnHtml = `
     <button type="button" class="btn btn-primary btn-sm"
             data-action="apply-diff" data-index="${i}">選択を反映</button>
-  ` : '';
+  `;
 
   const diffBlock = diffs.length > 0 ? `
     <div class="os-diffs">
@@ -747,6 +783,9 @@ function renderUpdateItem(item: DiffUpdateItem, i: number): string {
       ${diffRows}
     </div>
   ` : '';
+
+  // 現状の種別（ローカル優先、なければ公式）をプリセレクト
+  const currentType = normalizeEventTypeValue(l.eventType || o.eventType);
 
   return `
     <div class="os-item">
@@ -759,6 +798,11 @@ function renderUpdateItem(item: DiffUpdateItem, i: number): string {
       </div>
       <div class="os-item-body">
         <div class="os-row"><span class="os-label">日程</span> ${escapeHtml(formatDateRange(l.dateStart, l.dateEnd))}</div>
+        <div class="os-row os-type-row">
+          <span class="os-label">種別</span>
+          ${renderEventTypeSelect(`os-upd-type-${i}`, currentType)}
+          <span class="os-type-hint">種別を変えたい時に変更してください</span>
+        </div>
         ${newChildrenBlock}
         ${diffBlock}
         ${renderSourceLine(o)}

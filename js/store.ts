@@ -26,6 +26,8 @@ type StorageKey = typeof STORAGE_KEYS[keyof typeof STORAGE_KEYS];
  * Supabase の lives_event_type_check 制約は 'live' / 'event' / 'tour' のみ許可。
  * 旧データが 'ライブ' / 'イベント' の日本語ラベルで保存されているケースに備えて
  * 送信前にここで正規化する。
+ * 'stage'（舞台）は制約違反を避けるため 'event' に畳む。
+ * アプリ側では memo 内の `[stage]` タグで stage を復元する。
  */
 function normalizeEventTypeForDb(v: unknown): string | null {
   if (v == null) return null;
@@ -34,10 +36,28 @@ function normalizeEventTypeForDb(v: unknown): string | null {
   if (s === 'ライブ' || s === 'live' || s === 'コンサート' || s === 'concert') return 'live';
   if (s === 'イベント' || s === 'event' || s === 'ミーグリ' || s === '握手') return 'event';
   if (s === 'ツアー' || s === 'tour') return 'tour';
+  if (s === '舞台' || s === 'stage') return 'event'; // DB 制約回避。memo の [stage] で復元
   return null; // 未知の値は制約違反を避けて null に
 }
 
+/** stage タグの付与/除去を memo に反映する */
+function ensureStageMemoTag(memo: string | null | undefined, isStage: boolean): string | null {
+  const base = memo ?? '';
+  const hasTag = /\[stage\]/.test(base);
+  if (isStage && !hasTag) {
+    return base ? `${base}\n[stage]` : '[stage]';
+  }
+  if (!isStage && hasTag) {
+    const cleaned = base.replace(/\s*\[stage\]\s*/g, '\n').trim();
+    return cleaned || null;
+  }
+  return base || null;
+}
+
 function liveToRow(live: Live): Omit<LiveRow, 'day_times'> & { day_times: string | null } {
+  const isStage = String(live.eventType ?? '').toLowerCase() === 'stage' ||
+                  String(live.eventType ?? '') === '舞台';
+  const memoWithStageTag = ensureStageMemoTag(live.memo, isStage);
   return {
     id:          live.id,
     name:        live.name || '',
@@ -46,7 +66,7 @@ function liveToRow(live: Live): Omit<LiveRow, 'day_times'> & { day_times: string
     date_start:  live.dateStart  ?? null,
     date_end:    live.dateEnd    ?? null,
     date:        live.date       ?? null,
-    memo:        live.memo       ?? null,
+    memo:        memoWithStageTag,
     icon:        live.icon       ?? null,
     icon_img:    live.iconImg    ?? null,
     color:       live.color      ?? null,
@@ -69,6 +89,9 @@ function rowToLive(row: LiveRow & { official_id?: string | null }): Live {
     try { dayTimes = JSON.parse(row.day_times); } catch { dayTimes = null; }
   }
   const officialIdFromMemo = extractOfficialIdFromMemo(row.memo);
+  // memo に [stage] タグがあれば eventType を 'stage' に復元
+  const hasStageTag = !!row.memo && /\[stage\]/.test(row.memo);
+  const eventType = hasStageTag ? 'stage' : row.event_type;
   return {
     id:         row.id,
     name:       row.name,
@@ -82,7 +105,7 @@ function rowToLive(row: LiveRow & { official_id?: string | null }): Live {
     iconImg:    row.icon_img,
     color:      row.color,
     prefecture: row.prefecture,
-    eventType:  row.event_type,
+    eventType:  eventType,
     parentId:   row.parent_id,
     openTime:   row.open_time,
     startTime:  row.start_time,
