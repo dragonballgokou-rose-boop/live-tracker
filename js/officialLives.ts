@@ -239,11 +239,15 @@ export function computeDiff(
     // 常にではなく、実際にアクションが必要そうな時のみフラグする:
     //   - 公式がツアーでローカルが非ツアー（ツアー化候補）
     //   - ローカルと公式の両方が明示設定されていて違う時
+    // 例外: ローカルが 'stage'（舞台）は ユーザーが明示的に選んだ結果なので
+    //       公式側が別種別でも再プロンプトしない
     const localType    = normalizeEventType(local.eventType);
     const officialType = normalizeEventType(official.eventType);
-    const typeMismatch =
+    const userExplicitOverride = localType === 'stage';
+    const typeMismatch = !userExplicitOverride && (
       (officialType === 'tour' && localType !== 'tour') ||
-      (!!officialType && !!localType && localType !== officialType);
+      (!!officialType && !!localType && localType !== officialType)
+    );
 
     if (diffs.length === 0 && newChildren.length === 0 && !typeMismatch) {
       toSkip.push({ official, local });

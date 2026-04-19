@@ -547,7 +547,12 @@ function attachHandlers({ toAdd, toUpdate }: HandlerCtx): void {
       // 種別が変わっていれば override として渡す
       const typeOverride = (selectedType && selectedType !== currentType) ? selectedType : null;
       if (checkedFields.length === 0 && !typeOverride) {
-        showToast('反映するフィールドまたは種別変更を選択してください', 'info');
+        // 既に指定した種別になっているケース: ポジティブに伝える
+        if (selectedType && selectedType === currentType) {
+          showToast(`すでに「${EVENT_TYPE_OPTIONS.find(o => o.value === selectedType)?.label}」に設定されています`, 'info');
+        } else {
+          showToast('反映するフィールドまたは種別変更を選択してください', 'info');
+        }
         return;
       }
       try {
@@ -786,12 +791,36 @@ function renderUpdateItem(item: DiffUpdateItem, i: number): string {
 
   // 現状の種別（ローカル優先、なければ公式）をプリセレクト
   const currentType = normalizeEventTypeValue(l.eventType || o.eventType);
+  const officialType = normalizeEventTypeValue(o.eventType);
+  // バッジはローカルの実際の種別を表示（公式とは別物だと分かるように）
+  const badgeHtml =
+    currentType === 'tour'  ? ' <span class="os-tour-tag">ツアー</span>' :
+    currentType === 'stage' ? ' <span class="os-tour-tag" style="background:rgba(251,191,36,0.15);color:#FCD34D;border-color:rgba(251,191,36,0.35);">舞台</span>' :
+    currentType === 'event' ? ' <span class="os-tour-tag" style="background:rgba(236,72,153,0.18);color:#F472B6;border-color:rgba(236,72,153,0.35);">イベント</span>' :
+    '';
+
+  // 種別ミスマッチの時は目立つ案内バナーを出して行動を促す
+  const officialChildCount = Array.isArray(o.children) ? o.children.length : 0;
+  const typeMismatchBanner =
+    officialType === 'tour' && currentType !== 'tour' ? `
+      <div class="os-type-hint-banner" style="margin-top:8px;padding:10px 12px;background:rgba(139,92,246,0.08);border:1px solid rgba(139,92,246,0.35);border-radius:8px;font-size:12px;color:var(--text-secondary);display:flex;align-items:flex-start;gap:8px;">
+        <span style="font-size:16px;line-height:1;">💡</span>
+        <span>公式では <strong style="color:#a78bfa;">ツアー</strong>（${officialChildCount}公演）として登録されています。<br>
+        上の「種別」を <strong>ツアー</strong> に変えて「選択を反映」を押すと、<strong>子公演が自動で追加</strong>され各日に会場情報が表示されます。</span>
+      </div>
+    ` :
+    (!!officialType && !!currentType && officialType !== currentType) ? `
+      <div class="os-type-hint-banner" style="margin-top:8px;padding:10px 12px;background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.35);border-radius:8px;font-size:12px;color:var(--text-secondary);display:flex;align-items:flex-start;gap:8px;">
+        <span style="font-size:16px;line-height:1;">ℹ️</span>
+        <span>公式では <strong>${escapeHtml(eventTypeLabel(officialType))}</strong> として登録されていますが、ローカルは <strong>${escapeHtml(eventTypeLabel(currentType))}</strong> です。種別を揃えたい場合のみ上の select を変更してください。</span>
+      </div>
+    ` : '';
 
   return `
     <div class="os-item">
       <div class="os-item-header">
         <div class="os-item-title">
-          <span class="os-artist">${escapeHtml(o.artist || '')}${o.eventType === 'tour' ? ' <span class="os-tour-tag">ツアー</span>' : ''}</span>
+          <span class="os-artist">${escapeHtml(o.artist || '')}${badgeHtml}</span>
           <span class="os-name">${escapeHtml(o.name || '')}</span>
         </div>
         ${applyBtnHtml}
@@ -803,6 +832,7 @@ function renderUpdateItem(item: DiffUpdateItem, i: number): string {
           ${renderEventTypeSelect(`os-upd-type-${i}`, currentType)}
           <span class="os-type-hint">種別を変えたい時に変更してください</span>
         </div>
+        ${typeMismatchBanner}
         ${newChildrenBlock}
         ${diffBlock}
         ${renderSourceLine(o)}
