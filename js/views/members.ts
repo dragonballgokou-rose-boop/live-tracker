@@ -11,9 +11,8 @@ import {
 import { showModal, closeModal, showToast, showConfirm, memberAvatarHtml, resizeImageToBase64 } from '../utils.js';
 import {
   fetchOfficialMembers, buildOfficialBlogUrl, findOfficialMemberByName,
-  getOfficialMemberSync,
+  getOfficialMemberSync, fetchOfficialMemberFeeds, getMemberFeedSync,
 } from '../officialMembers.js';
-import { fetchOfficialLives } from '../officialLives.js';
 
 const MEMBER_COLORS = [
   // パープル・バイオレット
@@ -194,22 +193,14 @@ async function openOshiModal(memberId: string): Promise<void> {
     </div>
   `);
 
-  // 公式データ並列取得
+  // 公式データ並列取得: メンバー一覧 + 個別フィード
   let oshiData: ReturnType<typeof getOfficialMemberSync> = null;
-  let livesData: Awaited<ReturnType<typeof fetchOfficialLives>> | null = null;
-  try {
-    await Promise.all([
-      fetchOfficialMembers().then(() => {
-        oshiData = getOfficialMemberSync(link.officialCode, link.officialGroup);
-      }),
-      fetchOfficialLives().then(d => { livesData = d; }).catch(() => {}),
-    ]);
-  } catch (e) {
-    showModal('推しメン', `
-      <p style="padding:20px;color:var(--accent-red);">公式データの取得に失敗しました。</p>
-    `);
-    return;
-  }
+  await Promise.all([
+    fetchOfficialMembers()
+      .then(() => { oshiData = getOfficialMemberSync(link.officialCode, link.officialGroup); })
+      .catch(() => {}),
+    fetchOfficialMemberFeeds().catch(() => null),
+  ]);
 
   if (!oshiData) {
     showModal('推しメン', `
@@ -218,23 +209,34 @@ async function openOshiModal(memberId: string): Promise<void> {
     return;
   }
 
+  const feeds = getMemberFeedSync(link.officialCode, link.officialGroup);
   const blogUrl = buildOfficialBlogUrl(link.officialCode, link.officialGroup);
+  const scheduleUrl = oshiData.group === 'nogi'
+    ? `https://www.nogizaka46.com/s/n46/artist/SCHEDULE/${encodeURIComponent(oshiData.code)}?ima=0000`
+    : oshiData.group === 'saku'
+    ? `https://sakurazaka46.com/s/s46/artist/SCHEDULE/${encodeURIComponent(oshiData.code)}?ima=0000`
+    : null;
   const artist = oshiData.artist || (oshiData.group === 'nogi' ? '乃木坂46' : oshiData.group === 'saku' ? '櫻坂46' : '');
 
-  // 推しメンの「出演」 = 同じグループのライブ（upcoming 優先）
-  const today = new Date().toISOString().slice(0, 10);
-  const appearances = (livesData?.lives || [])
-    .filter(l => (l.artist || '') === artist)
-    .sort((a, b) => (a.dateStart || '').localeCompare(b.dateStart || ''));
-  const upcoming = appearances.filter(l => (l.dateStart || '') >= today).slice(0, 10);
-  const past = appearances.filter(l => (l.dateStart || '') < today).slice(-5).reverse();
+  const renderBlogRow = (b: NonNullable<typeof feeds>['blog'][number]) => `
+    <a class="oshi-blog-row" href="${escapeAttr(b.url)}" target="_blank" rel="noopener noreferrer">
+      ${b.thumbnail
+        ? `<img class="oshi-blog-thumb" src="${escapeAttr(b.thumbnail)}" referrerpolicy="no-referrer" loading="lazy" />`
+        : '<div class="oshi-blog-thumb oshi-blog-thumb-ph">📝</div>'}
+      <div class="oshi-blog-body">
+        <div class="oshi-blog-title">${escapeHtml(b.title)}</div>
+        ${b.date ? `<div class="oshi-blog-date">${escapeHtml(formatBlogDate(b.date))}</div>` : ''}
+      </div>
+    </a>
+  `;
 
-  const renderLiveRow = (l: any) => `
-    <li class="oshi-live-row">
-      <span class="oshi-live-date">${escapeHtml((l.dateStart || '').slice(0, 10))}${l.dateEnd && l.dateEnd !== l.dateStart ? ' 〜 ' + escapeHtml(l.dateEnd.slice(0, 10)) : ''}</span>
-      <span class="oshi-live-name">${escapeHtml(l.name || '')}</span>
-      ${l.venue || l.prefecture ? `<span class="oshi-live-venue">${escapeHtml(l.venue || '')}${l.prefecture ? '（' + escapeHtml(l.prefecture) + '）' : ''}</span>` : ''}
-      ${l.sourceUrl ? `<a class="oshi-live-link" href="${escapeAttr(l.sourceUrl)}" target="_blank" rel="noopener noreferrer">詳細↗</a>` : ''}
+  const renderScheduleRow = (s: NonNullable<typeof feeds>['schedule'][number]) => `
+    <li class="oshi-sched-row">
+      ${s.dayOfMonth != null ? `<span class="oshi-sched-day">${s.dayOfMonth}</span>` : '<span class="oshi-sched-day">·</span>'}
+      <div class="oshi-sched-body">
+        ${s.cate ? `<span class="oshi-sched-cate">${escapeHtml(s.cate)}</span>` : ''}
+        <span class="oshi-sched-title">${escapeHtml(s.title)}</span>
+      </div>
     </li>
   `;
 
@@ -252,30 +254,34 @@ async function openOshiModal(memberId: string): Promise<void> {
 
       <div class="oshi-actions">
         ${blogUrl ? `<a class="btn btn-primary" href="${escapeAttr(blogUrl)}" target="_blank" rel="noopener noreferrer">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-          公式ブログを開く
+          公式ブログを開く ↗
         </a>` : ''}
+        ${scheduleUrl ? `<a class="btn btn-secondary" href="${escapeAttr(scheduleUrl)}" target="_blank" rel="noopener noreferrer">出演予定を開く ↗</a>` : ''}
         ${oshiData.detailUrl ? `<a class="btn btn-secondary" href="${escapeAttr(oshiData.detailUrl)}" target="_blank" rel="noopener noreferrer">プロフィール↗</a>` : ''}
       </div>
 
       <div class="oshi-section">
-        <h4 class="oshi-section-head">🗓 今後の出演 (${artist})</h4>
-        ${upcoming.length > 0 ? `<ul class="oshi-live-list">${upcoming.map(renderLiveRow).join('')}</ul>`
-          : `<p style="color:var(--text-tertiary);font-size:13px;">今後の予定はありません。</p>`}
+        <h4 class="oshi-section-head">📝 最新ブログ</h4>
+        ${feeds && feeds.blog.length > 0
+          ? `<div class="oshi-blog-list">${feeds.blog.slice(0, 10).map(renderBlogRow).join('')}</div>`
+          : `<p style="color:var(--text-tertiary);font-size:13px;">${feeds ? 'ブログ記事はありません。' : 'フィードデータが未生成です（毎日自動更新）。公式ブログリンクから直接ご覧ください。'}</p>`}
       </div>
 
-      ${past.length > 0 ? `
-        <div class="oshi-section">
-          <h4 class="oshi-section-head">📜 直近の出演</h4>
-          <ul class="oshi-live-list">${past.map(renderLiveRow).join('')}</ul>
-        </div>
-      ` : ''}
-
-      <p style="font-size:11px;color:var(--text-tertiary);margin-top:10px;">
-        * 出演ライブは ${escapeHtml(artist)} のグループ公演のみ表示しています。
-      </p>
+      <div class="oshi-section">
+        <h4 class="oshi-section-head">🗓 直近の出演予定</h4>
+        ${feeds && feeds.schedule.length > 0
+          ? `<ul class="oshi-sched-list">${feeds.schedule.slice(0, 10).map(renderScheduleRow).join('')}</ul>`
+          : `<p style="color:var(--text-tertiary);font-size:13px;">${feeds ? '直近の予定はありません。' : 'フィードデータが未生成です。出演予定リンクから直接ご覧ください。'}</p>`}
+      </div>
     </div>
   `);
+}
+
+function formatBlogDate(iso: string): string {
+  const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2}))?/);
+  if (!m) return iso;
+  const [, y, mo, d, hh, mm] = m;
+  return hh ? `${y}.${mo}.${d} ${hh}:${mm}` : `${y}.${mo}.${d}`;
 }
 
 function openMemberModal(member = null) {

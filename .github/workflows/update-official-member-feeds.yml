@@ -1,0 +1,46 @@
+name: Update Official Member Feeds
+
+on:
+  schedule:
+    # 毎日 06:20 JST (= 21:20 UTC) members scraper の後
+    - cron: '20 21 * * *'
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - 'claude/**'
+    paths:
+      - '.github/workflows/update-official-member-feeds.yml'
+      - 'scripts/scrape-member-feeds.mjs'
+
+permissions:
+  contents: write
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run member feeds scraper
+        run: node scripts/scrape-member-feeds.mjs
+
+      - name: Commit updated JSON if changed
+        run: |
+          git add public/official-member-feeds.json
+          if git diff --cached --quiet -- public/official-member-feeds.json; then
+            echo "No changes"
+            exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "chore: update official member feeds (auto)"
+          git push origin HEAD:${{ github.ref_name }}

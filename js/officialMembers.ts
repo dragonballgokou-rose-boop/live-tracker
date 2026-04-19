@@ -4,12 +4,17 @@
 // 日次バッチ (scripts/scrape-members.mjs) で更新される
 // public/official-members.json を読み込み、UI でピッカーを提供する。
 
-import type { OfficialMember, OfficialMembersFile } from './types.js';
+import type {
+  OfficialMember, OfficialMembersFile,
+  OfficialMemberFeedsFile, OfficialMemberFeedEntry,
+} from './types.js';
 
-const OFFICIAL_URL = './official-members.json';
+const OFFICIAL_URL       = './official-members.json';
+const OFFICIAL_FEEDS_URL = './official-member-feeds.json';
 
 let _cached: OfficialMembersFile | null = null;
 let _byKey: Map<string, OfficialMember> | null = null;
+let _feedsCached: OfficialMemberFeedsFile | null = null;
 
 export async function fetchOfficialMembers(
   opts: { noCache?: boolean } = {},
@@ -33,6 +38,29 @@ export function getOfficialMemberSync(
 ): OfficialMember | null {
   if (!_byKey || !code || !group) return null;
   return _byKey.get(`${group}:${code}`) || null;
+}
+
+export async function fetchOfficialMemberFeeds(
+  opts: { noCache?: boolean } = {},
+): Promise<OfficialMemberFeedsFile | null> {
+  if (_feedsCached && !opts.noCache) return _feedsCached;
+  try {
+    const url = `${OFFICIAL_FEEDS_URL}?v=${Date.now()}`;
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const data = await res.json() as OfficialMemberFeedsFile;
+    _feedsCached = data;
+    return data;
+  } catch {
+    return null;
+  }
+}
+
+export function getMemberFeedSync(
+  code?: string | null, group?: string | null,
+): OfficialMemberFeedEntry | null {
+  if (!_feedsCached || !code || !group) return null;
+  return _feedsCached.feeds[`${group}:${code}`] || null;
 }
 
 /** グループコード → 公式サイト URL（詳細ページ）を組み立てるためのマッピング */
