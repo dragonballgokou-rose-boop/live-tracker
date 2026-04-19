@@ -590,7 +590,25 @@ export function renderLives() {
   `;
 
   const allNonTourCount = allLives.filter(l => l.eventType !== 'tour').length;
+
+  // 「誤ってツアー化されて子公演が無い」tours を検知して復旧バナーを出す
+  const orphanTours = allLives.filter(l =>
+    l.eventType === 'tour' && !(childrenByTour.get(l.id)?.length),
+  );
+  const orphanBannerHtml = orphanTours.length > 0 ? `
+    <div class="orphan-tour-banner">
+      <div class="orphan-tour-banner-text">
+        ⚠ 公演が 0 件のツアーが ${orphanTours.length} 件あります。<br>
+        <span style="color:var(--text-tertiary);font-size:11px;">誤ってツアー化されて参戦記録・会場が見えなくなっている可能性があります。</span>
+      </div>
+      <button type="button" id="revert-orphan-tours-btn" class="btn btn-secondary btn-sm">
+        ライブに一括復元
+      </button>
+    </div>
+  ` : '';
+
   content.innerHTML = `
+    ${orphanBannerHtml}
     <div class="section-header">
       <div style="display:flex;flex-direction:column;gap:6px;">
         <div style="display:flex;align-items:center;gap:8px;">
@@ -714,6 +732,29 @@ export function renderLives() {
   document.getElementById('add-record-btn')?.addEventListener('click', () => openQuickRecordModal(members));
   document.getElementById('add-tour-btn')?.addEventListener('click', () => openTourModal());
   document.getElementById('add-live-btn')?.addEventListener('click', () => openLiveModal());
+
+  // 「公演 0 件のツアーを一括でライブに戻す」ボタン
+  document.getElementById('revert-orphan-tours-btn')?.addEventListener('click', () => {
+    const orphans = getLives().filter(l =>
+      l.eventType === 'tour' &&
+      !getLives().some(c => c.parentId === l.id),
+    );
+    if (orphans.length === 0) return;
+    const names = orphans.slice(0, 5).map(l => `・${l.name}`).join('\n');
+    const more = orphans.length > 5 ? `\n…他 ${orphans.length - 5} 件` : '';
+    showConfirm(
+      `${orphans.length} 件をライブに戻す`,
+      `以下のツアーを通常のライブに戻します:\n\n${names}${more}\n\n` +
+      `元々正しく公演が紐づいているツアーは対象外です。\n参戦記録・日程は保持されます。`,
+      () => {
+        for (const t of orphans) {
+          updateLive(t.id, { eventType: 'live' });
+        }
+        showToast(`${orphans.length} 件をライブに戻しました`, 'success');
+        renderLives();
+      },
+    );
+  });
 
   window.showLiveDetailsModal = showLiveDetailsModal;
   window.showMemberDetailsModal = showMemberDetailsModal;
