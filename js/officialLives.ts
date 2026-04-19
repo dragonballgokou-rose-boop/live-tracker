@@ -213,20 +213,44 @@ export function computeDiff(
 /**
  * 公式の新規ライブをローカルに追加する。
  * officialId を保存して将来の再照合に使えるようにする。
+ * ツアー（children 付き）の場合は親 tour + 子 live をまとめて登録する。
  */
 export function applyAddition(official: OfficialLive): Live {
-  return addLive({
+  const parent = addLive({
     name:       official.name,
     artist:     official.artist       ?? null,
     venue:      official.venue        ?? null,
     prefecture: official.prefecture   ?? null,
     dateStart:  official.dateStart    ?? null,
     dateEnd:    official.dateEnd      ?? null,
-    eventType:  official.eventType    ?? 'live',
+    eventType:  (official.eventType   ?? 'live') as string,
     iconImg:    official.iconImg      ?? null,
     memo:       buildEvidenceMemo(official),
     officialId: official.officialId   ?? null,
   });
+
+  // ツアー(children 2件以上) の場合、子公演をそれぞれ個別の live として追加して parentId で繋ぐ
+  if (Array.isArray(official.children) && official.children.length > 0) {
+    for (const child of official.children) {
+      addLive({
+        name:       official.name, // 同じ名前を継承（表示はツアー側でラベル補助）
+        artist:     official.artist       ?? null,
+        venue:      child.venue           ?? null,
+        prefecture: child.prefecture      ?? null,
+        dateStart:  child.dateStart,
+        dateEnd:    child.dateEnd ?? child.dateStart,
+        eventType:  'live',
+        iconImg:    official.iconImg      ?? null,
+        parentId:   parent.id,
+        memo:       child.dayLabel ? `${child.dayLabel}` : null,
+        officialId: official.officialId
+          ? `${official.officialId}-${child.dateStart}`
+          : null,
+      });
+    }
+  }
+
+  return parent;
 }
 
 /**

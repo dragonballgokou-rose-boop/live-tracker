@@ -1,5 +1,5 @@
 // @ts-nocheck — TODO: convert to strict TypeScript incrementally
-import { getLiveById, getMemberById, getMembers, getLives, getDatesForLive, getDayAttendanceStatus } from '../store.js';
+import { getLiveById, getMemberById, getMembers, getLives, getDatesForLive, getEffectiveDatesForLive, getDayAttendanceStatus, buildAttendanceLookup, lookupDayAttendance } from '../store.js';
 import { showModal, memberAvatarHtml, isJapaneseHoliday } from '../utils.js';
 import { formatDateRange, extractPrefecture, getLiveIconHtml } from './lives.js';
 
@@ -45,7 +45,8 @@ export function showLiveDetailsModal(liveId) {
     const live = getLiveById(liveId);
     if (!live) return;
     const members = getMembers();
-    const dates = getDatesForLive(live);
+    // ツアーの場合は子ライブの日程を使う。長すぎる範囲は安全側に切り詰め
+    const dates = getEffectiveDatesForLive(live);
 
     const now = new Date();
     now.setHours(0, 0, 0, 0);
@@ -179,9 +180,10 @@ function buildMemberCalHtml(memberId, year, month) {
     const daysInMonth = new Date(year, month + 1, 0).getDate();
 
     // dateStr → lives マップ（全ライブ対象）
+    // ツアー親はその子ライブで展開済みなので除外（カレンダーに重複表示されないように）
     const dayMap = {};
-    lives.forEach(live => {
-        getDatesForLive(live).forEach(({ dateStr }) => {
+    lives.filter(l => l.eventType !== 'tour').forEach(live => {
+        getEffectiveDatesForLive(live).forEach(({ dateStr }) => {
             if (!dayMap[dateStr]) dayMap[dateStr] = [];
             if (!dayMap[dateStr].find(l => l.id === live.id)) dayMap[dateStr].push(live);
         });
@@ -252,14 +254,16 @@ export function showMemberDetailsModal(memberId) {
     let pastGoingDaysCount = 0;
     let totalPastDays = 0;
 
-    lives.forEach(live => {
-        const dates = getDatesForLive(live);
+    // ツアー親は子ライブで展開されるので二重カウント防止で除外
+    const attMap = buildAttendanceLookup();
+    lives.filter(l => l.eventType !== 'tour').forEach(live => {
+        const dates = getEffectiveDatesForLive(live);
         const goingDates = [];
         dates.forEach(d => {
             const isPastDay = new Date(d.dateStr + 'T00:00:00') < now;
             totalDays++;
             if (isPastDay) totalPastDays++;
-            if (getDayAttendanceStatus(live.id, d.dateStr, memberId) === 'going') {
+            if (lookupDayAttendance(attMap, live.id, d.dateStr, memberId) === 'going') {
                 goingDates.push(d.dateStr);
                 goingDaysCount++;
                 if (isPastDay) pastGoingDaysCount++;

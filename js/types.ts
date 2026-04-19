@@ -57,6 +57,17 @@ export interface Attendance {
   updatedAt?: string | null;
 }
 
+/** 公式ライブ JSON の子公演エントリ（ツアー内の個別日程） */
+export interface OfficialChildPerformance {
+  /** 個別公演の日（YYYY-MM-DD）。通常 dateStart/dateEnd は同日 */
+  dateStart: string;
+  dateEnd?: string;
+  venue?: string | null;
+  prefecture?: string | null;
+  /** 表示ラベル補助（例: "Day1"、無くても可） */
+  dayLabel?: string | null;
+}
+
 /** 公式ライブ JSON（public/official-lives.json の各エントリ） */
 export interface OfficialLive {
   officialId: string;
@@ -64,12 +75,20 @@ export interface OfficialLive {
   name: string;
   venue?: string | null;
   prefecture?: string | null;
+  /** 単独公演なら公演日、ツアーなら開始日（最小日付） */
   dateStart: string;
+  /** 単独公演なら dateStart と同日、ツアーなら終了日（最大日付） */
   dateEnd: string;
   eventType: EventType | string;
   iconImg?: string | null;
   sourceUrl: string;
   scrapedAt: string;
+  /**
+   * 子公演（複数レグツアーの個別日程）。
+   * これが 2 件以上なら scraper はこの live を「ツアー」として扱い、
+   * 追加時に parentId でリンクされた子 live も同時に作成する。
+   */
+  children?: OfficialChildPerformance[];
 }
 
 export interface OfficialLivesFile {
