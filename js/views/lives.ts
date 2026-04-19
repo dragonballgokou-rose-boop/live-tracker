@@ -208,11 +208,18 @@ export function renderLives() {
     });
   }
 
-  // タイプフィルター（すべて/ライブ/イベント）
+  // タイプフィルター（すべて/ライブ/イベント/ツアー/舞台）
   if (livesTypeFilter !== 'all') {
     filtered = filtered.filter(l => {
-      if (livesTypeFilter === 'event') return l.eventType === 'event';
-      return l.eventType !== 'event'; // 'live': イベント以外
+      const t = String(l.eventType || '').toLowerCase();
+      const isTour  = t === 'tour'  || t === 'ツアー';
+      const isEvent = t === 'event' || t === 'イベント';
+      const isStage = t === 'stage' || t === '舞台';
+      if (livesTypeFilter === 'tour')  return isTour;
+      if (livesTypeFilter === 'stage') return isStage;
+      if (livesTypeFilter === 'event') return isEvent;
+      // 'live': 通常ライブ（ツアー/舞台/イベント以外）かつ ツアー子公演でないもの
+      return !isTour && !isEvent && !isStage && !l.parentId;
     });
   }
 
@@ -625,10 +632,12 @@ export function renderLives() {
           </div>
           ${viewToggleHtml}
         </div>
-        <div class="history-filter" style="gap:6px;">
+        <div class="history-filter" style="gap:6px;flex-wrap:wrap;">
           <button class="history-chip${livesTypeFilter === 'all' ? ' history-chip-active' : ''}" data-type="all">すべて</button>
           <button class="history-chip${livesTypeFilter === 'live' ? ' history-chip-active' : ''}" data-type="live">ライブ</button>
           <button class="history-chip${livesTypeFilter === 'event' ? ' history-chip-active' : ''}" data-type="event">イベント</button>
+          <button class="history-chip${livesTypeFilter === 'tour' ? ' history-chip-active' : ''}" data-type="tour">ツアー</button>
+          <button class="history-chip${livesTypeFilter === 'stage' ? ' history-chip-active' : ''}" data-type="stage">舞台</button>
         </div>
       </div>
       <div style="display:flex;flex-direction:column;gap:6px;">
