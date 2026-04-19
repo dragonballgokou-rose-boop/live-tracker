@@ -2,7 +2,7 @@
 // ============================================
 // Members Management View
 // ============================================
-import { getMembers, addMember, updateMember, deleteMember, getAttendanceByMember, getLives, getDatesForLive, getDayAttendanceStatus } from '../store.js';
+import { getMembers, addMember, updateMember, deleteMember, getAttendanceByMember, getLives, getDatesForLive, getDayAttendanceStatus, buildAttendanceLookup, lookupDayAttendance } from '../store.js';
 import { showModal, closeModal, showToast, showConfirm, memberAvatarHtml, resizeImageToBase64 } from '../utils.js';
 
 const MEMBER_COLORS = [
@@ -36,6 +36,9 @@ export function renderMembers() {
   const tourChildIds = new Set(allLives.filter(l => l.parentId).map(l => l.parentId));
   const lives = allLives.filter(l => l.eventType !== 'tour' || !tourChildIds.has(l.id));
 
+  // 参戦ルックアップを 1 回だけ構築
+  const attMap = buildAttendanceLookup();
+
   content.innerHTML = `
     <div class="section-header">
       <div style="display: flex; align-items: center; gap: 12px;">
@@ -59,7 +62,7 @@ export function renderMembers() {
       const dates = getDatesForLive(live);
       totalPossibleSchedules += dates.length;
       dates.forEach(d => {
-        if (getDayAttendanceStatus(live.id, d.dateStr, member.id) === 'going') {
+        if (lookupDayAttendance(attMap, live.id, d.dateStr, member.id) === 'going') {
           goingCount++;
         }
       });

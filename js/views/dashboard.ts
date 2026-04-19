@@ -2,7 +2,7 @@
 // ============================================
 // Dashboard View
 // ============================================
-import { getLives, getMembers, getStats, getDayAttendanceStatus, getDatesForLive } from '../store.js';
+import { getLives, getMembers, getStats, getDayAttendanceStatus, getDatesForLive, buildAttendanceLookup, lookupDayAttendance } from '../store.js';
 import { formatDateRange, getLiveIconHtml, getEventTypeBadgeExport } from './lives.js';
 import { showLiveDetailsModal, showMemberDetailsModal } from './details.js';
 import { isJapaneseHoliday, memberAvatarHtml } from '../utils.js';
@@ -16,6 +16,9 @@ export function renderDashboard() {
   const members = getMembers();
   const now = new Date();
   now.setHours(0, 0, 0, 0);
+
+  // レンダリング中ずっと同じ参戦データを参照するので、一度だけ Map 化して使い回す
+  const attMap = buildAttendanceLookup();
 
   if (!dashboardCalendarDate) dashboardCalendarDate = new Date(now.getFullYear(), now.getMonth(), 1);
 
@@ -85,7 +88,7 @@ export function renderDashboard() {
       </div>
       <div class="card">
         <div class="member-ranking">
-          ${getMemberRanking(members, lives)}
+          ${getMemberRanking(members, lives, attMap)}
         </div>
       </div>
     </div>
@@ -210,7 +213,7 @@ function renderDateSchedule(month, lives, members, now) {
         </div>
         <div class="date-row-events">
           ${entries.map(({ live, dayLabel }) => {
-            const goingMembers = members.filter(m => getDayAttendanceStatus(live.id, dateStr, m.id) === 'going');
+            const goingMembers = members.filter(m => lookupDayAttendance(attMap, live.id, dateStr, m.id) === 'going');
             return `
               <div class="date-event">
                 <div class="date-event-info" style="cursor:pointer;${live.color ? `border-left:2px solid ${live.color};padding-left:6px;` : ''}" onclick="window.showLiveDetailsModal('${live.id}')">
@@ -281,7 +284,7 @@ function renderDashboardCalendar(month, lives, members, now) {
       lastD.setHours(0, 0, 0, 0);
       const isPast = lastD < now;
       const goingDots = members
-        .filter(m => getDayAttendanceStatus(live.id, ds, m.id) === 'going')
+        .filter(m => lookupDayAttendance(attMap, live.id, ds, m.id) === 'going')
         .slice(0, 5)
         .map(m => m.avatar
           ? `<img src="${m.avatar}" style="width:6px;height:6px;border-radius:50%;object-fit:cover;" />`
@@ -307,7 +310,7 @@ function renderDashboardCalendar(month, lives, members, now) {
 }
 
 // ---------- Member Ranking ----------
-function getMemberRanking(members, lives) {
+function getMemberRanking(members, lives, attMap) {
   const tourChildIds = new Set(lives.filter(l => l.parentId).map(l => l.parentId));
   const countableLives = lives.filter(l => l.eventType !== 'tour' || !tourChildIds.has(l.id));
   const ranked = members.map(member => {
@@ -315,7 +318,7 @@ function getMemberRanking(members, lives) {
     countableLives.forEach(live => {
       const dates = getDatesForLive(live);
       dates.forEach(d => {
-        if (getDayAttendanceStatus(live.id, d.dateStr, member.id) === 'going') goingCount++;
+        if (lookupDayAttendance(attMap, live.id, d.dateStr, member.id) === 'going') goingCount++;
       });
     });
     return { ...member, goingCount };
