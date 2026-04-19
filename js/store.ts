@@ -527,20 +527,34 @@ export function getEffectiveDatesForLive(live: Live): DateInfo[] {
     const children = getAll<Live>(STORAGE_KEYS.LIVES).filter(l => l.parentId === live.id);
     if (children.length > 0) {
       const dates: DateInfo[] = [];
+      let dayCounter = 0;
       children
         .sort((a, b) => (a.dateStart || '').localeCompare(b.dateStart || ''))
-        .forEach((child, idx) => {
-          const d = new Date(child.dateStart || child.date || 0);
-          if (isNaN(+d)) return;
-          d.setHours(0, 0, 0, 0);
-          const y  = d.getFullYear();
-          const m  = String(d.getMonth() + 1).padStart(2, '0');
-          const dd = String(d.getDate()).padStart(2, '0');
-          dates.push({
-            dateStr: `${y}-${m}-${dd}`,
-            dayNum:  idx + 1,
-            date:    new Date(d),
-          });
+        .forEach(child => {
+          // 子が dateStart〜dateEnd の範囲（2days など）を持つ場合、
+          // 各日を個別の Day として展開する（会場は同じでも Day1/Day2 として表示）
+          const sRaw = child.dateStart || child.date;
+          const eRaw = child.dateEnd   || child.dateStart || child.date;
+          if (!sRaw) return;
+          const s = new Date(sRaw);
+          const e = new Date(eRaw || sRaw);
+          if (isNaN(+s) || isNaN(+e)) return;
+          s.setHours(0, 0, 0, 0);
+          e.setHours(0, 0, 0, 0);
+          // 安全策: 単一 child の範囲が 30 日超は不整合として dateStart のみ
+          const days = (+e - +s) / 86400000;
+          const finalEnd = (isFinite(days) && days > 30) ? new Date(s) : e;
+          for (let cur = new Date(s); cur <= finalEnd; cur.setDate(cur.getDate() + 1)) {
+            dayCounter++;
+            const y  = cur.getFullYear();
+            const m  = String(cur.getMonth() + 1).padStart(2, '0');
+            const dd = String(cur.getDate()).padStart(2, '0');
+            dates.push({
+              dateStr: `${y}-${m}-${dd}`,
+              dayNum:  dayCounter,
+              date:    new Date(cur),
+            });
+          }
         });
       return dates;
     }
