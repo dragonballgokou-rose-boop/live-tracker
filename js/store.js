@@ -35,7 +35,8 @@ function liveToRow(live) {
         open_time:   live.openTime    ?? null,
         start_time:  live.startTime   ?? null,
         day_times:   live.dayTimes    ? JSON.stringify(live.dayTimes) : null,
-        official_id: live.officialId  ?? null,
+        // official_id は schema 未マイグレーションの環境を考慮して送らない。
+        // 代わりに memo 内の `[official-id:...]` マーカーと name+date マッチで同一性判定する。
         created_at:  live.createdAt   ?? null,
         updated_at:  live.updatedAt   ?? null,
     };
@@ -46,6 +47,8 @@ function rowToLive(row) {
     if (row.day_times) {
         try { dayTimes = JSON.parse(row.day_times); } catch { dayTimes = null; }
     }
+    // memo に埋め込まれた [official-id:xxx] マーカーから officialId を復元する
+    const officialIdFromMemo = extractOfficialIdFromMemo(row.memo);
     return {
         id:         row.id,
         name:       row.name,
@@ -64,10 +67,17 @@ function rowToLive(row) {
         openTime:   row.open_time,
         startTime:  row.start_time,
         dayTimes,
-        officialId: row.official_id,
+        officialId: row.official_id || officialIdFromMemo || null,
         createdAt:  row.created_at,
         updatedAt:  row.updated_at,
     };
+}
+
+/** memo 本文内に埋め込まれた `[official-id:...]` から ID を抽出する */
+function extractOfficialIdFromMemo(memo) {
+    if (!memo) return null;
+    const m = /\[official-id:([^\]\s]+)\]/.exec(String(memo));
+    return m ? m[1] : null;
 }
 
 function memberToRow(member) {
