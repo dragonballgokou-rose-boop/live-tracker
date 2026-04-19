@@ -137,6 +137,10 @@ function mapApiMember(item, src) {
   if (!code) return null;
   const name =
     cleanText(item.name || item.memberName || item.member_name || item.title) || null;
+  // 疑似メンバーを除外: "乃木坂46" そのもの、"箱推し"、グループ名を含むエントリ
+  if (!name) return null;
+  if (name === src.artist) return null;
+  if (/^(箱推し|全員|公式|グループ)$/.test(name)) return null;
   const kana =
     cleanText(item.kana || item.ruby || item.nameKana || item.name_kana) || null;
   const eng =
@@ -224,37 +228,57 @@ function extractHtmlMembers(html, src) {
 // ---------- scrape per source ----------
 
 async function scrapeGroup(src) {
-  // 1) API を試す
+  let apiMembers = [];
+  let apiUrl = null;
+
+  // 1) API: 全メンバー（卒業含む）の豊富なメタデータが取れる
   try {
     const { body, finalUrl } = await fetchAnyCandidate(src.apiCandidates, { referer: src.referer, kind: 'api' });
+    apiUrl = finalUrl;
     try {
       const list = extractApiList(body);
-      const mapped = list.map(item => mapApiMember(item, src)).filter(Boolean);
-      console.log(`  [API] mapped ${mapped.length} members`);
-      if (mapped.length > 0) {
-        return { finalUrl, members: mapped, via: 'api' };
-      }
-      if (list.length > 0) {
+      apiMembers = list.map(item => mapApiMember(item, src)).filter(Boolean);
+      console.log(`  [API] mapped ${apiMembers.length} members (全員: 卒業含む)`);
+      if (apiMembers.length === 0 && list.length > 0) {
         console.warn(`  [API] sample raw item: ${JSON.stringify(list[0]).slice(0, 500)}`);
       }
     } catch (e) {
       console.warn(`  [API] parse failed: ${e.message}`);
-      console.warn(`  body preview: ${body.slice(0, 400).replace(/\n/g, ' ')}`);
     }
   } catch (e) {
     console.warn(`  [API] all candidates failed: ${e.message}`);
   }
 
-  // 2) HTML フォールバック
+  // 2) HTML: 現メンバー一覧（search/artist ページは active のみを表示）
+  //    これと API を付き合わせ、HTML にある code だけ graduated=false とする
+  let activeCodes = new Set();
+  let htmlMembers = [];
+  let htmlUrl = null;
   try {
     const { body, finalUrl } = await fetchAnyCandidate(src.htmlCandidates, { referer: src.referer, kind: 'html' });
-    const mapped = extractHtmlMembers(body, src);
-    console.log(`  [HTML] extracted ${mapped.length} members`);
-    if (mapped.length > 0) {
-      return { finalUrl, members: mapped, via: 'html' };
-    }
+    htmlUrl = finalUrl;
+    htmlMembers = extractHtmlMembers(body, src);
+    for (const m of htmlMembers) activeCodes.add(m.code);
+    console.log(`  [HTML] extracted ${htmlMembers.length} active members`);
   } catch (e) {
     console.warn(`  [HTML] all candidates failed: ${e.message}`);
+  }
+
+  // 3) マージ戦略
+  //    API があれば API の豊富な情報を優先し、HTML active list で graduated を決定
+  //    API が空なら HTML だけを返す
+  if (apiMembers.length > 0) {
+    if (activeCodes.size > 0) {
+      for (const m of apiMembers) {
+        m.graduated = !activeCodes.has(m.code);
+      }
+      console.log(`  [MERGE] active: ${[...apiMembers].filter(m => !m.graduated).length}, graduated: ${apiMembers.filter(m => m.graduated).length}`);
+    }
+    return { finalUrl: apiUrl, members: apiMembers, via: activeCodes.size ? 'api+html' : 'api' };
+  }
+
+  if (htmlMembers.length > 0) {
+    return { finalUrl: htmlUrl, members: htmlMembers, via: 'html' };
   }
 
   throw new Error(`failed to scrape ${src.group}`);
