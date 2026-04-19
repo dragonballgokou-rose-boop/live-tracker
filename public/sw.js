@@ -1,5 +1,5 @@
 // Service Worker - Cache Strategy
-const CACHE_NAME = 'live-tracker-v4-no-official-id';
+const CACHE_NAME = 'live-tracker-v5-evttype-normalize';
 
 const ASSETS = [
     '/',

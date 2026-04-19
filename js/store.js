@@ -16,6 +16,22 @@ const STORAGE_KEYS = {
 
 // ---------- データ変換ヘルパー ----------
 
+/**
+ * Supabase の lives_event_type_check 制約は 'live'/'event'/'tour' のみ許可。
+ * 旧データが 'ライブ'/'イベント' の日本語ラベルで保存されているケースに備えて
+ * 送信前にここで正規化する。
+ */
+function normalizeEventTypeForDb(v) {
+    if (v == null) return null;
+    const s = String(v).trim().toLowerCase();
+    if (!s) return null;
+    if (s === 'ライブ' || s === 'live' || s === 'コンサート' || s === 'concert') return 'live';
+    if (s === 'イベント' || s === 'event' || s === 'ミーグリ' || s === '握手') return 'event';
+    if (s === 'ツアー' || s === 'tour') return 'tour';
+    // 未知の値は null にフォールバック（制約違反を防ぐ）
+    return null;
+}
+
 function liveToRow(live) {
     return {
         id:          live.id,
@@ -30,7 +46,7 @@ function liveToRow(live) {
         icon_img:    live.iconImg     ?? null,
         color:       live.color       ?? null,
         prefecture:  live.prefecture  ?? null,
-        event_type:  live.eventType   ?? null,
+        event_type:  normalizeEventTypeForDb(live.eventType),
         parent_id:   live.parentId    ?? null,
         open_time:   live.openTime    ?? null,
         start_time:  live.startTime   ?? null,
