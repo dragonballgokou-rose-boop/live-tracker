@@ -6,11 +6,14 @@ import {
   getMembers, addMember, updateMember, deleteMember,
   getAttendanceByMember, getLives, getDatesForLive, getDayAttendanceStatus,
   buildAttendanceLookup, lookupDayAttendance,
-  getFavoriteMemberId, setFavoriteMemberId,
   getOfficialLink, setOfficialLink,
 } from '../store.js';
 import { showModal, closeModal, showToast, showConfirm, memberAvatarHtml, resizeImageToBase64 } from '../utils.js';
-import { fetchOfficialMembers, buildOfficialBlogUrl, findOfficialMemberByName } from '../officialMembers.js';
+import {
+  fetchOfficialMembers, buildOfficialBlogUrl, findOfficialMemberByName,
+  getOfficialMemberSync,
+} from '../officialMembers.js';
+import { fetchOfficialLives } from '../officialLives.js';
 
 const MEMBER_COLORS = [
   // パープル・バイオレット
@@ -45,7 +48,14 @@ export function renderMembers() {
 
   // 参戦ルックアップを 1 回だけ構築
   const attMap = buildAttendanceLookup();
-  const favoriteId = getFavoriteMemberId();
+
+  // 公式メンバー（推しメン情報）を非同期で取得、まだなら load 後に再描画
+  if (!getOfficialMemberSync('__probe__', 'nogi') && !(window as any).__officialMembersLoaded) {
+    (window as any).__officialMembersLoaded = true;
+    fetchOfficialMembers()
+      .then(() => renderMembers())
+      .catch(() => { /* silently ignore */ });
+  }
 
   content.innerHTML = `
     <div class="section-header">
@@ -79,18 +89,35 @@ export function renderMembers() {
     const rate = totalPossibleSchedules > 0 ? Math.round((goingCount / totalPossibleSchedules) * 100) : 0;
 
     const link = getOfficialLink(member.id);
-    const blogUrl = buildOfficialBlogUrl(link?.officialCode, link?.officialGroup);
-    const isFavorite = favoriteId === member.id;
+    const oshi = getOfficialMemberSync(link?.officialCode, link?.officialGroup);
+    const oshiChipHtml = link && oshi ? `
+      <button class="oshi-chip" data-action="open-oshi" data-member-id="${member.id}" onclick="event.stopPropagation()" title="${escapeAttr(oshi.name || '')}の詳細を開く">
+        ${oshi.imgUrl ? `<img class="oshi-chip-img" src="${escapeAttr(oshi.imgUrl)}" alt="" referrerpolicy="no-referrer" loading="lazy" />` : '<span class="oshi-chip-img oshi-chip-ph">★</span>'}
+        <span class="oshi-chip-text">
+          <span class="oshi-chip-label">推しメン</span>
+          <span class="oshi-chip-name">${escapeHtml(oshi.name || '')}</span>
+        </span>
+      </button>
+    ` : (link && !oshi ? `
+      <button class="oshi-chip oshi-chip-unknown" data-action="open-oshi" data-member-id="${member.id}" onclick="event.stopPropagation()">
+        <span class="oshi-chip-img oshi-chip-ph">★</span>
+        <span class="oshi-chip-text">
+          <span class="oshi-chip-label">推しメン</span>
+          <span class="oshi-chip-name">（公式データ未取得）</span>
+        </span>
+      </button>
+    ` : '');
     return `
-          <div class="card member-card${isFavorite ? ' is-favorite' : ''}" style="cursor: pointer; --member-color: ${member.color};" onclick="showMemberDetailsModal('${member.id}')" title="メンバー詳細を見る">
+          <div class="card member-card" style="cursor: pointer; --member-color: ${member.color};" onclick="showMemberDetailsModal('${member.id}')" title="メンバー詳細を見る">
             <div class="member-card-top">
               ${memberAvatarHtml(member, 44)}
               <div class="member-info">
-                <div class="member-name">${escapeHtml(member.name)}${isFavorite ? ' <span class="oshi-badge" title="推しメン">★</span>' : ''}</div>
+                <div class="member-name">${escapeHtml(member.name)}</div>
                 ${member.nickname ? `<div class="member-nickname">@${escapeHtml(member.nickname)}</div>` : ''}
               </div>
               <div class="member-rate-badge" style="color: ${member.color};">${rate}%</div>
             </div>
+            ${oshiChipHtml}
             <div class="member-card-bottom">
               <div class="member-progress-wrap">
                 <div class="member-progress-track">
@@ -99,14 +126,6 @@ export function renderMembers() {
                 <span class="member-stat-label">${goingCount} / ${totalPossibleSchedules} 回</span>
               </div>
               <div class="member-card-actions">
-                <button class="btn btn-icon${isFavorite ? ' btn-primary' : ' btn-secondary'} favorite-member-btn" data-id="${member.id}" title="${isFavorite ? '推しメン解除' : '推しメンに設定'}" onclick="event.stopPropagation()">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="${isFavorite ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
-                </button>
-                ${blogUrl ? `
-                <a class="btn btn-icon btn-secondary blog-member-btn" href="${blogUrl}" target="_blank" rel="noopener noreferrer" title="公式ブログを開く" onclick="event.stopPropagation()">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-                </a>
-                ` : ''}
                 <button class="btn btn-icon btn-secondary edit-member-btn" data-id="${member.id}" title="編集" onclick="event.stopPropagation()">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                 </button>
@@ -131,20 +150,10 @@ export function renderMembers() {
   // Events
   document.getElementById('add-member-btn')?.addEventListener('click', () => openMemberModal());
 
-  content.querySelectorAll('.favorite-member-btn').forEach(btn => {
+  content.querySelectorAll('[data-action="open-oshi"]').forEach(btn => {
     btn.addEventListener('click', () => {
-      const id = btn.dataset.id;
-      if (!id) return;
-      const cur = getFavoriteMemberId();
-      if (cur === id) {
-        setFavoriteMemberId(null);
-        showToast('推しメンを解除しました', 'info');
-      } else {
-        setFavoriteMemberId(id);
-        const m = getMembers().find(x => x.id === id);
-        showToast(`★ ${m?.name ?? ''} を推しメンに設定しました`, 'success');
-      }
-      renderMembers();
+      const id = btn.dataset.memberId;
+      if (id) openOshiModal(id);
     });
   });
 
@@ -164,6 +173,109 @@ export function renderMembers() {
       });
     });
   });
+}
+
+// ============================================
+// 推しメン詳細モーダル
+// ============================================
+
+async function openOshiModal(memberId: string): Promise<void> {
+  const user = getMembers().find(m => m.id === memberId);
+  const link = getOfficialLink(memberId);
+  if (!user || !link) {
+    showToast('推しメンが設定されていません', 'error');
+    return;
+  }
+
+  showModal('推しメン', `
+    <div class="oshi-modal-loading" style="padding:40px 0;text-align:center;color:var(--text-secondary);">
+      <div class="loader-spinner" style="margin:0 auto 12px;"></div>
+      読み込み中…
+    </div>
+  `);
+
+  // 公式データ並列取得
+  let oshiData: ReturnType<typeof getOfficialMemberSync> = null;
+  let livesData: Awaited<ReturnType<typeof fetchOfficialLives>> | null = null;
+  try {
+    await Promise.all([
+      fetchOfficialMembers().then(() => {
+        oshiData = getOfficialMemberSync(link.officialCode, link.officialGroup);
+      }),
+      fetchOfficialLives().then(d => { livesData = d; }).catch(() => {}),
+    ]);
+  } catch (e) {
+    showModal('推しメン', `
+      <p style="padding:20px;color:var(--accent-red);">公式データの取得に失敗しました。</p>
+    `);
+    return;
+  }
+
+  if (!oshiData) {
+    showModal('推しメン', `
+      <p style="padding:20px;">公式メンバー情報が見つかりません。ピッカーで設定し直してください。</p>
+    `);
+    return;
+  }
+
+  const blogUrl = buildOfficialBlogUrl(link.officialCode, link.officialGroup);
+  const artist = oshiData.artist || (oshiData.group === 'nogi' ? '乃木坂46' : oshiData.group === 'saku' ? '櫻坂46' : '');
+
+  // 推しメンの「出演」 = 同じグループのライブ（upcoming 優先）
+  const today = new Date().toISOString().slice(0, 10);
+  const appearances = (livesData?.lives || [])
+    .filter(l => (l.artist || '') === artist)
+    .sort((a, b) => (a.dateStart || '').localeCompare(b.dateStart || ''));
+  const upcoming = appearances.filter(l => (l.dateStart || '') >= today).slice(0, 10);
+  const past = appearances.filter(l => (l.dateStart || '') < today).slice(-5).reverse();
+
+  const renderLiveRow = (l: any) => `
+    <li class="oshi-live-row">
+      <span class="oshi-live-date">${escapeHtml((l.dateStart || '').slice(0, 10))}${l.dateEnd && l.dateEnd !== l.dateStart ? ' 〜 ' + escapeHtml(l.dateEnd.slice(0, 10)) : ''}</span>
+      <span class="oshi-live-name">${escapeHtml(l.name || '')}</span>
+      ${l.venue || l.prefecture ? `<span class="oshi-live-venue">${escapeHtml(l.venue || '')}${l.prefecture ? '（' + escapeHtml(l.prefecture) + '）' : ''}</span>` : ''}
+      ${l.sourceUrl ? `<a class="oshi-live-link" href="${escapeAttr(l.sourceUrl)}" target="_blank" rel="noopener noreferrer">詳細↗</a>` : ''}
+    </li>
+  `;
+
+  showModal(`${user.name} の推しメン`, `
+    <div class="oshi-modal">
+      <div class="oshi-hero">
+        ${oshiData.imgUrl ? `<img class="oshi-hero-img" src="${escapeAttr(oshiData.imgUrl)}" referrerpolicy="no-referrer" />` : '<div class="oshi-hero-img oshi-hero-ph">★</div>'}
+        <div class="oshi-hero-info">
+          <div class="oshi-hero-artist">${escapeHtml(artist)}</div>
+          <div class="oshi-hero-name">${escapeHtml(oshiData.name || '')}</div>
+          ${oshiData.kana ? `<div class="oshi-hero-kana">${escapeHtml(oshiData.kana)}</div>` : ''}
+          ${oshiData.generation ? `<div class="oshi-hero-gen">${escapeHtml(oshiData.generation)}</div>` : ''}
+        </div>
+      </div>
+
+      <div class="oshi-actions">
+        ${blogUrl ? `<a class="btn btn-primary" href="${escapeAttr(blogUrl)}" target="_blank" rel="noopener noreferrer">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          公式ブログを開く
+        </a>` : ''}
+        ${oshiData.detailUrl ? `<a class="btn btn-secondary" href="${escapeAttr(oshiData.detailUrl)}" target="_blank" rel="noopener noreferrer">プロフィール↗</a>` : ''}
+      </div>
+
+      <div class="oshi-section">
+        <h4 class="oshi-section-head">🗓 今後の出演 (${artist})</h4>
+        ${upcoming.length > 0 ? `<ul class="oshi-live-list">${upcoming.map(renderLiveRow).join('')}</ul>`
+          : `<p style="color:var(--text-tertiary);font-size:13px;">今後の予定はありません。</p>`}
+      </div>
+
+      ${past.length > 0 ? `
+        <div class="oshi-section">
+          <h4 class="oshi-section-head">📜 直近の出演</h4>
+          <ul class="oshi-live-list">${past.map(renderLiveRow).join('')}</ul>
+        </div>
+      ` : ''}
+
+      <p style="font-size:11px;color:var(--text-tertiary);margin-top:10px;">
+        * 出演ライブは ${escapeHtml(artist)} のグループ公演のみ表示しています。
+      </p>
+    </div>
+  `);
 }
 
 function openMemberModal(member = null) {

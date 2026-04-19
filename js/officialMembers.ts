@@ -9,6 +9,7 @@ import type { OfficialMember, OfficialMembersFile } from './types.js';
 const OFFICIAL_URL = './official-members.json';
 
 let _cached: OfficialMembersFile | null = null;
+let _byKey: Map<string, OfficialMember> | null = null;
 
 export async function fetchOfficialMembers(
   opts: { noCache?: boolean } = {},
@@ -19,7 +20,19 @@ export async function fetchOfficialMembers(
   if (!res.ok) throw new Error(`公式メンバー一覧の取得に失敗しました (${res.status})`);
   const data = await res.json() as OfficialMembersFile;
   _cached = data;
+  _byKey = new Map();
+  for (const m of data.members || []) {
+    _byKey.set(`${m.group}:${m.code}`, m);
+  }
   return data;
+}
+
+/** 既に fetch 済みなら同期で取れる。未 fetch なら null */
+export function getOfficialMemberSync(
+  code?: string | null, group?: string | null,
+): OfficialMember | null {
+  if (!_byKey || !code || !group) return null;
+  return _byKey.get(`${group}:${code}`) || null;
 }
 
 /** グループコード → 公式サイト URL（詳細ページ）を組み立てるためのマッピング */
