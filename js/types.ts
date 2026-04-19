@@ -80,6 +80,34 @@ export interface OfficialMembersFile {
   errors?: { group: string; artist: string; error: string }[];
 }
 
+/** 公式メンバー個別のブログエントリ */
+export interface OfficialBlogEntry {
+  url: string;
+  title: string;
+  date: string | null;
+  thumbnail: string | null;
+}
+
+/** 公式メンバー個別のスケジュールエントリ */
+export interface OfficialScheduleEntry {
+  cate: string | null;
+  title: string;
+  dayOfMonth: number | null;
+}
+
+export interface OfficialMemberFeedEntry {
+  blog: OfficialBlogEntry[];
+  schedule: OfficialScheduleEntry[];
+  errors?: string[];
+}
+
+export interface OfficialMemberFeedsFile {
+  version: string;
+  updatedAt: string;
+  /** key = `${group}:${code}` */
+  feeds: Record<string, OfficialMemberFeedEntry>;
+}
+
 export interface Attendance {
   id: string;
   liveId: string;
