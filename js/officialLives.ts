@@ -235,7 +235,17 @@ export function computeDiff(
     // ツアー: 公式に新しく追加された子公演があれば差分として扱う
     const newChildren = findNewOfficialChildren(official, local, localLives);
 
-    if (diffs.length === 0 && newChildren.length === 0) {
+    // 種別が違う場合は差分扱い（ユーザーがモーダルで種別を切替できるように toUpdate に流す）
+    // 常にではなく、実際にアクションが必要そうな時のみフラグする:
+    //   - 公式がツアーでローカルが非ツアー（ツアー化候補）
+    //   - ローカルと公式の両方が明示設定されていて違う時
+    const localType    = normalizeEventType(local.eventType);
+    const officialType = normalizeEventType(official.eventType);
+    const typeMismatch =
+      (officialType === 'tour' && localType !== 'tour') ||
+      (!!officialType && !!localType && localType !== officialType);
+
+    if (diffs.length === 0 && newChildren.length === 0 && !typeMismatch) {
       toSkip.push({ official, local });
     } else {
       toUpdate.push({ official, local, diffs, newChildren });

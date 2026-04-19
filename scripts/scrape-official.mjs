@@ -43,13 +43,17 @@ const SOURCES = [
     idPrefix: 'saku',
     referer: 'https://sakurazaka46.com/',
     candidates: [
+      // Sony Music CMS API（nogi と同構造の JSONP or JSON を返す想定）
+      // ← 優先: 会場情報が入っているのでこちらから取れれば解決
+      'https://sakurazaka46.com/s/s46/api/list/live',
+      'https://sakurazaka46.com/s/s46/api/list/live?ima=0000',
       // 新デザインの公開ページ（スクショで確認された見た目）
       'https://sakurazaka46.com/live/',
       'https://sakurazaka46.com/live/index.html',
       'https://sakurazaka46.com/ja/live',
       'https://sakurazaka46.com/ja/live/',
       'https://sakurazaka46.com/live.html',
-      // 旧CMS（schedule HTML）— バックアップ
+      // CMS 旧 URL: HTML ページだが venue が取れない場合がある
       'https://sakurazaka46.com/s/s46/diary/live_page/list?ima=0000',
       'https://sakurazaka46.com/s/s46/diary/event_page/list?ima=0000',
     ],

@@ -76,9 +76,10 @@ export function showLiveDetailsModal(liveId) {
     if (iconHtmlStr) html += `<div style="display:flex;align-items:center;gap:8px;">${iconHtmlStr}<span style="font-weight:600;font-size:15px;">${escapeHtml(live.name)}</span></div>`;
     if (live.artist) html += `<div style="display:flex;align-items:center;gap:8px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg><span style="color:var(--text-secondary);">${escapeHtml(live.artist)}</span></div>`;
     html += `<div style="display:flex;align-items:center;gap:8px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><span style="color:var(--text-secondary);">${formatDateRange(live)}</span>${isPast ? '<span class="badge badge-past" style="font-size:10px;">終了</span>' : '<span class="badge badge-upcoming" style="font-size:10px;">予定</span>'}</div>`;
+    const isTour = live.eventType === 'tour' || live.eventType === 'ツアー';
     if (live.venue) {
         html += `<div style="display:flex;align-items:center;gap:8px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg><span style="color:var(--text-secondary);">${escapeHtml(live.venue)}${pref ? `（${escapeHtml(pref)}）` : ''}</span></div>`;
-    } else if (live.eventType === 'tour') {
+    } else if (isTour) {
         // ツアー親は venue が null なので子公演の会場一覧で埋める
         const tourChildren = getLives()
             .filter(l => l.parentId === live.id)
@@ -124,7 +125,7 @@ export function showLiveDetailsModal(liveId) {
         // ツアー親の場合、日付 → 子ライブ のマップを作っておき、
         // 各 Day の見出しに会場・都道府県を表示できるようにする
         const tourChildByDate = new Map();
-        if (live.eventType === 'tour') {
+        if (isTour) {
             const allLives = getLives();
             allLives.filter(l => l.parentId === live.id).forEach(child => {
                 const cs = (child.dateStart || child.date || '').slice(0, 10);
@@ -233,9 +234,9 @@ export function showLiveDetailsModal(liveId) {
 
     html += `</div>`;
     const detailTitle =
-        live.eventType === 'event' ? `イベント詳細：${live.name}` :
-        live.eventType === 'stage' ? `舞台詳細：${live.name}` :
-        live.eventType === 'tour'  ? `ツアー詳細：${live.name}` :
+        (live.eventType === 'event' || live.eventType === 'イベント') ? `イベント詳細：${live.name}` :
+        (live.eventType === 'stage' || live.eventType === '舞台')     ? `舞台詳細：${live.name}`     :
+        isTour                                                         ? `ツアー詳細：${live.name}` :
         `ライブ詳細：${live.name}`;
     showModal(detailTitle, html);
 }
