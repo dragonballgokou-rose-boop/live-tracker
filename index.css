@@ -4258,3 +4258,24 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
   color: var(--text-tertiary);
   font-size: 11px;
 }
+
+/* ---------- 公演 0 件ツアー警告バナー ---------- */
+.orphan-tour-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+  background: rgba(251, 191, 36, 0.08);
+  border: 1px solid rgba(251, 191, 36, 0.30);
+  border-radius: var(--radius-md);
+  color: var(--accent-amber);
+}
+
+.orphan-tour-banner-text {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  line-height: 1.5;
+}
