@@ -20,6 +20,6 @@
 
     "forceConsistentCasingInFileNames": true
   },
-  "include": ["js/**/*.ts", "js/**/*.js", "main.js", "scripts/**/*.mjs"],
+  "include": ["js/**/*.ts", "js/**/*.js", "main.ts", "scripts/**/*.mjs"],
   "exclude": ["node_modules", "dist", "mobile"]
 }

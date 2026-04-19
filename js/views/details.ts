@@ -1,3 +1,4 @@
+// @ts-nocheck — TODO: convert to strict TypeScript incrementally
 import { getLiveById, getMemberById, getMembers, getLives, getDatesForLive, getDayAttendanceStatus } from '../store.js';
 import { showModal, memberAvatarHtml, isJapaneseHoliday } from '../utils.js';
 import { formatDateRange, extractPrefecture, getLiveIconHtml } from './lives.js';

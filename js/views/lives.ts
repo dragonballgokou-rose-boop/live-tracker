@@ -1,3 +1,4 @@
+// @ts-nocheck — TODO: convert to strict TypeScript incrementally
 // ============================================
 // Lives Management View
 // ============================================

@@ -1,3 +1,4 @@
+// @ts-nocheck — TODO: convert to strict TypeScript incrementally
 // ============================================
 // Rooms View - ルーム選択・作成・参加
 // ============================================
