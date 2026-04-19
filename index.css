@@ -4279,3 +4279,22 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
   font-size: 12px;
   line-height: 1.5;
 }
+
+/* ---------- Official Sync: ツアーアイテムの視覚区別 ---------- */
+.os-tour-tag {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 6px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  background: rgba(99, 102, 241, 0.22);
+  color: #818CF8;
+  border: 1px solid rgba(99, 102, 241, 0.40);
+  border-radius: var(--radius-full);
+  vertical-align: middle;
+}
+
+.os-item-tour {
+  border-left: 3px solid rgba(99, 102, 241, 0.55);
+}

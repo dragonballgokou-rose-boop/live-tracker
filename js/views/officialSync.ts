@@ -547,15 +547,25 @@ function renderAddItem(item: DiffAddItem, i: number): string {
     </details>
   `;
 
+  const isTour = o.eventType === 'tour';
+  const childCount = Array.isArray(o.children) ? o.children.length : 0;
+
+  // ツアーは venue が空、会場一覧を先頭3件まで展開して代わりに表示
+  const venueLineHtml = isTour
+    ? (childCount > 0
+        ? `<div class="os-row"><span class="os-label">公演</span> ${childCount}件<span style="color:var(--text-tertiary);font-size:11px;margin-left:6px;">(${o.children!.slice(0, 3).map(c => escapeHtml(c.venue || '—')).join(' / ')}${childCount > 3 ? ` …+${childCount - 3}` : ''})</span></div>`
+        : `<div class="os-row"><span class="os-label">公演</span> <span style="color:var(--text-tertiary);">— 未登録</span></div>`)
+    : `<div class="os-row"><span class="os-label">会場</span> ${escapeHtml(o.venue || '-')}</div>`;
+
   return `
-    <div class="os-item${similar.length > 0 ? ' os-item-warn' : ''}">
+    <div class="os-item${similar.length > 0 ? ' os-item-warn' : ''}${isTour ? ' os-item-tour' : ''}">
       <div class="os-item-header">
         <label class="os-item-check-wrap" title="一括追加の対象に含める">
           <input type="checkbox" class="os-item-check" data-index="${i}" />
         </label>
         ${logoHtml}
         <div class="os-item-title">
-          <span class="os-artist">${escapeHtml(o.artist || '')}</span>
+          <span class="os-artist">${escapeHtml(o.artist || '')}${isTour ? ' <span class="os-tour-tag">ツアー</span>' : ''}</span>
           <span class="os-name">${escapeHtml(o.name || '')}</span>
         </div>
         <button type="button" class="btn btn-primary btn-sm"
@@ -564,7 +574,7 @@ function renderAddItem(item: DiffAddItem, i: number): string {
       <div class="os-item-body">
         ${similarWarning}
         <div class="os-row"><span class="os-label">日程</span> ${escapeHtml(formatDateRange(o.dateStart, o.dateEnd))}</div>
-        <div class="os-row"><span class="os-label">会場</span> ${escapeHtml(o.venue || '-')}</div>
+        ${venueLineHtml}
         <div class="os-row"><span class="os-label">種別</span> ${escapeHtml(eventTypeLabel(o.eventType))}</div>
         ${pickerHtml}
         ${renderSourceLine(o)}
