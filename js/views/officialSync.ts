@@ -8,8 +8,11 @@ import {
   fetchOfficialLives,
   computeDiff,
   applyAddition,
+  applyAdditionAsChild,
+  applyNewTourChildren,
   applyUpdate,
   mergeIntoExisting,
+  findCandidateTourParent,
 } from '../officialLives.js';
 import type {
   Live, OfficialLive, OfficialLivesFile, DiffResult,
@@ -303,6 +306,42 @@ function attachHandlers({ toAdd, toUpdate }: HandlerCtx): void {
     });
   });
 
+  // 既存ツアーの追加公演として入れる
+  document.querySelectorAll<HTMLButtonElement>('[data-action="add-as-child"]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const i = Number(btn.dataset.index);
+      const parentId = btn.dataset.parentId;
+      const official = toAdd[i]?.official;
+      if (!official || !parentId) return;
+      const parent = getLives().find(l => l.id === parentId);
+      if (!parent) {
+        showToast('親ツアーが見つかりません', 'error');
+        return;
+      }
+      let added: Live | null = null;
+      try {
+        added = applyAdditionAsChild(official, parent);
+      } catch (err: unknown) {
+        console.error('applyAdditionAsChild failed', err);
+        showToast(`追加失敗: ${errMsg(err)}`, 'error');
+        return;
+      }
+      if (!added) {
+        showToast('追加に失敗しました', 'error');
+        return;
+      }
+      showToast(`「${parent.name}」の追加公演として登録: ${official.name}`, 'success');
+      refreshDiffFromStore();
+      refreshOfficialSyncBadge();
+      renderModal();
+
+      const res = await flushSyncNow();
+      if (res && res.ok === false && res.reason === 'sync-failed') {
+        showToast(`Supabase同期失敗: ${errMsg(res.error)}`, 'error');
+      }
+    });
+  });
+
   // 類似既存ライブと統合（ローカルの既存ライブを公式で更新）
   document.querySelectorAll<HTMLButtonElement>('[data-action="merge"]').forEach(btn => {
     btn.addEventListener('click', async () => {
@@ -496,6 +535,32 @@ function attachHandlers({ toAdd, toUpdate }: HandlerCtx): void {
       }
     });
   });
+
+  // ツアーの新規子公演を一括追加
+  document.querySelectorAll<HTMLButtonElement>('[data-action="add-new-children"]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const i = Number(btn.dataset.index);
+      const item = toUpdate[i];
+      if (!item || !item.newChildren || item.newChildren.length === 0) return;
+      let n = 0;
+      try {
+        n = applyNewTourChildren(item.local, item.official, item.newChildren);
+      } catch (err: unknown) {
+        console.error('applyNewTourChildren failed', err);
+        showToast(`追加失敗: ${errMsg(err)}`, 'error');
+        return;
+      }
+      showToast(`${n}件の公演を「${item.local.name}」に追加しました`, 'success');
+      refreshDiffFromStore();
+      refreshOfficialSyncBadge();
+      renderModal();
+
+      const res = await flushSyncNow();
+      if (res && res.ok === false && res.reason === 'sync-failed') {
+        showToast(`Supabase同期失敗: ${errMsg(res.error)}`, 'error');
+      }
+    });
+  });
 }
 
 // ---------- アイテムレンダリング ----------
@@ -547,15 +612,40 @@ function renderAddItem(item: DiffAddItem, i: number): string {
     </details>
   `;
 
+  const isTour = o.eventType === 'tour';
+  const childCount = Array.isArray(o.children) ? o.children.length : 0;
+
+  // ツアーファイナル等で、既存ローカルツアーの追加公演にできる場合の候補
+  const parentTourCandidate = !isTour ? findCandidateTourParent(o, getLives()) : null;
+  const parentTourSuggestion = parentTourCandidate ? `
+    <div class="os-tour-link-suggest">
+      <span>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px;"><path d="M3 11l19-9-9 19-2-8-8-2z"/></svg>
+        既存ツアー <strong>${escapeHtml(parentTourCandidate.name)}</strong> の追加公演として入れられます
+      </span>
+      <button type="button" class="btn btn-secondary btn-sm"
+              data-action="add-as-child" data-index="${i}" data-parent-id="${escapeHtml(parentTourCandidate.id)}">
+        ツアーに追加
+      </button>
+    </div>
+  ` : '';
+
+  // ツアーは venue が空、会場一覧を先頭3件まで展開して代わりに表示
+  const venueLineHtml = isTour
+    ? (childCount > 0
+        ? `<div class="os-row"><span class="os-label">公演</span> ${childCount}件<span style="color:var(--text-tertiary);font-size:11px;margin-left:6px;">(${o.children!.slice(0, 3).map(c => escapeHtml(c.venue || '—')).join(' / ')}${childCount > 3 ? ` …+${childCount - 3}` : ''})</span></div>`
+        : `<div class="os-row"><span class="os-label">公演</span> <span style="color:var(--text-tertiary);">— 未登録</span></div>`)
+    : `<div class="os-row"><span class="os-label">会場</span> ${escapeHtml(o.venue || '-')}</div>`;
+
   return `
-    <div class="os-item${similar.length > 0 ? ' os-item-warn' : ''}">
+    <div class="os-item${similar.length > 0 ? ' os-item-warn' : ''}${isTour ? ' os-item-tour' : ''}">
       <div class="os-item-header">
         <label class="os-item-check-wrap" title="一括追加の対象に含める">
           <input type="checkbox" class="os-item-check" data-index="${i}" />
         </label>
         ${logoHtml}
         <div class="os-item-title">
-          <span class="os-artist">${escapeHtml(o.artist || '')}</span>
+          <span class="os-artist">${escapeHtml(o.artist || '')}${isTour ? ' <span class="os-tour-tag">ツアー</span>' : ''}</span>
           <span class="os-name">${escapeHtml(o.name || '')}</span>
         </div>
         <button type="button" class="btn btn-primary btn-sm"
@@ -563,8 +653,9 @@ function renderAddItem(item: DiffAddItem, i: number): string {
       </div>
       <div class="os-item-body">
         ${similarWarning}
+        ${parentTourSuggestion}
         <div class="os-row"><span class="os-label">日程</span> ${escapeHtml(formatDateRange(o.dateStart, o.dateEnd))}</div>
-        <div class="os-row"><span class="os-label">会場</span> ${escapeHtml(o.venue || '-')}</div>
+        ${venueLineHtml}
         <div class="os-row"><span class="os-label">種別</span> ${escapeHtml(eventTypeLabel(o.eventType))}</div>
         ${pickerHtml}
         ${renderSourceLine(o)}
@@ -611,6 +702,7 @@ function renderMergePickerList(addIndex: number, query: string): string {
 
 function renderUpdateItem(item: DiffUpdateItem, i: number): string {
   const { official: o, local: l, diffs } = item;
+  const newChildren = item.newChildren ?? [];
   const diffRows = diffs.map(d => `
     <label class="os-diff-row">
       <input type="checkbox" data-field="${escapeHtml(d.field)}" checked />
@@ -621,22 +713,53 @@ function renderUpdateItem(item: DiffUpdateItem, i: number): string {
     </label>
   `).join('');
 
+  const newChildrenBlock = newChildren.length > 0 ? `
+    <div class="os-new-children">
+      <div class="os-new-children-head">
+        <span>🆕 このツアーに新しい公演 ${newChildren.length} 件が追加されています</span>
+        <button type="button" class="btn btn-primary btn-sm"
+                data-action="add-new-children" data-index="${i}">
+          ${newChildren.length}件まとめて追加
+        </button>
+      </div>
+      <ul class="os-new-children-list">
+        ${newChildren.slice(0, 8).map(c => `
+          <li>
+            <span class="os-new-child-date">${escapeHtml(c.dateStart)}${c.dayLabel ? ` (${escapeHtml(c.dayLabel)})` : ''}</span>
+            <span class="os-new-child-venue">${escapeHtml(c.venue || '—')}${c.prefecture ? `（${escapeHtml(c.prefecture)}）` : ''}</span>
+          </li>
+        `).join('')}
+        ${newChildren.length > 8 ? `<li style="color:var(--text-tertiary);">…他 ${newChildren.length - 8} 件</li>` : ''}
+      </ul>
+    </div>
+  ` : '';
+
+  // 差分が空で新規子公演のみの場合、「選択を反映」ボタンは不要
+  const applyBtnHtml = diffs.length > 0 ? `
+    <button type="button" class="btn btn-primary btn-sm"
+            data-action="apply-diff" data-index="${i}">選択を反映</button>
+  ` : '';
+
+  const diffBlock = diffs.length > 0 ? `
+    <div class="os-diffs">
+      <div class="os-diffs-head">差分（チェックを外せば反映しない）</div>
+      ${diffRows}
+    </div>
+  ` : '';
+
   return `
     <div class="os-item">
       <div class="os-item-header">
         <div class="os-item-title">
-          <span class="os-artist">${escapeHtml(o.artist || '')}</span>
+          <span class="os-artist">${escapeHtml(o.artist || '')}${o.eventType === 'tour' ? ' <span class="os-tour-tag">ツアー</span>' : ''}</span>
           <span class="os-name">${escapeHtml(o.name || '')}</span>
         </div>
-        <button type="button" class="btn btn-primary btn-sm"
-                data-action="apply-diff" data-index="${i}">選択を反映</button>
+        ${applyBtnHtml}
       </div>
       <div class="os-item-body">
         <div class="os-row"><span class="os-label">日程</span> ${escapeHtml(formatDateRange(l.dateStart, l.dateEnd))}</div>
-        <div class="os-diffs">
-          <div class="os-diffs-head">差分（チェックを外せば反映しない）</div>
-          ${diffRows}
-        </div>
+        ${newChildrenBlock}
+        ${diffBlock}
         ${renderSourceLine(o)}
       </div>
     </div>

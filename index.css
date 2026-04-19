@@ -4279,3 +4279,86 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
   font-size: 12px;
   line-height: 1.5;
 }
+
+/* ---------- Official Sync: ツアーアイテムの視覚区別 ---------- */
+.os-tour-tag {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 6px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  background: rgba(99, 102, 241, 0.22);
+  color: #818CF8;
+  border: 1px solid rgba(99, 102, 241, 0.40);
+  border-radius: var(--radius-full);
+  vertical-align: middle;
+}
+
+.os-item-tour {
+  border-left: 3px solid rgba(99, 102, 241, 0.55);
+}
+
+/* ---------- Official Sync: ツアー追加公演の提案バナー ---------- */
+.os-tour-link-suggest {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  margin-bottom: 6px;
+  background: rgba(99, 102, 241, 0.08);
+  border: 1px solid rgba(99, 102, 241, 0.28);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  color: #a5b4fc;
+}
+
+.os-tour-link-suggest > span {
+  flex: 1;
+  min-width: 0;
+  line-height: 1.5;
+}
+
+.os-tour-link-suggest strong {
+  color: var(--text-primary);
+  word-break: break-word;
+}
+
+/* ---------- Official Sync: ツアー新規子公演ブロック ---------- */
+.os-new-children {
+  margin-top: 6px;
+  padding: 8px 10px;
+  background: rgba(34, 211, 238, 0.06);
+  border: 1px solid rgba(34, 211, 238, 0.28);
+  border-radius: var(--radius-sm);
+}
+
+.os-new-children-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent-cyan);
+  margin-bottom: 6px;
+}
+
+.os-new-children-list {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  line-height: 1.7;
+}
+
+.os-new-child-date {
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-right: 6px;
+}
+
+.os-new-child-venue {
+  color: var(--text-secondary);
+}

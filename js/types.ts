@@ -171,6 +171,8 @@ export interface DiffUpdateItem {
   official: OfficialLive;
   local: Live;
   diffs: FieldDiff[];
+  /** ツアー: 公式の children の中でローカルにまだ存在しない日程 */
+  newChildren?: OfficialChildPerformance[];
 }
 
 export interface DiffSkipItem {
