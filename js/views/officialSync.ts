@@ -104,11 +104,12 @@ const EVENT_TYPE_OPTIONS: { value: string; label: string }[] = [
   { value: 'stage', label: '舞台' },
 ];
 
-function renderEventTypeSelect(id: string, selected: string): string {
+function renderEventTypeSelect(id: string, selected: string, kind: 'add' | 'upd', index: number): string {
   const opts = EVENT_TYPE_OPTIONS.map(o =>
     `<option value="${o.value}"${o.value === selected ? ' selected' : ''}>${o.label}</option>`,
   ).join('');
-  return `<select class="form-input os-type-select" id="${id}">${opts}</select>`;
+  const extraCls = kind === 'upd' ? ' os-upd-type' : '';
+  return `<select class="form-input os-type-select${extraCls}" id="${id}" data-index="${index}">${opts}</select>`;
 }
 
 function normalizeEventTypeValue(v: unknown): string {
@@ -530,6 +531,36 @@ function attachHandlers({ toAdd, toUpdate }: HandlerCtx): void {
     }
   });
 
+  // 種別 select を変更したら即座に反映（再レンダリングで他アイテムの
+  // 変更が失われる問題を回避。「舞台」等は選ぶだけで即時保存される）
+  document.querySelectorAll<HTMLSelectElement>('.os-upd-type').forEach(sel => {
+    sel.addEventListener('change', async () => {
+      const i = Number(sel.dataset.index);
+      const item = toUpdate[i];
+      if (!item) return;
+      const selectedType = sel.value;
+      const currentType = normalizeEventTypeValue(item.local.eventType);
+      if (!selectedType || selectedType === currentType) return;
+      try {
+        applyUpdate(item.local, item.official, [], selectedType);
+      } catch (err: unknown) {
+        console.error('applyUpdate (type only) failed', err);
+        showToast(`種別変更失敗: ${errMsg(err)}`, 'error');
+        return;
+      }
+      const label = EVENT_TYPE_OPTIONS.find(o => o.value === selectedType)?.label ?? selectedType;
+      showToast(`「${item.official.name}」を ${label} に変更`, 'success');
+      refreshDiffFromStore();
+      refreshOfficialSyncBadge();
+      renderModal();
+
+      const res = await flushSyncNow();
+      if (res && res.ok === false && res.reason === 'sync-failed') {
+        showToast(`Supabase同期失敗: ${errMsg(res.error)}`, 'error');
+      }
+    });
+  });
+
   // 差分の反映（選択フィールド）
   document.querySelectorAll<HTMLButtonElement>('[data-action="apply-diff"]').forEach(btn => {
     btn.addEventListener('click', async () => {
@@ -541,22 +572,13 @@ function attachHandlers({ toAdd, toUpdate }: HandlerCtx): void {
       const checkedFields = [...container.querySelectorAll<HTMLInputElement>('input[type=checkbox]:checked')]
         .map(cb => cb.dataset.field)
         .filter((f): f is string => Boolean(f));
-      const typeSel = document.getElementById(`os-upd-type-${i}`) as HTMLSelectElement | null;
-      const selectedType = typeSel?.value ?? null;
-      const currentType = normalizeEventTypeValue(item.local.eventType || item.official.eventType);
-      // 種別が変わっていれば override として渡す
-      const typeOverride = (selectedType && selectedType !== currentType) ? selectedType : null;
-      if (checkedFields.length === 0 && !typeOverride) {
-        // 既に指定した種別になっているケース: ポジティブに伝える
-        if (selectedType && selectedType === currentType) {
-          showToast(`すでに「${EVENT_TYPE_OPTIONS.find(o => o.value === selectedType)?.label}」に設定されています`, 'info');
-        } else {
-          showToast('反映するフィールドまたは種別変更を選択してください', 'info');
-        }
+      // 種別 select は change で即時反映しているのでここでは扱わない
+      if (checkedFields.length === 0) {
+        showToast('反映するフィールドを選択してください（種別は select で即時変更されます）', 'info');
         return;
       }
       try {
-        applyUpdate(item.local, item.official, checkedFields, typeOverride);
+        applyUpdate(item.local, item.official, checkedFields);
       } catch (err: unknown) {
         console.error('applyUpdate failed', err);
         showToast(`反映失敗: ${errMsg(err)}`, 'error');
@@ -697,7 +719,7 @@ function renderAddItem(item: DiffAddItem, i: number): string {
         ${venueLineHtml}
         <div class="os-row os-type-row">
           <span class="os-label">種別</span>
-          ${renderEventTypeSelect(`os-add-type-${i}`, normalizeEventTypeValue(o.eventType))}
+          ${renderEventTypeSelect(`os-add-type-${i}`, normalizeEventTypeValue(o.eventType), 'add', i)}
         </div>
         ${pickerHtml}
         ${renderSourceLine(o)}
@@ -806,7 +828,7 @@ function renderUpdateItem(item: DiffUpdateItem, i: number): string {
       <div class="os-type-hint-banner" style="margin-top:8px;padding:10px 12px;background:rgba(139,92,246,0.08);border:1px solid rgba(139,92,246,0.35);border-radius:8px;font-size:12px;color:var(--text-secondary);display:flex;align-items:flex-start;gap:8px;">
         <span style="font-size:16px;line-height:1;">💡</span>
         <span>公式では <strong style="color:#a78bfa;">ツアー</strong>（${officialChildCount}公演）として登録されています。<br>
-        上の「種別」を <strong>ツアー</strong> に変えて「選択を反映」を押すと、<strong>子公演が自動で追加</strong>され各日に会場情報が表示されます。</span>
+        上の「種別」を <strong>ツアー</strong> に変えると即座に <strong>子公演が自動で追加</strong>され各日に会場情報が表示されます。</span>
       </div>
     ` :
     (!!officialType && !!currentType && officialType !== currentType) ? `
@@ -829,8 +851,8 @@ function renderUpdateItem(item: DiffUpdateItem, i: number): string {
         <div class="os-row"><span class="os-label">日程</span> ${escapeHtml(formatDateRange(l.dateStart, l.dateEnd))}</div>
         <div class="os-row os-type-row">
           <span class="os-label">種別</span>
-          ${renderEventTypeSelect(`os-upd-type-${i}`, currentType)}
-          <span class="os-type-hint">種別を変えたい時に変更してください</span>
+          ${renderEventTypeSelect(`os-upd-type-${i}`, currentType, 'upd', i)}
+          <span class="os-type-hint">変更すると即時反映されます</span>
         </div>
         ${typeMismatchBanner}
         ${newChildrenBlock}
