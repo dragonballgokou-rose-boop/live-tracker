@@ -900,6 +900,7 @@ function openTourModal(tour = null) {
       <input type="hidden" id="live-venue" value="${isEdit ? escapeAttr(tour.venue || '') : ''}" />
       <div class="form-actions">
         <button type="button" class="btn btn-secondary" onclick="document.getElementById('modal-close').click()">キャンセル</button>
+        ${isEdit ? `<button type="button" class="btn btn-secondary" id="tour-to-live-btn" style="color:var(--accent-amber);border-color:rgba(251,191,36,0.30);background:rgba(251,191,36,0.08);">ライブに戻す</button>` : ''}
         <button type="submit" class="btn btn-primary">${isEdit ? '更新' : 'ツアーを作成'}</button>
       </div>
     </form>
@@ -930,6 +931,31 @@ function openTourModal(tour = null) {
     }
     closeModal();
     renderLives();
+  });
+
+  // 「ライブに戻す」: ツアー化で参戦記録が見えなくなった場合の復旧用。
+  // eventType を 'live' に戻すだけで、attendance は id 紐付けなのでそのまま復活する。
+  // 子公演 (parentId で繋がる live) は親から切り離して独立した live にする。
+  document.getElementById('tour-to-live-btn')?.addEventListener('click', () => {
+    if (!isEdit) return;
+    showConfirm(
+      'ツアーをライブに戻す',
+      'このツアーを通常のライブに戻します。\n' +
+      '・子公演があれば、親との紐付けを解除して独立したライブになります\n' +
+      '・参戦記録はそのまま残ります\n\n戻しますか？',
+      () => {
+        // 子公演を切り離す
+        const children = getLives().filter(l => l.parentId === tour.id);
+        for (const child of children) {
+          updateLive(child.id, { parentId: null });
+        }
+        // 親をライブ化（日程情報は既存のまま）
+        updateLive(tour.id, { eventType: 'live' });
+        closeModal();
+        showToast('ライブに戻しました', 'success');
+        renderLives();
+      },
+    );
   });
 }
 

@@ -19,13 +19,14 @@ const OFFICIAL_URL = './official-lives.json';
 
 /**
  * 比較対象のフィールド（officialLive と localLive 間で差分判定する）
- * 注: name と dateStart は「同一性の判定」に使うので diff 対象には入れない
+ * 注: name と dateStart は「同一性の判定」に使うので diff 対象には入れない。
+ *     eventType も tour/live 転換が破壊的なため除外（applyUpdate で誤って
+ *     ツアー化すると既存の参戦日程が消えるため、データ構造変更は手動で）
  */
 export const DIFF_FIELDS: readonly DiffFieldName[] = [
   'venue',
   'prefecture',
   'dateEnd',
-  'eventType',
 ];
 
 /** eventType は日本語/英語が混在するので等価判定を正規化する */
