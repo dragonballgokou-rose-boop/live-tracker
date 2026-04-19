@@ -137,6 +137,10 @@ function mapApiMember(item, src) {
   if (!code) return null;
   const name =
     cleanText(item.name || item.memberName || item.member_name || item.title) || null;
+  // 疑似メンバーを除外: "乃木坂46" そのもの、"箱推し"、グループ名を含むエントリ
+  if (!name) return null;
+  if (name === src.artist) return null;
+  if (/^(箱推し|全員|公式|グループ)$/.test(name)) return null;
   const kana =
     cleanText(item.kana || item.ruby || item.nameKana || item.name_kana) || null;
   const eng =
