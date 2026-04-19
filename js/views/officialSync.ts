@@ -547,7 +547,12 @@ function attachHandlers({ toAdd, toUpdate }: HandlerCtx): void {
       // 種別が変わっていれば override として渡す
       const typeOverride = (selectedType && selectedType !== currentType) ? selectedType : null;
       if (checkedFields.length === 0 && !typeOverride) {
-        showToast('反映するフィールドまたは種別変更を選択してください', 'info');
+        // 既に指定した種別になっているケース: ポジティブに伝える
+        if (selectedType && selectedType === currentType) {
+          showToast(`すでに「${EVENT_TYPE_OPTIONS.find(o => o.value === selectedType)?.label}」に設定されています`, 'info');
+        } else {
+          showToast('反映するフィールドまたは種別変更を選択してください', 'info');
+        }
         return;
       }
       try {
@@ -786,12 +791,18 @@ function renderUpdateItem(item: DiffUpdateItem, i: number): string {
 
   // 現状の種別（ローカル優先、なければ公式）をプリセレクト
   const currentType = normalizeEventTypeValue(l.eventType || o.eventType);
+  // バッジはローカルの実際の種別を表示（公式とは別物だと分かるように）
+  const badgeHtml =
+    currentType === 'tour'  ? ' <span class="os-tour-tag">ツアー</span>' :
+    currentType === 'stage' ? ' <span class="os-tour-tag" style="background:rgba(251,191,36,0.15);color:#FCD34D;border-color:rgba(251,191,36,0.35);">舞台</span>' :
+    currentType === 'event' ? ' <span class="os-tour-tag" style="background:rgba(236,72,153,0.18);color:#F472B6;border-color:rgba(236,72,153,0.35);">イベント</span>' :
+    '';
 
   return `
     <div class="os-item">
       <div class="os-item-header">
         <div class="os-item-title">
-          <span class="os-artist">${escapeHtml(o.artist || '')}${o.eventType === 'tour' ? ' <span class="os-tour-tag">ツアー</span>' : ''}</span>
+          <span class="os-artist">${escapeHtml(o.artist || '')}${badgeHtml}</span>
           <span class="os-name">${escapeHtml(o.name || '')}</span>
         </div>
         ${applyBtnHtml}
