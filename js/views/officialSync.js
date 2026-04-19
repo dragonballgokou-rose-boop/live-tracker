@@ -278,7 +278,7 @@ function attachHandlers({ toAdd, toUpdate }) {
 
   // 類似既存ライブと統合（ローカルの既存ライブを公式で更新）
   document.querySelectorAll('[data-action="merge"]').forEach(btn => {
-    btn.addEventListener('click', () => {
+    btn.addEventListener('click', async () => {
       const i = Number(btn.dataset.index);
       const sIdx = Number(btn.dataset.similar);
       const item = toAdd[i];
@@ -296,16 +296,22 @@ function attachHandlers({ toAdd, toUpdate }) {
         showToast('統合に失敗しました', 'error');
         return;
       }
-      showToast(`既存ライブと統合しました: ${target.name}`, 'success');
+      showToast(`統合: ${target.name}`, 'success');
       refreshDiffFromStore();
       refreshOfficialSyncBadge();
       renderModal();
+
+      const res = await flushSyncNow();
+      if (res && res.ok === false && res.reason === 'sync-failed') {
+        const msg = res.error?.message || JSON.stringify(res.error || {}).slice(0, 120);
+        showToast(`Supabase同期失敗: ${msg}`, 'error');
+      }
     });
   });
 
   // ピッカーで選択された任意の既存ライブと統合
   document.querySelectorAll('[data-action="merge-picked"]').forEach(btn => {
-    btn.addEventListener('click', () => {
+    btn.addEventListener('click', async () => {
       const i = Number(btn.dataset.index);
       const localIdx = Number(btn.dataset.localIdx);
       const official = toAdd[i]?.official;
@@ -323,10 +329,16 @@ function attachHandlers({ toAdd, toUpdate }) {
         showToast('統合に失敗しました', 'error');
         return;
       }
-      showToast(`既存ライブと統合しました: ${target.name}`, 'success');
+      showToast(`統合: ${target.name}`, 'success');
       refreshDiffFromStore();
       refreshOfficialSyncBadge();
       renderModal();
+
+      const res = await flushSyncNow();
+      if (res && res.ok === false && res.reason === 'sync-failed') {
+        const msg = res.error?.message || JSON.stringify(res.error || {}).slice(0, 120);
+        showToast(`Supabase同期失敗: ${msg}`, 'error');
+      }
     });
   });
 
@@ -429,7 +441,7 @@ function attachHandlers({ toAdd, toUpdate }) {
 
   // 差分の反映（選択フィールド）
   document.querySelectorAll('[data-action="apply-diff"]').forEach(btn => {
-    btn.addEventListener('click', () => {
+    btn.addEventListener('click', async () => {
       const i = Number(btn.dataset.index);
       const item = toUpdate[i];
       if (!item) return;
@@ -440,12 +452,23 @@ function attachHandlers({ toAdd, toUpdate }) {
         showToast('反映するフィールドを選択してください', 'info');
         return;
       }
-      applyUpdate(item.local, item.official, checkedFields);
-      container.classList.add('os-applied');
-      btn.disabled = true;
-      btn.textContent = '反映済み';
-      showToast(`更新しました: ${item.official.name}`, 'success');
+      try {
+        applyUpdate(item.local, item.official, checkedFields);
+      } catch (err) {
+        console.error('applyUpdate failed', err);
+        showToast(`反映失敗: ${err.message || err}`, 'error');
+        return;
+      }
+      showToast(`更新: ${item.official.name}`, 'success');
+      refreshDiffFromStore();
       refreshOfficialSyncBadge();
+      renderModal();
+
+      const res = await flushSyncNow();
+      if (res && res.ok === false && res.reason === 'sync-failed') {
+        const msg = res.error?.message || JSON.stringify(res.error || {}).slice(0, 120);
+        showToast(`Supabase同期失敗: ${msg}`, 'error');
+      }
     });
   });
 }
