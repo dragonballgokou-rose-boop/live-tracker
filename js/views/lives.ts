@@ -867,6 +867,7 @@ export function getLiveIconHtml(live, size = 22) {
 function getEventTypeBadge(live) {
   if (live.eventType === 'tour')  return `<span class="badge-event-type badge-event-tour">ツアー</span>`;
   if (live.eventType === 'event') return `<span class="badge-event-type badge-event-event">イベント</span>`;
+  if (live.eventType === 'stage') return `<span class="badge-event-type badge-event-stage">舞台</span>`;
   return '';
 }
 

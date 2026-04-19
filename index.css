@@ -3567,6 +3567,12 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
   border: 1px solid rgba(236,72,153,0.35);
 }
 
+.badge-event-stage {
+  background: rgba(251,191,36,0.15);
+  color: #FCD34D;
+  border: 1px solid rgba(251,191,36,0.35);
+}
+
 /* ---- SVGアイコンピッカー ---- */
 .svg-icon-picker {
   display: flex;
