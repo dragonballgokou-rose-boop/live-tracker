@@ -6,6 +6,7 @@ import { supabase } from './supabase.js';
 import type {
   Live, Member, Attendance, AttendanceStatus,
   LiveRow, MemberRow, AttendanceRow, SyncResult,
+  MemberOfficialLink,
 } from './types.js';
 
 // ---------- localStorage keys ----------
@@ -14,6 +15,10 @@ const STORAGE_KEYS = {
   LIVES:      'livetracker_lives',
   MEMBERS:    'livetracker_members',
   ATTENDANCE: 'livetracker_attendance',
+  /** 端末ローカルの推しメン（単一の memberId）。Supabase には同期しない */
+  FAVORITE:   'livetracker_favorite_member',
+  /** 端末ローカルの 公式メンバー ↔ ローカル member の紐付け。Supabase 同期対象外 */
+  OFFICIAL_LINKS: 'livetracker_member_official_links',
 } as const;
 
 type StorageKey = typeof STORAGE_KEYS[keyof typeof STORAGE_KEYS];
@@ -465,7 +470,58 @@ export function deleteMember(id: string): boolean {
   const attendance = getAll<Attendance>(STORAGE_KEYS.ATTENDANCE);
   const filtered = attendance.filter(a => a.memberId !== id);
   saveAll(STORAGE_KEYS.ATTENDANCE, filtered);
+  // 紐付けも削除
+  const links = getOfficialLinks().filter(l => l.memberId !== id);
+  localStorage.setItem(STORAGE_KEYS.OFFICIAL_LINKS, JSON.stringify(links));
+  if (getFavoriteMemberId() === id) setFavoriteMemberId(null);
   return deleteItem<Member>(STORAGE_KEYS.MEMBERS, id);
+}
+
+// ---------- 推しメン（端末ローカル） ----------
+
+export function getFavoriteMemberId(): string | null {
+  try {
+    const v = localStorage.getItem(STORAGE_KEYS.FAVORITE);
+    return v && v.trim() ? v : null;
+  } catch {
+    return null;
+  }
+}
+
+export function setFavoriteMemberId(id: string | null): void {
+  try {
+    if (id) localStorage.setItem(STORAGE_KEYS.FAVORITE, id);
+    else    localStorage.removeItem(STORAGE_KEYS.FAVORITE);
+  } catch {
+    /* noop */
+  }
+}
+
+// ---------- 公式メンバーとの紐付け（端末ローカル） ----------
+
+export function getOfficialLinks(): MemberOfficialLink[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.OFFICIAL_LINKS);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+export function getOfficialLink(memberId: string): MemberOfficialLink | null {
+  return getOfficialLinks().find(l => l.memberId === memberId) || null;
+}
+
+export function setOfficialLink(
+  memberId: string, officialCode: string | null, officialGroup: string | null,
+): void {
+  const links = getOfficialLinks().filter(l => l.memberId !== memberId);
+  if (officialCode && officialGroup) {
+    links.push({ memberId, officialCode, officialGroup });
+  }
+  localStorage.setItem(STORAGE_KEYS.OFFICIAL_LINKS, JSON.stringify(links));
 }
 
 // ---------- Attendance ----------

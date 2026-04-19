@@ -1,0 +1,45 @@
+name: Update Official Members
+
+on:
+  schedule:
+    # 毎日 06:10 JST (= 21:10 UTC)
+    - cron: '10 21 * * *'
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - 'claude/**'
+    paths:
+      - '.github/workflows/update-official-members.yml'
+      - 'scripts/scrape-members.mjs'
+
+permissions:
+  contents: write
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run member scraper
+        run: node scripts/scrape-members.mjs
+
+      - name: Commit updated JSON if changed
+        run: |
+          if git diff --quiet -- public/official-members.json; then
+            echo "No changes"
+            exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/official-members.json
+          git commit -m "chore: update official members (auto)"
+          git push origin HEAD:${{ github.ref_name }}

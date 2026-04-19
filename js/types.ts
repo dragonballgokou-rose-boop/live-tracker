@@ -48,6 +48,38 @@ export interface Member {
   updatedAt?: string | null;
 }
 
+/** 公式メンバーとのリンク（localStorage 側のサイドカー、端末毎） */
+export interface MemberOfficialLink {
+  memberId: string;
+  /** 公式 API の code。例 "46001" */
+  officialCode: string;
+  /** 'nogi' | 'saku' などグループ識別 */
+  officialGroup: string;
+}
+
+/** 公式メンバー一覧 JSON（public/official-members.json の各エントリ） */
+export interface OfficialMember {
+  code: string;
+  group: 'nogi' | 'saku' | string;
+  artist: string;
+  name: string | null;
+  kana: string | null;
+  eng: string | null;
+  imgUrl: string | null;
+  generation: string | null;
+  graduated: boolean;
+  detailUrl: string;
+  blogUrl: string;
+}
+
+export interface OfficialMembersFile {
+  version: string;
+  updatedAt: string;
+  sources: Record<string, string>;
+  members: OfficialMember[];
+  errors?: { group: string; artist: string; error: string }[];
+}
+
 export interface Attendance {
   id: string;
   liveId: string;

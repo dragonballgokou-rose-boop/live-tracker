@@ -1604,6 +1604,22 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
     -6px 0 18px -4px color-mix(in srgb, var(--member-color, #8B5CF6) 40%, transparent);
 }
 
+.member-card.is-favorite {
+  border: 1px solid rgba(251, 191, 36, 0.45);
+  box-shadow:
+    0 0 0 1px rgba(251, 191, 36, 0.22),
+    0 8px 20px rgba(0, 0, 0, 0.30),
+    inset 0 0.5px 0 rgba(255, 255, 255, 0.10);
+}
+
+.oshi-badge {
+  display: inline-block;
+  margin-left: 4px;
+  color: #FCD34D;
+  font-size: 12px;
+  text-shadow: 0 0 6px rgba(251, 191, 36, 0.55);
+}
+
 .member-card-top {
   display: flex;
   align-items: center;
@@ -2264,7 +2280,8 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
 
   display: flex;
   align-items: center;
-  padding: 0 6px;
+  gap: 6px;
+  padding: 0 8px;
 
   /* GPU 層に固定して rubber-band でも安定 */
   transform: translateZ(0);
@@ -2273,29 +2290,23 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
 
-  /* iOS デフォルトアプリ風: 半透明ガラス + 強めの blur */
-  background: rgba(30, 30, 36, 0.55);
-  backdrop-filter: blur(40px) saturate(200%);
-  -webkit-backdrop-filter: blur(40px) saturate(200%);
+  /* 控えめなガラスコンテナ（柔らか枠は各項目側で出す） */
+  background: rgba(20, 20, 24, 0.55);
+  backdrop-filter: blur(28px) saturate(180%);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
 
-  /* ピル型のはっきり見える優しい枠 */
   border-radius: 34px;
-  border: 1.5px solid rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.08);
 
-  /* iOS 風: 内側ハイライト + 外側のソフトハロー + 落ち影 */
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.14),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.28),
-    0 0 0 1px rgba(255, 255, 255, 0.05),
-    0 10px 34px rgba(0, 0, 0, 0.42),
-    0 2px 8px rgba(0, 0, 0, 0.28);
+    0 8px 28px rgba(0, 0, 0, 0.38),
+    0 2px 6px rgba(0, 0, 0, 0.22);
 
   z-index: 101;
   overflow: hidden;
   isolation: isolate;
 }
 
-/* iOS 風はスペキュラー帯を外す */
 .bottom-nav::after { content: none; }
 
 /* Apple Music 風の flat nav では SVG liquid-glass を適用しない */
@@ -2334,17 +2345,20 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
 
 /* タップ時は svg のスケールで押し込み感を出す（下の svg rule 参照） */
 
-/* Layout wrapper (background はインジケーターが担当) */
+/* 各タブ項目を上のフィルタチップのような柔らかい枠で囲む */
 .item-inner {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 3px;
-  padding: 0 12px;
-  height: 56px;
+  padding: 0 8px;
+  height: 52px;
   width: 100%;
-  border-radius: 28px;
+  border-radius: 22px;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  background: rgba(255, 255, 255, 0.03);
+  transition: border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
 }
 
 .bottom-nav-item svg {
@@ -2370,9 +2384,17 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
   color: rgba(255, 255, 255, 0.75);
 }
 
-/* Apple Music 風: active は乃木坂紫で色だけ変える（背景・ピル無し） */
+/* active: chip の枠ごと紫に点灯 */
 .bottom-nav-item.active {
   color: #a78bfa;
+}
+
+.bottom-nav-item.active .item-inner {
+  border-color: rgba(167, 139, 250, 0.55);
+  background: rgba(167, 139, 250, 0.10);
+  box-shadow:
+    inset 0 0 0 1px rgba(167, 139, 250, 0.25),
+    0 0 10px rgba(167, 139, 250, 0.18);
 }
 
 .bottom-nav-item.active svg {
