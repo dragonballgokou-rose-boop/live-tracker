@@ -208,11 +208,18 @@ export function renderLives() {
     });
   }
 
-  // タイプフィルター（すべて/ライブ/イベント）
+  // タイプフィルター（すべて/ライブ/イベント/ツアー/舞台）
   if (livesTypeFilter !== 'all') {
     filtered = filtered.filter(l => {
-      if (livesTypeFilter === 'event') return l.eventType === 'event';
-      return l.eventType !== 'event'; // 'live': イベント以外
+      const t = String(l.eventType || '').toLowerCase();
+      const isTour  = t === 'tour'  || t === 'ツアー';
+      const isEvent = t === 'event' || t === 'イベント';
+      const isStage = t === 'stage' || t === '舞台';
+      if (livesTypeFilter === 'tour')  return isTour;
+      if (livesTypeFilter === 'stage') return isStage;
+      if (livesTypeFilter === 'event') return isEvent;
+      // 'live': 通常ライブ（ツアー/舞台/イベント以外）かつ ツアー子公演でないもの
+      return !isTour && !isEvent && !isStage && !l.parentId;
     });
   }
 
@@ -625,10 +632,12 @@ export function renderLives() {
           </div>
           ${viewToggleHtml}
         </div>
-        <div class="history-filter" style="gap:6px;">
+        <div class="history-filter" style="gap:6px;flex-wrap:wrap;">
           <button class="history-chip${livesTypeFilter === 'all' ? ' history-chip-active' : ''}" data-type="all">すべて</button>
           <button class="history-chip${livesTypeFilter === 'live' ? ' history-chip-active' : ''}" data-type="live">ライブ</button>
           <button class="history-chip${livesTypeFilter === 'event' ? ' history-chip-active' : ''}" data-type="event">イベント</button>
+          <button class="history-chip${livesTypeFilter === 'tour' ? ' history-chip-active' : ''}" data-type="tour">ツアー</button>
+          <button class="history-chip${livesTypeFilter === 'stage' ? ' history-chip-active' : ''}" data-type="stage">舞台</button>
         </div>
       </div>
       <div style="display:flex;flex-direction:column;gap:6px;">
@@ -787,6 +796,15 @@ export function renderLives() {
     });
   });
 
+  // ロゴ画像タップで拡大表示
+  content.querySelectorAll('[data-live-logo]').forEach(img => {
+    img.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const src = img.dataset.liveLogo;
+      if (src) showLiveLogoModal(src);
+    });
+  });
+
   // ツアー折りたたみ
   content.querySelectorAll('[data-toggle-tour]').forEach(el => {
     el.addEventListener('click', (e) => {
@@ -847,20 +865,37 @@ const EVENT_SVG_ICONS = [
 ];
 
 // アイコンHTML生成（絵文字 / SVG / 画像 を統一的に扱う）
+// 子ライブで icon 未設定のときは 親ツアーの iconImg/icon を継承する
 export function getLiveIconHtml(live, size = 22) {
-  if (live.iconImg) {
-    return `<img src="${live.iconImg}" style="width:${size}px;height:${size}px;border-radius:5px;object-fit:cover;flex-shrink:0;margin-right:5px;vertical-align:middle;" />`;
+  let eff = live;
+  if (!live.iconImg && !live.icon && live.parentId) {
+    const parent = getLives().find(l => l.id === live.parentId);
+    if (parent && (parent.iconImg || parent.icon)) eff = parent;
   }
-  if (live.icon && live.icon.startsWith('svg:')) {
-    const def = EVENT_SVG_ICONS.find(i => i.id === live.icon.slice(4));
+  if (eff.iconImg) {
+    return `<img src="${eff.iconImg}" class="live-icon-img" data-live-logo="${eff.iconImg}" style="width:${size}px;height:${size}px;border-radius:5px;object-fit:cover;flex-shrink:0;margin-right:5px;vertical-align:middle;cursor:zoom-in;" />`;
+  }
+  if (eff.icon && eff.icon.startsWith('svg:')) {
+    const def = EVENT_SVG_ICONS.find(i => i.id === eff.icon.slice(4));
     if (def) {
-      const color = live.color || 'currentColor';
+      const color = eff.color || 'currentColor';
       const svgWithSize = def.svg.replace('<svg ', `<svg width="${size}" height="${size}" `);
       return `<span style="width:${size}px;height:${size}px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;margin-right:5px;color:${color};">${svgWithSize}</span>`;
     }
   }
-  if (live.icon) return `<span style="margin-right:4px;">${live.icon}</span>`;
+  if (eff.icon) return `<span style="margin-right:4px;">${eff.icon}</span>`;
   return '';
+}
+
+/** ロゴ画像を大きく表示するモーダルを開く */
+export function showLiveLogoModal(imgSrc: string) {
+  if (!imgSrc) return;
+  const html = `
+    <div style="display:flex;align-items:center;justify-content:center;padding:8px 0;">
+      <img src="${escapeAttr(imgSrc)}" alt="" style="max-width:100%;max-height:70vh;border-radius:12px;box-shadow:0 8px 40px rgba(0,0,0,0.5);object-fit:contain;" />
+    </div>
+  `;
+  showModal('ロゴ', html);
 }
 
 // イベントタイプバッジ
