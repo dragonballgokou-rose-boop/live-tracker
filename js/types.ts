@@ -179,6 +179,17 @@ export interface DiffAddItem {
   similar?: SimilarLocalLive[];
 }
 
+/** 子公演の不足フィールド（venue 等）を公式 child で補完する場合の 1 件 */
+export type ChildReconcileField =
+  | 'venue' | 'prefecture' | 'dateEnd'
+  | 'openTime' | 'startTime' | 'dayTimes';
+
+export interface ChildReconcileItem {
+  localChild: Live;
+  officialChild: OfficialChildPerformance;
+  fieldsToFill: ChildReconcileField[];
+}
+
 export interface DiffUpdateItem {
   official: OfficialLive;
   local: Live;
@@ -187,6 +198,8 @@ export interface DiffUpdateItem {
   newChildren?: OfficialChildPerformance[];
   /** 公式ツアー→ローカル舞台/ライブ等で、会場情報を children から吸収できる場合 true */
   canAbsorbVenue?: boolean;
+  /** 既存のローカル子公演で、公式 child と重なるが会場/時刻/dateEnd が足りないもの */
+  childUpdates?: ChildReconcileItem[];
 }
 
 export interface DiffSkipItem {

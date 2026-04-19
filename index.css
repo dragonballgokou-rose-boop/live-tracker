@@ -2255,16 +2255,16 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
 .bottom-nav {
   position: fixed;
   /* 画面下にしっかり寄せつつ home indicator と被らない位置 */
-  bottom: calc(8px + env(safe-area-inset-bottom, 8px));
-  left: 16px;
-  right: 16px;
+  bottom: calc(10px + env(safe-area-inset-bottom, 8px));
+  left: 14px;
+  right: 14px;
   max-width: 480px;
   margin: 0 auto;
-  height: 62px;
+  height: 64px;
 
   display: flex;
   align-items: center;
-  padding: 0 4px;
+  padding: 0 6px;
 
   /* GPU 層に固定して rubber-band でも安定 */
   transform: translateZ(0);
@@ -2273,25 +2273,28 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
 
-  /* Apple Music 風: ほぼ完全不透明 + フラットな黒 */
-  background: rgba(18, 18, 22, 0.96);
-  backdrop-filter: blur(30px) saturate(180%);
-  -webkit-backdrop-filter: blur(30px) saturate(180%);
+  /* iOS デフォルトアプリ風: 柔らかい半透明ガラス + 強めの blur */
+  background: rgba(28, 28, 34, 0.62);
+  backdrop-filter: blur(36px) saturate(180%);
+  -webkit-backdrop-filter: blur(36px) saturate(180%);
 
-  border-radius: 32px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  /* ピル型の優しい枠 */
+  border-radius: 34px;
+  border: 1px solid rgba(255, 255, 255, 0.10);
 
-  /* Apple Music 風: シンプルなドロップシャドウのみ、specular なし */
+  /* iOS 風: 柔らかい内側ハイライト + 軽い落ち影 */
   box-shadow:
-    0 10px 30px rgba(0, 0, 0, 0.50),
-    0 2px 6px rgba(0, 0, 0, 0.30);
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.25),
+    0 8px 28px rgba(0, 0, 0, 0.35),
+    0 2px 6px rgba(0, 0, 0, 0.22);
 
   z-index: 101;
   overflow: hidden;
   isolation: isolate;
 }
 
-/* Apple Music 風はスペキュラー帯を外す */
+/* iOS 風はスペキュラー帯を外す */
 .bottom-nav::after { content: none; }
 
 /* Apple Music 風の flat nav では SVG liquid-glass を適用しない */
