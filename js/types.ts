@@ -181,7 +181,7 @@ export interface DiffAddItem {
 
 /** 子公演の不足フィールド（venue 等）を公式 child で補完する場合の 1 件 */
 export type ChildReconcileField =
-  | 'venue' | 'prefecture' | 'dateEnd'
+  | 'venue' | 'prefecture' | 'dateStart' | 'dateEnd'
   | 'openTime' | 'startTime' | 'dayTimes';
 
 export interface ChildReconcileItem {

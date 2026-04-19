@@ -822,6 +822,7 @@ function renderMergePickerList(addIndex: number, query: string): string {
 const CHILD_FIELD_LABEL: Record<string, string> = {
   venue:      '会場',
   prefecture: '都道府県',
+  dateStart:  '開始日',
   dateEnd:    '終了日',
   openTime:   '開場',
   startTime:  '開演',
