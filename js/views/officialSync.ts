@@ -531,6 +531,32 @@ function attachHandlers({ toAdd, toUpdate }: HandlerCtx): void {
     }
   });
 
+  // 「会場を取り込む」ボタン: 既に舞台/ライブ化済みで venue 空の item に対し、
+  // 公式ツアーの最初の child から venue/時刻を吸収する
+  document.querySelectorAll<HTMLButtonElement>('[data-action="absorb-venue"]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const i = Number(btn.dataset.index);
+      const item = toUpdate[i];
+      if (!item) return;
+      try {
+        applyUpdate(item.local, item.official, []);
+      } catch (err: unknown) {
+        console.error('applyUpdate (absorb) failed', err);
+        showToast(`会場取り込み失敗: ${errMsg(err)}`, 'error');
+        return;
+      }
+      showToast(`会場情報を取り込み: ${item.official.name}`, 'success');
+      refreshDiffFromStore();
+      refreshOfficialSyncBadge();
+      renderModal();
+
+      const res = await flushSyncNow();
+      if (res && res.ok === false && res.reason === 'sync-failed') {
+        showToast(`Supabase同期失敗: ${errMsg(res.error)}`, 'error');
+      }
+    });
+  });
+
   // 種別 select を変更したら即座に反映（再レンダリングで他アイテムの
   // 変更が失われる問題を回避。「舞台」等は選ぶだけで即時保存される）
   document.querySelectorAll<HTMLSelectElement>('.os-upd-type').forEach(sel => {
@@ -821,6 +847,18 @@ function renderUpdateItem(item: DiffUpdateItem, i: number): string {
     currentType === 'event' ? ' <span class="os-tour-tag" style="background:rgba(236,72,153,0.18);color:#F472B6;border-color:rgba(236,72,153,0.35);">イベント</span>' :
     '';
 
+  // 舞台などに変換済みだが、親の venue が空で公式 children から埋められる場合
+  const absorbVenueBanner = item.canAbsorbVenue ? `
+    <div class="os-type-hint-banner" style="margin-top:8px;padding:10px 12px;background:rgba(56,189,248,0.08);border:1px solid rgba(56,189,248,0.35);border-radius:8px;font-size:12px;color:var(--text-secondary);display:flex;align-items:center;gap:8px;justify-content:space-between;">
+      <span style="display:flex;align-items:flex-start;gap:8px;">
+        <span style="font-size:16px;line-height:1;">🏟</span>
+        <span>会場情報が空のままです。公式データ（${Array.isArray(o.children) ? o.children.length : 0}公演）から <strong>会場・時刻を取り込めます</strong>。</span>
+      </span>
+      <button type="button" class="btn btn-primary btn-sm"
+              data-action="absorb-venue" data-index="${i}">会場を取り込む</button>
+    </div>
+  ` : '';
+
   // 種別ミスマッチの時は目立つ案内バナーを出して行動を促す
   const officialChildCount = Array.isArray(o.children) ? o.children.length : 0;
   const typeMismatchBanner =
@@ -854,6 +892,7 @@ function renderUpdateItem(item: DiffUpdateItem, i: number): string {
           ${renderEventTypeSelect(`os-upd-type-${i}`, currentType, 'upd', i)}
           <span class="os-type-hint">変更すると即時反映されます</span>
         </div>
+        ${absorbVenueBanner}
         ${typeMismatchBanner}
         ${newChildrenBlock}
         ${diffBlock}
