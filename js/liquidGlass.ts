@@ -4,14 +4,29 @@
 // Based on archisvaze/liquid-glass
 // ============================================
 
+interface FilterOptions {
+  radius?: number;
+  bezelWidth?: number;
+  glassThickness?: number;
+  ior?: number;
+  scaleRatio?: number;
+  blurAmount?: number;
+  specularOpacity?: number;
+  specularSat?: number;
+  saturation?: number;
+  brightness?: number;
+}
+
 // Convex squircle surface function — models the curved glass surface profile
-const SURFACE_FN = x => Math.pow(1 - Math.pow(1 - x, 4), 0.25);
+const SURFACE_FN = (x: number): number => Math.pow(1 - Math.pow(1 - x, 4), 0.25);
 
 /**
  * Calculate refraction displacement profile along the bezel using Snell's Law.
  * Returns a Float64Array mapping bezel depth → displacement amount.
  */
-function calculateRefractionProfile(glassThickness, bezelWidth, ior, samples = 128) {
+function calculateRefractionProfile(
+  glassThickness: number, bezelWidth: number, ior: number, samples: number = 128,
+): Float64Array {
   const eta = 1 / ior;
   const profile = new Float64Array(samples);
   for (let i = 0; i < samples; i++) {
@@ -40,11 +55,15 @@ function calculateRefractionProfile(glassThickness, bezelWidth, ior, samples = 1
  * Generate an RGBA displacement map canvas as a data URL.
  * R channel = X displacement, G channel = Y displacement (both centered at 128).
  */
-function generateDisplacementMap(w, h, radius, bezelWidth, profile, maxDisp) {
+function generateDisplacementMap(
+  w: number, h: number, radius: number, bezelWidth: number,
+  profile: Float64Array, maxDisp: number,
+): string {
   const canvas = document.createElement('canvas');
   canvas.width = w;
   canvas.height = h;
   const ctx = canvas.getContext('2d');
+  if (!ctx) return '';
   const img = ctx.createImageData(w, h);
   const d = img.data;
   // Default: no displacement (neutral gray)
@@ -90,11 +109,15 @@ function generateDisplacementMap(w, h, radius, bezelWidth, profile, maxDisp) {
 /**
  * Generate a specular highlight map — bright at edges facing the light source.
  */
-function generateSpecularMap(w, h, radius, bezelWidth, angle = Math.PI / 3) {
+function generateSpecularMap(
+  w: number, h: number, radius: number, bezelWidth: number,
+  angle: number = Math.PI / 3,
+): string {
   const canvas = document.createElement('canvas');
   canvas.width = w;
   canvas.height = h;
   const ctx = canvas.getContext('2d');
+  if (!ctx) return '';
   const img = ctx.createImageData(w, h);
   const d = img.data;
   d.fill(0);
@@ -143,7 +166,7 @@ function generateSpecularMap(w, h, radius, bezelWidth, angle = Math.PI / 3) {
  * @param {number} h          — element height in px
  * @param {object} opts
  */
-function buildFilter(filterId, w, h, opts = {}) {
+function buildFilter(filterId: string, w: number, h: number, opts: FilterOptions = {}): void {
   const {
     radius          = 32,
     bezelWidth      = 32,
@@ -211,10 +234,10 @@ function buildFilter(filterId, w, h, opts = {}) {
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
-let _rebuildTimer   = null;
-let _indicatorTimer = null;
+let _rebuildTimer:   ReturnType<typeof setTimeout> | null = null;
+let _indicatorTimer: ReturnType<typeof setTimeout> | null = null;
 
-function buildNavFilter() {
+function buildNavFilter(): void {
   const nav = document.getElementById('bottom-nav');
   if (!nav) return;
   const w = nav.offsetWidth;
@@ -234,8 +257,8 @@ function buildNavFilter() {
   });
 }
 
-function buildIndicatorFilter() {
-  const indicator = document.querySelector('.tab-indicator');
+function buildIndicatorFilter(): void {
+  const indicator = document.querySelector<HTMLElement>('.tab-indicator');
   if (!indicator) return;
   const w = Math.max(indicator.offsetWidth, 60);
   const h = indicator.offsetHeight || 56;
@@ -254,21 +277,20 @@ function buildIndicatorFilter() {
   });
 }
 
-export function initLiquidGlass() {
-  function rebuild() {
+export function initLiquidGlass(): void {
+  function rebuild(): void {
     buildNavFilter();
     buildIndicatorFilter();
-    // Enable liquid-glass CSS rules (see @supports block in index.css)
     document.body.classList.add('liquid-glass-ready');
   }
 
-  function scheduleRebuild() {
-    clearTimeout(_rebuildTimer);
+  function scheduleRebuild(): void {
+    if (_rebuildTimer) clearTimeout(_rebuildTimer);
     _rebuildTimer = setTimeout(rebuild, 40);
   }
 
-  function scheduleIndicatorRebuild() {
-    clearTimeout(_indicatorTimer);
+  function scheduleIndicatorRebuild(): void {
+    if (_indicatorTimer) clearTimeout(_indicatorTimer);
     _indicatorTimer = setTimeout(buildIndicatorFilter, 40);
   }
 

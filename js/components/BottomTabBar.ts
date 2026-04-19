@@ -1,14 +1,18 @@
 // ============================================
 // BottomTabBar — Liquid Glass Tab Bar Component
 // ============================================
-// Usage:
-//   import BottomTabBar, { TABS } from './components/BottomTabBar.js';
-//   const bar = new BottomTabBar({ container, activeTab: 'top', onTabChange });
 
 const SVG = `width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"`;
 
+export interface TabDef {
+  id: string;
+  path: string;
+  label: string;
+  svg: string;
+}
+
 /** Tab definitions — single source of truth for IDs, paths, labels, icons */
-export const TABS = [
+export const TABS: TabDef[] = [
   {
     id: 'top',
     path: '/',
@@ -41,29 +45,32 @@ export const TABS = [
   },
 ];
 
+export interface BottomTabBarOptions {
+  container: HTMLElement;
+  activeTab?: string;
+  onTabChange?: (tabId: string) => void;
+}
+
 export default class BottomTabBar {
-  /**
-   * @param {object}      opts
-   * @param {HTMLElement} opts.container    — element to mount the nav into
-   * @param {string}     [opts.activeTab]   — initial active tab ID (default: 'top')
-   * @param {Function}   [opts.onTabChange] — (tabId: string) => void
-   */
-  constructor({ container, activeTab = 'top', onTabChange } = {}) {
+  private container: HTMLElement;
+  activeTab: string;
+  private onTabChange: ((tabId: string) => void) | null;
+
+  private _nav: HTMLElement | null = null;
+  private _indicator: HTMLElement | null = null;
+  private _items: Map<string, HTMLAnchorElement> = new Map();
+
+  constructor({ container, activeTab = 'top', onTabChange }: BottomTabBarOptions) {
     this.container   = container;
     this.activeTab   = activeTab;
     this.onTabChange = onTabChange ?? null;
-
-    this._nav       = null;
-    this._indicator = null;
-    this._items     = new Map(); // tabId → <a> element
-
     this._render();
   }
 
   // ── Public API ──────────────────────────────────────────────────────────
 
   /** Activate tab by ID. No-op if already active. */
-  setActive(tabId) {
+  setActive(tabId: string): void {
     if (this.activeTab === tabId) return;
     this.activeTab = tabId;
     this._updateActive();
@@ -71,28 +78,26 @@ export default class BottomTabBar {
   }
 
   /** Activate tab by route path, e.g. '/tally' */
-  setActiveByPath(path) {
+  setActiveByPath(path: string): void {
     const tab = TABS.find(t => path === t.path || path.startsWith(t.path + '/'));
     if (tab) this.setActive(tab.id);
   }
 
   // ── Private ─────────────────────────────────────────────────────────────
 
-  _render() {
+  private _render(): void {
     const nav = document.createElement('nav');
     nav.className = 'bottom-nav';
     nav.id = 'bottom-nav';
     nav.setAttribute('aria-label', 'メインナビゲーション');
     this._nav = nav;
 
-    // Sliding liquid-glass indicator (z-index 0, behind items)
     const indicator = document.createElement('span');
     indicator.className = 'tab-indicator';
     indicator.setAttribute('aria-hidden', 'true');
     this._indicator = indicator;
     nav.appendChild(indicator);
 
-    // Tab items
     TABS.forEach(tab => {
       const a = document.createElement('a');
       a.href = `#${tab.path}`;
@@ -113,35 +118,31 @@ export default class BottomTabBar {
 
     this.container.appendChild(nav);
 
-    // Position indicator once layout is ready
     requestAnimationFrame(() => this._placeIndicator(false));
     window.addEventListener('resize', () => this._placeIndicator(false));
   }
 
-  _updateActive() {
+  private _updateActive(): void {
     this._items.forEach((el, id) =>
-      el.classList.toggle('active', id === this.activeTab)
+      el.classList.toggle('active', id === this.activeTab),
     );
     this._placeIndicator(true);
   }
 
   /**
    * Move the sliding indicator to the active tab.
-   * @param {boolean} animate — false = instant (initial render / resize)
+   * @param animate  false = instant (initial render / resize)
    */
-  _placeIndicator(animate) {
+  private _placeIndicator(animate: boolean): void {
     const el = this._items.get(this.activeTab);
     if (!el || !this._indicator) return;
 
-    if (!animate) {
-      this._indicator.classList.add('no-transition');
-    }
+    if (!animate) this._indicator.classList.add('no-transition');
 
     this._indicator.style.left  = el.offsetLeft + 'px';
     this._indicator.style.width = el.offsetWidth + 'px';
 
     if (!animate) {
-      // Force reflow, then re-enable transition
       void this._indicator.getBoundingClientRect();
       this._indicator.classList.remove('no-transition');
     }
