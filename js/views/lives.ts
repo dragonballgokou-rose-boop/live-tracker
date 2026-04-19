@@ -933,29 +933,44 @@ function openTourModal(tour = null) {
     renderLives();
   });
 
-  // 「ライブに戻す」: ツアー化で参戦記録が見えなくなった場合の復旧用。
-  // eventType を 'live' に戻すだけで、attendance は id 紐付けなのでそのまま復活する。
-  // 子公演 (parentId で繋がる live) は親から切り離して独立した live にする。
+  // 「ライブに戻す」: ツアー化で参戦記録・会場が見えなくなった場合の復旧用。
+  // ツアー親は通常 venue / prefecture が空なので、子公演から継承して戻す。
   document.getElementById('tour-to-live-btn')?.addEventListener('click', () => {
     if (!isEdit) return;
-    showConfirm(
-      'ツアーをライブに戻す',
-      'このツアーを通常のライブに戻します。\n' +
-      '・子公演があれば、親との紐付けを解除して独立したライブになります\n' +
-      '・参戦記録はそのまま残ります\n\n戻しますか？',
-      () => {
-        // 子公演を切り離す
-        const children = getLives().filter(l => l.parentId === tour.id);
-        for (const child of children) {
-          updateLive(child.id, { parentId: null });
-        }
-        // 親をライブ化（日程情報は既存のまま）
-        updateLive(tour.id, { eventType: 'live' });
-        closeModal();
-        showToast('ライブに戻しました', 'success');
-        renderLives();
-      },
-    );
+    const children = getLives()
+      .filter(l => l.parentId === tour.id)
+      .sort((a, b) => (a.dateStart || '').localeCompare(b.dateStart || ''));
+
+    const first = children[0];
+    const dates = children.map(c => c.dateStart).filter(Boolean).sort();
+
+    const confirmMsg = children.length > 0
+      ? `このツアーを通常のライブに戻します。\n` +
+        `・子公演 ${children.length} 件は削除され、ツアー本体に吸収されます\n` +
+        `・会場・都道府県・日程は最初の子公演から引き継ぎます\n` +
+        `・参戦記録は ID 紐付けなので残ります\n\n戻しますか？`
+      : `このツアーを通常のライブに戻します。\n` +
+        `・参戦記録はそのまま残ります\n\n戻しますか？`;
+
+    showConfirm('ツアーをライブに戻す', confirmMsg, () => {
+      // 親の空フィールドを子から補完
+      const updates: Partial<typeof tour> = { eventType: 'live', parentId: null };
+      if (!tour.venue      && first?.venue)      updates.venue      = first.venue;
+      if (!tour.prefecture && first?.prefecture) updates.prefecture = first.prefecture;
+      if (!tour.dateStart  && dates.length > 0)  updates.dateStart  = dates[0];
+      if (!tour.dateEnd    && dates.length > 0)  updates.dateEnd    = dates[dates.length - 1];
+
+      updateLive(tour.id, updates);
+
+      // 子公演は削除（親が同じ日程を持つようになったので重複を避ける）
+      for (const child of children) {
+        deleteLive(child.id);
+      }
+
+      closeModal();
+      showToast(`ライブに戻しました${children.length ? `（子公演 ${children.length} 件を吸収）` : ''}`, 'success');
+      renderLives();
+    });
   });
 }
 
