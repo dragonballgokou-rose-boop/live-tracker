@@ -165,6 +165,8 @@ function parseScheduleJson(body, { artist, idPrefix, url }) {
             dateEnd:    date,
             venue:      cleanText(k.place || k.venue || k.hall || '') || null,
             prefecture: cleanText(k.area || k.prefecture || k.pref || '') || null,
+            openTime:   normalizeTime(k.open || k.kaijo || k.door || k.open_time || k.doorOpen || k.gate || k.kaijyo) || null,
+            startTime:  normalizeTime(k.start || k.kaien || k.start_time || k.show || k.showStart || k.performance) || null,
           };
         })
         .filter(Boolean)
@@ -180,6 +182,23 @@ function parseScheduleJson(body, { artist, idPrefix, url }) {
 
       if (perKouen.length === 1 || isMultiDaySingleLive) {
         const first = perKouen[0];
+        // カテゴリ判定: 名前に舞台系キーワードがある時だけ 'stage'
+        // （ライブ系キーワードやデフォルトはすべて 'live'）
+        const eventType = looksLikeStage(title)
+          ? 'stage'
+          : mapCategory(item.cate || item.category || '');
+        // multi-day 単独ライブの場合、各日の open/start を dayTimes にまとめる
+        const dayTimes = [];
+        for (const k of perKouen) {
+          if (k.openTime || k.startTime) {
+            dayTimes.push({
+              date: k.dateStart,
+              openTime:  k.openTime  || undefined,
+              startTime: k.startTime || undefined,
+            });
+          }
+        }
+        const hasDayTimes = dayTimes.length > 0;
         results.push({
           officialId: `${idPrefix}-${item.code || dateStart}-${slugify(title)}`,
           artist,
@@ -188,13 +207,21 @@ function parseScheduleJson(body, { artist, idPrefix, url }) {
           prefecture: first.prefecture,
           dateStart,
           dateEnd,   // multi-day の場合は最終日
-          eventType: mapCategory(item.cate || item.category || ''),
+          eventType,
           iconImg: item.img || item.image || item.thumbnail || null,
           sourceUrl: item.link || url,
           scrapedAt: new Date().toISOString(),
+          openTime:  perKouen.length === 1 ? (first.openTime  || null) : null,
+          startTime: perKouen.length === 1 ? (first.startTime || null) : null,
+          dayTimes:  hasDayTimes ? dayTimes : undefined,
         });
       } else {
         // 複数会場 or 非連続日 → 本物のツアー
+        // 連続同一会場の日程を「レグ」に畳む
+        // 例: 7/14福井, 7/15福井, 7/17宮城, 7/18宮城
+        //     → 福井 7/14〜7/15 / 宮城 7/17〜7/18 の 2 レグ
+        const legs = groupIntoLegs(perKouen);
+
         results.push({
           officialId: `${idPrefix}-${item.code || dateStart}-${slugify(title)}`,
           artist,
@@ -207,12 +234,14 @@ function parseScheduleJson(body, { artist, idPrefix, url }) {
           iconImg: item.img || item.image || item.thumbnail || null,
           sourceUrl: item.link || url,
           scrapedAt: new Date().toISOString(),
-          children: perKouen.map((p, idx) => ({
-            dateStart: p.dateStart,
-            dateEnd:   p.dateEnd,
-            venue:     p.venue,
-            prefecture: p.prefecture,
-            dayLabel:  `Day${idx + 1}`,
+          children: legs.map((leg) => ({
+            dateStart:  leg.dateStart,
+            dateEnd:    leg.dateEnd,
+            venue:      leg.venue,
+            prefecture: leg.prefecture,
+            openTime:   leg.openTime  || null,
+            startTime:  leg.startTime || null,
+            dayTimes:   leg.dayTimes  || undefined,
           })),
         });
       }
@@ -576,6 +605,17 @@ function slugify(s) {
     .slice(0, 40) || 'x';
 }
 
+function normalizeTime(raw) {
+  if (!raw) return '';
+  const s = cleanText(raw);
+  // "17:30" "17時30分" "17:30:00" "5:30 PM" いずれも HH:MM に揃える
+  const m = s.match(/(\d{1,2})[:時](\d{1,2})/);
+  if (!m) return '';
+  const h = Math.max(0, Math.min(23, parseInt(m[1], 10)));
+  const mm = Math.max(0, Math.min(59, parseInt(m[2], 10)));
+  return `${String(h).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
+}
+
 function normalizeDate(raw) {
   if (!raw) return null;
   const s = cleanText(raw);
@@ -612,6 +652,77 @@ function isSameVenueConsecutive(perKouen) {
     if (!isFinite(gapDays) || gapDays > 1) return false;
   }
   return true;
+}
+
+/**
+ * 名前ベースで「舞台」と判定するヒューリスティック。
+ * 演目名（プリンシパル等）や 舞台/ミュージカル 等の明示的キーワードのみ。
+ * - 「ライブ / LIVE / コンサート」を含む場合は舞台ではない (e.g., アンダーライブ セカンド・シーズン)
+ * - 「プリンシパル / 舞台 / 演劇 / ミュージカル」等が含まれる時だけ true
+ * 判定を誤ったら手動で eventType を変更可能なので、保守的にデフォルト live に倒す
+ */
+/**
+ * 連続日付 × 同一会場 の公演をまとめて「レグ」にする。
+ * 例: [7/14福井, 7/15福井, 7/17宮城, 7/18宮城, 8/14愛知]
+ *     → [{dateStart:7/14, dateEnd:7/15, venue:福井},
+ *         {dateStart:7/17, dateEnd:7/18, venue:宮城},
+ *         {dateStart:8/14, dateEnd:8/14, venue:愛知}]
+ * ツアーの children はレグ単位で持つことで、UI が「福井 6/13〜14 / 神奈川 6/24〜25」の
+ * ように見やすくなり、手動で作ったツアーと同じ構造になる。
+ */
+function groupIntoLegs(perKouen) {
+  const legs = [];
+  let cur = null;
+  for (const k of perKouen) {
+    const sameVenue = cur && (cur.venue || '') === (k.venue || '')
+                   && (cur.prefecture || '') === (k.prefecture || '');
+    const consecutive = cur && (() => {
+      const prev = new Date(cur.dateEnd + 'T00:00:00');
+      const next = new Date(k.dateStart + 'T00:00:00');
+      const gap = (next - prev) / 86400000;
+      return isFinite(gap) && gap > 0 && gap <= 1;
+    })();
+    if (cur && sameVenue && consecutive) {
+      cur.dateEnd = k.dateStart; // レグ延長
+      if (k.openTime || k.startTime) {
+        cur.dayTimes = cur.dayTimes || [];
+        cur.dayTimes.push({
+          date: k.dateStart,
+          openTime:  k.openTime  || undefined,
+          startTime: k.startTime || undefined,
+        });
+      }
+    } else {
+      if (cur) legs.push(cur);
+      cur = {
+        dateStart:  k.dateStart,
+        dateEnd:    k.dateStart,
+        venue:      k.venue,
+        prefecture: k.prefecture,
+        openTime:   k.openTime,
+        startTime:  k.startTime,
+      };
+      if (k.openTime || k.startTime) {
+        cur.dayTimes = [{
+          date: k.dateStart,
+          openTime:  k.openTime  || undefined,
+          startTime: k.startTime || undefined,
+        }];
+      }
+    }
+  }
+  if (cur) legs.push(cur);
+  return legs;
+}
+
+function looksLikeStage(name) {
+  if (!name) return false;
+  const n = String(name);
+  // ライブ系キーワードを含むなら舞台ではない
+  if (/ライブ|ＬＩＶＥ|LIVE|コンサート|CONCERT|Concert|Anniversary|BIRTHDAY|Festival|フェス/i.test(n)) return false;
+  // 舞台系キーワード（16人のプリンシパル など）
+  if (/プリンシパル|舞台|演劇|ミュージカル|Musical|公演「|朗読劇|3Bjunior|16人の/i.test(n)) return true;
+  return false;
 }
 
 function mapCategory(raw) {

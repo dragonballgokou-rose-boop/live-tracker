@@ -179,22 +179,27 @@ function isSameLive(localLive: Live, officialLive: OfficialLive): boolean {
 
 /**
  * ツアー: 公式 children のうち、ローカルにまだ存在しない日程を抽出する。
- * ローカル側の子公演は parentId で紐付いた live を対象にし、dateStart 一致で判定。
- * 既に存在する日程は提案しない（上書き/重複を避ける）。
+ * レグ形式（dateStart〜dateEnd）にも対応するため、範囲重なり判定で存在チェック。
+ * 既に重なる日程が 1 日でもあれば既存扱いとして提案しない。
  */
 function findNewOfficialChildren(
   official: OfficialLive, parentLocal: Live, localLives: Live[],
 ) {
   if (official.eventType !== 'tour' || !Array.isArray(official.children)) return [];
-  const existingDates = new Set(
-    localLives
-      .filter(l => l.parentId === parentLocal.id)
-      .map(l => (l.dateStart || '').slice(0, 10))
-      .filter(Boolean),
-  );
+  const existingRanges = localLives
+    .filter(l => l.parentId === parentLocal.id)
+    .map(l => ({
+      start: (l.dateStart || l.date || '').slice(0, 10),
+      end:   (l.dateEnd   || l.dateStart || l.date || '').slice(0, 10),
+    }))
+    .filter(r => r.start);
   return official.children.filter(c => {
-    const d = (c.dateStart || '').slice(0, 10);
-    return d && !existingDates.has(d);
+    const s = (c.dateStart || '').slice(0, 10);
+    const e = (c.dateEnd   || c.dateStart || '').slice(0, 10);
+    if (!s) return false;
+    // 既存レンジのいずれかと1日でも重なれば "既存"
+    const overlaps = existingRanges.some(r => s <= r.end && r.start <= e);
+    return !overlaps;
   });
 }
 
@@ -255,6 +260,9 @@ export function applyNewTourChildren(
       eventType:  'live',
       iconImg:    official.iconImg      ?? null,
       parentId:   parent.id,
+      openTime:   c.openTime            ?? null,
+      startTime:  c.startTime           ?? null,
+      dayTimes:   c.dayTimes            ?? null,
       memo:       c.dayLabel ? `${c.dayLabel}` : null,
       officialId: official.officialId
         ? `${official.officialId}-${c.dateStart}`
@@ -282,6 +290,9 @@ export function applyAdditionAsChild(official: OfficialLive, parentTour: Live): 
     eventType:  'live',
     iconImg:    official.iconImg      ?? null,
     parentId:   parentTour.id,
+    openTime:   official.openTime     ?? null,
+    startTime:  official.startTime    ?? null,
+    dayTimes:   official.dayTimes     ?? null,
     memo:       buildEvidenceMemo(official),
     officialId: official.officialId   ?? null,
   });
@@ -333,6 +344,9 @@ export function applyAddition(official: OfficialLive): Live {
     dateEnd:    official.dateEnd      ?? null,
     eventType:  (official.eventType   ?? 'live') as string,
     iconImg:    official.iconImg      ?? null,
+    openTime:   official.openTime     ?? null,
+    startTime:  official.startTime    ?? null,
+    dayTimes:   official.dayTimes     ?? null,
     memo:       buildEvidenceMemo(official),
     officialId: official.officialId   ?? null,
   });
@@ -350,6 +364,9 @@ export function applyAddition(official: OfficialLive): Live {
         eventType:  'live',
         iconImg:    official.iconImg      ?? null,
         parentId:   parent.id,
+        openTime:   child.openTime        ?? null,
+        startTime:  child.startTime       ?? null,
+        dayTimes:   child.dayTimes        ?? null,
         memo:       child.dayLabel ? `${child.dayLabel}` : null,
         officialId: official.officialId
           ? `${official.officialId}-${child.dateStart}`

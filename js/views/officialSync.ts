@@ -631,9 +631,10 @@ function renderAddItem(item: DiffAddItem, i: number): string {
   ` : '';
 
   // ツアーは venue が空、会場一覧を先頭3件まで展開して代わりに表示
+  // ツアーの場合、レグ（会場ごとに連続日をまとめたもの）を表示
   const venueLineHtml = isTour
     ? (childCount > 0
-        ? `<div class="os-row"><span class="os-label">公演</span> ${childCount}件<span style="color:var(--text-tertiary);font-size:11px;margin-left:6px;">(${o.children!.slice(0, 3).map(c => escapeHtml(c.venue || '—')).join(' / ')}${childCount > 3 ? ` …+${childCount - 3}` : ''})</span></div>`
+        ? `<div class="os-row"><span class="os-label">公演</span> ${childCount}レグ<span style="color:var(--text-tertiary);font-size:11px;margin-left:6px;">(${o.children!.slice(0, 3).map(c => escapeHtml(`${c.venue || '—'} ${formatDateRange(c.dateStart, c.dateEnd)}`)).join(' / ')}${childCount > 3 ? ` …+${childCount - 3}` : ''})</span></div>`
         : `<div class="os-row"><span class="os-label">公演</span> <span style="color:var(--text-tertiary);">— 未登録</span></div>`)
     : `<div class="os-row"><span class="os-label">会場</span> ${escapeHtml(o.venue || '-')}</div>`;
 
@@ -725,7 +726,7 @@ function renderUpdateItem(item: DiffUpdateItem, i: number): string {
       <ul class="os-new-children-list">
         ${newChildren.slice(0, 8).map(c => `
           <li>
-            <span class="os-new-child-date">${escapeHtml(c.dateStart)}${c.dayLabel ? ` (${escapeHtml(c.dayLabel)})` : ''}</span>
+            <span class="os-new-child-date">${escapeHtml(formatDateRange(c.dateStart, c.dateEnd))}${c.dayLabel ? ` (${escapeHtml(c.dayLabel)})` : ''}</span>
             <span class="os-new-child-venue">${escapeHtml(c.venue || '—')}${c.prefecture ? `（${escapeHtml(c.prefecture)}）` : ''}</span>
           </li>
         `).join('')}
