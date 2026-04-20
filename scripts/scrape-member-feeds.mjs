@@ -46,6 +46,13 @@ const GROUP_CONFIG = {
         `https://www.nogizaka46.com/s/n46/api/list/schedule?ct=${encodeURIComponent(code)}`,
       ];
     },
+    // schedule API と同じ list[]= 形式が member API でも使えるか試す。
+    // ダメなら詳細 HTML から DT/DD で抽出。
+    profileCandidates: code => [
+      `https://www.nogizaka46.com/s/n46/api/list/member?list[]=${encodeURIComponent(code)}`,
+      `https://www.nogizaka46.com/s/n46/api/detail/member?code=${encodeURIComponent(code)}`,
+      `https://www.nogizaka46.com/s/n46/artist/${encodeURIComponent(code)}?ima=0000`,
+    ],
   },
   saku: {
     host: 'https://sakurazaka46.com',
@@ -61,6 +68,11 @@ const GROUP_CONFIG = {
         `https://sakurazaka46.com/s/s46/api/list/schedule?ct=${encodeURIComponent(code)}`,
       ];
     },
+    profileCandidates: code => [
+      `https://sakurazaka46.com/s/s46/api/list/member?list[]=${encodeURIComponent(code)}`,
+      `https://sakurazaka46.com/s/s46/api/detail/member?code=${encodeURIComponent(code)}`,
+      `https://sakurazaka46.com/s/s46/artist/${encodeURIComponent(code)}?ima=0000`,
+    ],
   },
 };
 
@@ -421,6 +433,120 @@ async function enrichThumbnailFromDetail(blog, cfg) {
   }
 }
 
+// ---------- profile parser ----------
+
+/** API レスポンスの 1 件目の keys を文字列でサンプル（診断用） */
+function sampleApiKeys(body) {
+  let text = String(body || '').trim();
+  const jsonp = text.match(/^[a-zA-Z_][\w$]*\s*\(([\s\S]*)\)\s*;?\s*$/);
+  if (jsonp) text = jsonp[1];
+  let data;
+  try { data = JSON.parse(text); } catch { return null; }
+  const list = Array.isArray(data) ? data
+    : (data.list || data.data || data.items || data.result || data.results || []);
+  if (!Array.isArray(list) || list.length === 0) return null;
+  return Object.keys(list[0] || {}).slice(0, 30).join(',');
+}
+
+/** YYYY-MM-DD / YYYY/MM/DD / YYYY.MM.DD / YYYY年M月D日 を YYYY-MM-DD に正規化 */
+function normalizeBirthday(s) {
+  if (!s) return null;
+  const t = String(s);
+  // 年月日付き
+  const m = t.match(/(\d{4})[.\/\-年](\d{1,2})[.\/\-月](\d{1,2})/);
+  const pad = n => String(n).padStart(2, '0');
+  if (m) return `${m[1]}-${pad(m[2])}-${pad(m[3])}`;
+  // 年なし MM/DD or M月D日
+  const m2 = t.match(/(\d{1,2})[.\/\-月](\d{1,2})/);
+  if (m2) return `${pad(m2[1])}-${pad(m2[2])}`;
+  return null;
+}
+
+function normalizeHeight(s) {
+  if (!s) return null;
+  const m = String(s).match(/(\d{2,3}(?:\.\d)?)\s*(?:cm|ｃｍ|センチ)?/i);
+  if (!m) return null;
+  return `${m[1]}cm`;
+}
+
+function normalizeBloodType(s) {
+  if (!s) return null;
+  const m = String(s).match(/(AB|A|B|O)/i);
+  return m ? m[1].toUpperCase() : null;
+}
+
+/** /api/list/member?list[]=<code> 等の JSON から profile を組み立てる */
+function parseProfileJson(body) {
+  let text = String(body || '').trim();
+  if (!text) return null;
+  const jsonp = text.match(/^[a-zA-Z_][\w$]*\s*\(([\s\S]*)\)\s*;?\s*$/);
+  if (jsonp) text = jsonp[1];
+  let data;
+  try { data = JSON.parse(text); } catch { return null; }
+  const list = Array.isArray(data) ? data
+    : (data.list || data.data || data.items || data.result || data.results || []);
+  if (!Array.isArray(list) || list.length === 0) return null;
+  const item = list[0];
+  // よくあるキー名のバリエーション
+  const birthday = normalizeBirthday(
+    item.birthday || item.bday || item.birth || item.dateOfBirth || item.date_of_birth || item.born
+  );
+  const height = normalizeHeight(item.height || item.shincho || item.tallness);
+  const bloodType = normalizeBloodType(item.blood || item.bloodType || item.blood_type || item.ketsuekigata);
+  const birthplace = item.birthplace || item.born_place || item.fromPlace || item.from_place
+    || item.shusshin || item.prefecture || null;
+  const zodiac = item.zodiac || item.seiza || item.sign || null;
+
+  const profile = {
+    birthday: birthday || null,
+    height: height || null,
+    bloodType: bloodType || null,
+    birthplace: birthplace ? cleanText(birthplace) : null,
+    zodiac: zodiac ? cleanText(zodiac) : null,
+  };
+  // 全 null なら null 扱い
+  if (Object.values(profile).every(v => v == null)) return null;
+  return profile;
+}
+
+/** /artist/<code> HTML 内の <dl><dt>項目名</dt><dd>値</dd> 構造から抽出 */
+function parseProfileHtml(html) {
+  if (!html) return null;
+  // <dt>...</dt>\s*<dd>...</dd> ペアをすべて抽出
+  const pairs = [];
+  const re = /<dt[^>]*>([\s\S]{1,80}?)<\/dt>\s*<dd[^>]*>([\s\S]{1,200}?)<\/dd>/gi;
+  let m;
+  while ((m = re.exec(html)) !== null) {
+    const k = cleanText(m[1]);
+    const v = cleanText(m[2]);
+    if (k && v) pairs.push([k, v]);
+  }
+  if (pairs.length === 0) return null;
+
+  const find = (...keywords) => {
+    for (const [k, v] of pairs) {
+      if (keywords.some(kw => k.includes(kw))) return v;
+    }
+    return null;
+  };
+
+  const profile = {
+    birthday: normalizeBirthday(find('生年月日', '誕生日', 'birthday', 'birth')),
+    height: normalizeHeight(find('身長', 'height', 'タッパ')),
+    bloodType: normalizeBloodType(find('血液型', 'blood')),
+    birthplace: (() => {
+      const v = find('出身地', '出身', '出生地');
+      return v ? cleanText(v) : null;
+    })(),
+    zodiac: (() => {
+      const v = find('星座', '星座座');
+      return v ? cleanText(v) : null;
+    })(),
+  };
+  if (Object.values(profile).every(v => v == null)) return null;
+  return profile;
+}
+
 /** parseSchedule の結果からメンバー名 / 短すぎる汎用語のタイトルを除外 */
 function sanitizeScheduleItems(items, memberName) {
   const trimmedName = (memberName || '').replace(/\s+/g, '').trim();
@@ -511,6 +637,47 @@ async function scrapeMemberFeeds(m, cfg) {
   }
   if (entry.schedule.length === 0 && scheduleDiag.length > 0) {
     entry.errors.push(`schedule: ${scheduleDiag.join(' | ')}`);
+  }
+
+  // プロフィール（身長 / 血液型 / 誕生日 等）
+  // schedule API と同じ /api/list/member?list[]=<code> 形式で取れる想定。
+  // 取れなかったら /artist/<code> HTML から DL/DT/DD 構造で抽出。
+  const profileDiag = [];
+  for (const url of cfg.profileCandidates(m.code)) {
+    const short = url.replace(cfg.host, '').replace(/\?.*$/, '');
+    try {
+      const html = await fetchHtml(url, cfg.referer);
+      const trimmed = html.trim();
+      const looksJson = trimmed.startsWith('{') || trimmed.startsWith('[')
+        || /^[a-zA-Z_][\w$]*\s*\(/.test(trimmed);
+      let profile = null;
+      if (looksJson) {
+        profile = parseProfileJson(html);
+        // 診断: 取れなかった場合に raw item の keys を残す
+        if (!profile) {
+          const sample = sampleApiKeys(html);
+          if (sample) profileDiag.push(`${short}: no profile fields (keys=${sample})`);
+        }
+      } else {
+        profile = parseProfileHtml(html);
+      }
+      if (profile && Object.values(profile).some(v => v != null)) {
+        entry.profile = profile;
+        profileDiag.length = 0;
+        break;
+      }
+      if (looksJson && html.length < 300) {
+        profileDiag.push(`${short}: empty (${html.length}b) body=${trimmed.slice(0, 120)}`);
+      } else {
+        profileDiag.push(`${short}: no fields (${looksJson ? 'json' : 'html'}, ${html.length}b)`);
+      }
+    } catch (e) {
+      profileDiag.push(`${short}: ${e.message}`);
+    }
+    await sleep(THROTTLE_MS);
+  }
+  if (!entry.profile && profileDiag.length > 0) {
+    entry.errors.push(`profile: ${profileDiag.join(' | ')}`);
   }
 
   return entry;
