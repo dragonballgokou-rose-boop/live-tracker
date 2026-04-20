@@ -91,3 +91,33 @@ create policy "allow all for attendance"
   on attendance for all
   using (true)
   with check (true);
+
+-- ============================================
+-- Web Push 通知
+-- ============================================
+-- 1 行 = 1 デバイス × 1 メンバー（member_id）の購読
+-- prefs の既定値 & スキーマ:
+--   { "blog": true, "schedule": true, "live_prev_day": true, "live_day": true }
+
+create table if not exists push_subscriptions (
+  endpoint      text primary key,
+  p256dh        text not null,
+  auth          text not null,
+  member_id     text not null,
+  oshi_code     text,
+  oshi_group    text,
+  prefs         jsonb not null default '{"blog":true,"schedule":true,"live_prev_day":true,"live_day":true}'::jsonb,
+  user_agent    text,
+  created_at    timestamptz default now(),
+  updated_at    timestamptz default now()
+);
+
+create index if not exists push_subscriptions_member_id_idx on push_subscriptions (member_id);
+create index if not exists push_subscriptions_oshi_idx      on push_subscriptions (oshi_group, oshi_code);
+
+alter table push_subscriptions enable row level security;
+
+create policy "allow all for push_subscriptions"
+  on push_subscriptions for all
+  using (true)
+  with check (true);

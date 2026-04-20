@@ -13,6 +13,10 @@ import {
   fetchOfficialMembers, buildOfficialBlogUrl, findOfficialMemberByName,
   getOfficialMemberSync, fetchOfficialMemberFeeds, getMemberFeedSync,
 } from '../officialMembers.js';
+import {
+  isPushSupported, hasVapidKey, getCurrentStatus,
+  enablePush, disablePush, updatePrefs, DEFAULT_PREFS,
+} from '../push.js';
 
 // ── セクション見出し用 SVG アイコン（feather スタイル / 14px / stroke=currentColor）
 const ICON_ATTR = 'width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"';
@@ -20,6 +24,7 @@ const ICON_CLIPBOARD = `<svg class="oshi-section-icon" ${ICON_ATTR}><path d="M16
 const ICON_EDIT = `<svg class="oshi-section-icon" ${ICON_ATTR}><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>`;
 const ICON_CALENDAR = `<svg class="oshi-section-icon" ${ICON_ATTR}><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`;
 const ICON_EDIT_LG = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>`;
+const ICON_BELL = `<svg class="oshi-section-icon" ${ICON_ATTR}><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>`;
 
 const MEMBER_COLORS = [
   // パープル・バイオレット
@@ -294,8 +299,109 @@ async function openOshiModal(memberId: string): Promise<void> {
           ? `<ul class="oshi-sched-list">${feeds.schedule.slice(0, 10).map(renderScheduleRow).join('')}</ul>`
           : `<p style="color:var(--text-tertiary);font-size:13px;">${feeds ? '直近の予定はありません。' : 'フィードデータが未生成です。出演予定リンクから直接ご覧ください。'}</p>`}
       </div>
+
+      <div class="oshi-section">
+        <h4 class="oshi-section-head">${ICON_BELL}<span>通知設定</span></h4>
+        <div id="oshi-push-section" data-member-id="${user.id}" data-oshi-code="${escapeAttr(oshiData.code || '')}" data-oshi-group="${escapeAttr(oshiData.group || '')}">
+          <p style="color:var(--text-tertiary);font-size:12px;">読み込み中…</p>
+        </div>
+      </div>
     </div>
   `);
+
+  // 通知設定の非同期初期化
+  wireUpPushSection();
+}
+
+async function wireUpPushSection(): Promise<void> {
+  const root = document.getElementById('oshi-push-section');
+  if (!root) return;
+
+  const memberId  = root.dataset.memberId  || '';
+  const oshiCode  = root.dataset.oshiCode  || '';
+  const oshiGroup = root.dataset.oshiGroup || '';
+
+  const render = (inner: string) => { root.innerHTML = inner; };
+
+  if (!isPushSupported()) {
+    render(`<p style="color:var(--text-tertiary);font-size:12px;">この端末のブラウザでは通知に対応していません。<br/>iOS は Safari の「ホーム画面に追加」で開いてください。</p>`);
+    return;
+  }
+  if (!hasVapidKey()) {
+    render(`<p style="color:var(--text-tertiary);font-size:12px;">通知サーバ鍵 (VAPID) が未設定です。<code>VITE_VAPID_PUBLIC_KEY</code> を設定してください。</p>`);
+    return;
+  }
+
+  const status = await getCurrentStatus();
+
+  if (!status.subscribed) {
+    render(`
+      <p style="color:var(--text-secondary);font-size:12px;margin-bottom:8px;">
+        推しメンの新しいブログや、参戦予定ライブの前日・当日リマインドを通知します。
+      </p>
+      <button id="oshi-push-enable" class="btn btn-primary btn-sm">通知をオンにする</button>
+      ${status.permission === 'denied' ? `<p style="color:var(--accent-red);font-size:11px;margin-top:6px;">ブラウザの通知権限がブロックされています。サイト設定から許可してください。</p>` : ''}
+    `);
+    const btn = document.getElementById('oshi-push-enable') as HTMLButtonElement | null;
+    if (btn) {
+      btn.addEventListener('click', async () => {
+        btn.disabled = true;
+        btn.textContent = '登録中…';
+        const res = await enablePush({ memberId, oshiCode: oshiCode || null, oshiGroup: oshiGroup || null });
+        if (res.ok) {
+          showToast('通知をオンにしました', 'success');
+          wireUpPushSection();
+        } else {
+          btn.disabled = false;
+          btn.textContent = '通知をオンにする';
+          const msg =
+            res.reason === 'permission-denied' ? '通知が許可されませんでした' :
+            res.reason === 'no-vapid-key'      ? 'VAPID 鍵が未設定です' :
+            res.reason === 'supabase-not-configured' ? 'Supabase 未設定です' :
+            `通知の登録に失敗: ${res.reason}`;
+          showToast(msg, 'error');
+        }
+      });
+    }
+    return;
+  }
+
+  const prefs = status.prefs || DEFAULT_PREFS;
+  const row = (key: keyof typeof prefs, label: string, desc: string) => `
+    <label class="push-pref-row">
+      <input type="checkbox" data-pref="${key}" ${prefs[key] ? 'checked' : ''} />
+      <span class="push-pref-label">
+        <span class="push-pref-title">${label}</span>
+        <span class="push-pref-desc">${desc}</span>
+      </span>
+    </label>
+  `;
+  render(`
+    <div class="push-pref-list">
+      ${row('blog',          '新着ブログ',       '推しメンのブログが更新されたら通知')}
+      ${row('schedule',      '出演予定の更新',   '推しメンのスケジュールが更新されたら通知')}
+      ${row('live_prev_day', 'ライブ前日リマインド', '参戦予定ライブの前日に通知')}
+      ${row('live_day',      'ライブ当日リマインド', '参戦予定ライブの当日朝に通知')}
+    </div>
+    <button id="oshi-push-disable" class="btn btn-sm" style="margin-top:10px;color:var(--accent-red);background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.3);">通知をオフにする</button>
+  `);
+
+  root.querySelectorAll<HTMLInputElement>('input[data-pref]').forEach(cb => {
+    cb.addEventListener('change', async () => {
+      const key = cb.dataset.pref as keyof typeof prefs;
+      const next = await updatePrefs({ [key]: cb.checked } as any);
+      if (!next) {
+        cb.checked = !cb.checked;
+        showToast('設定の保存に失敗しました', 'error');
+      }
+    });
+  });
+  const off = document.getElementById('oshi-push-disable');
+  if (off) off.addEventListener('click', async () => {
+    await disablePush();
+    showToast('通知をオフにしました', 'success');
+    wireUpPushSection();
+  });
 }
 
 function formatBlogDate(iso: string): string {

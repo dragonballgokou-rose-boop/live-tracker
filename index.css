@@ -1720,6 +1720,23 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
 }
 .oshi-blog-date { font-size: 11px; color: var(--text-tertiary); font-variant-numeric: tabular-nums; }
 
+/* ── 通知設定 (push) ── */
+.push-pref-list { display: flex; flex-direction: column; gap: 6px; }
+.push-pref-row {
+  display: flex; gap: 10px; align-items: flex-start;
+  padding: 10px 12px; border-radius: 10px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  cursor: pointer;
+}
+.push-pref-row input[type="checkbox"] {
+  margin-top: 2px; accent-color: #a78bfa;
+  width: 16px; height: 16px; flex-shrink: 0;
+}
+.push-pref-label { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.push-pref-title { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+.push-pref-desc  { font-size: 11px; color: var(--text-tertiary); }
+
 /* ── プロフィール (誕生日 / 身長 / 血液型 等) ── */
 .oshi-profile {
   display: grid;
