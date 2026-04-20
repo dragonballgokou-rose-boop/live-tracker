@@ -261,6 +261,19 @@ async function openOshiModal(memberId: string): Promise<void> {
         ${oshiData.detailUrl ? `<a class="btn btn-secondary" href="${escapeAttr(oshiData.detailUrl)}" target="_blank" rel="noopener noreferrer">プロフィール↗</a>` : ''}
       </div>
 
+      ${feeds && feeds.profile && Object.values(feeds.profile).some(v => v != null) ? `
+      <div class="oshi-section">
+        <h4 class="oshi-section-head">📋 プロフィール</h4>
+        <dl class="oshi-profile">
+          ${feeds.profile.birthday ? `<dt>誕生日</dt><dd>${escapeHtml(formatProfileBirthday(feeds.profile.birthday))}</dd>` : ''}
+          ${feeds.profile.height ? `<dt>身長</dt><dd>${escapeHtml(feeds.profile.height)}</dd>` : ''}
+          ${feeds.profile.bloodType ? `<dt>血液型</dt><dd>${escapeHtml(feeds.profile.bloodType)}型</dd>` : ''}
+          ${feeds.profile.birthplace ? `<dt>出身地</dt><dd>${escapeHtml(feeds.profile.birthplace)}</dd>` : ''}
+          ${feeds.profile.zodiac ? `<dt>星座</dt><dd>${escapeHtml(feeds.profile.zodiac)}</dd>` : ''}
+        </dl>
+      </div>
+      ` : ''}
+
       <div class="oshi-section">
         <h4 class="oshi-section-head">📝 最新ブログ</h4>
         ${feeds && feeds.blog.length > 0
@@ -283,6 +296,15 @@ function formatBlogDate(iso: string): string {
   if (!m) return iso;
   const [, y, mo, d, hh, mm] = m;
   return hh ? `${y}.${mo}.${d} ${hh}:${mm}` : `${y}.${mo}.${d}`;
+}
+
+/** "2001-08-09" → "2001年8月9日"、年なし "08-09" → "8月9日" */
+function formatProfileBirthday(s: string): string {
+  const full = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (full) return `${full[1]}年${Number(full[2])}月${Number(full[3])}日`;
+  const md = s.match(/^(\d{2})-(\d{2})$/);
+  if (md) return `${Number(md[1])}月${Number(md[2])}日`;
+  return s;
 }
 
 function openMemberModal(member = null) {

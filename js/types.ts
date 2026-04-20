@@ -95,9 +95,19 @@ export interface OfficialScheduleEntry {
   dayOfMonth: number | null;
 }
 
+/** 公式メンバーの追加プロフィール（身長 / 血液型 / 誕生日 / 出身地 等） */
+export interface OfficialMemberProfile {
+  birthday?: string | null;       // "YYYY-MM-DD" or "MM-DD"
+  height?: string | null;         // "162cm" など
+  bloodType?: string | null;      // "A" / "B" / "AB" / "O"
+  birthplace?: string | null;     // 都道府県名
+  zodiac?: string | null;         // 星座
+}
+
 export interface OfficialMemberFeedEntry {
   blog: OfficialBlogEntry[];
   schedule: OfficialScheduleEntry[];
+  profile?: OfficialMemberProfile;
   errors?: string[];
 }
 

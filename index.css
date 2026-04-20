@@ -1717,6 +1717,31 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
 }
 .oshi-blog-date { font-size: 11px; color: var(--text-tertiary); font-variant-numeric: tabular-nums; }
 
+/* ── プロフィール (誕生日 / 身長 / 血液型 等) ── */
+.oshi-profile {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  column-gap: 14px;
+  row-gap: 6px;
+  margin: 0;
+  padding: 12px 14px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 10px;
+  font-size: 13px;
+}
+.oshi-profile dt {
+  color: var(--text-tertiary);
+  font-weight: 600;
+  font-size: 12px;
+  align-self: center;
+}
+.oshi-profile dd {
+  color: var(--text-primary);
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
 /* ── スケジュール一覧 (個別メンバー) ── */
 .oshi-sched-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
 .oshi-sched-row {
