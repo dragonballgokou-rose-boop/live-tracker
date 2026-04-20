@@ -175,38 +175,58 @@ function parseBlogList(html, host) {
 // ---------- schedule parser ----------
 
 /**
+ * スケジュールページかどうかを判定する。
+ * MEMBER'S SCHEDULE ヘッダや schedule 専用のマーカーが見えなければ false。
+ */
+function looksLikeSchedulePage(html) {
+  if (!html) return false;
+  // 明確なマーカー
+  if (/MEMBER.{0,5}SCHEDULE/i.test(html)) return true;
+  if (/class=["'][^"']*(?:sc--|schedule|sched-day|sc-day)[^"']*["']/i.test(html)) return true;
+  // 月ナビ ("<span>04</span> Apr") + カテゴリ両方
+  if (/\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\b/.test(html)
+      && /(ラジオ|テレビ|ライブ|イベント)/.test(html)) {
+    return true;
+  }
+  return false;
+}
+
+/**
  * MEMBER'S SCHEDULE HTML から 直近スケジュールを抽出する。
- * Sony Music CMS の class 命名が流動的なため、カテゴリキーワード
- * (ラジオ/テレビ/ライブ など) を起点に周辺のテキストを取りに行く
- * より頑強なパース戦略を採る。
+ * スケジュールページだと判定できた場合のみパース。
+ * カテゴリキーワードの周辺に 1〜2 桁の日付があり、まともなタイトルが続く
+ * ことを要件にして、他ページで偶然マッチした「乃木坂工事中」などを除外する。
  */
 function parseSchedule(html) {
+  if (!looksLikeSchedulePage(html)) return [];
+
   const results = [];
   const catRe = /(ラジオ|テレビ|ＴＶ|TV|ライブ|イベント|雑誌|ネット|MC|ファンミ|舞台|配信|CM|写真集|書籍|リリース|コンサート)/g;
   const seen = new Set();
   let m;
   while ((m = catRe.exec(html)) !== null) {
     const cate = m[1];
-    // 日付: m.index より前 800 文字から 1〜2 桁の数字を拾う
-    const before = html.slice(Math.max(0, m.index - 1200), m.index);
-    const dayMatch = before.match(/(?:sc[-_][^"'>]*__?d|day[-_]?num|date[-_]?d)["'][^>]*>\s*(\d{1,2})\s*</i)
-                  || before.match(/<(?:p|span|div|dt)[^>]*>\s*(\d{1,2})\s*(?:<span[^>]*>(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)|<\/)/i);
-    const day = dayMatch ? Number(dayMatch[1]) : null;
+    const before = html.slice(Math.max(0, m.index - 1500), m.index);
+    // day: より厳格に schedule 日付要素に見えるもののみ
+    const dayMatch =
+      before.match(/class=["'][^"']*(?:sc[-_][^"']*__?d|sched[-_]?d|day[-_]?num|date[-_]?d)[^"']*["'][^>]*>\s*(\d{1,2})\s*</i)
+      || before.match(/<(?:p|span|div|dt)[^>]*>\s*(\d{1,2})\s*<\/(?:p|span|div|dt)>\s*<(?:p|span|div)[^>]*>\s*(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)/i);
+    if (!dayMatch) continue; // day が取れない = 疑似
+    const day = Number(dayMatch[1]);
+    if (!day || day < 1 || day > 31) continue;
 
-    // タイトル: m.index より後 1500 文字の間で長めの日本語/英語テキスト
-    const after = html.slice(m.index + cate.length, m.index + cate.length + 1500);
-    // まず class に ttl/title を含む要素
+    const after = html.slice(m.index + cate.length, m.index + cate.length + 1200);
     let titleMatch = after.match(/class=["'][^"']*(?:ttl|title|name)[^"']*["'][^>]*>([^<]{3,200})</i);
-    // なければ普通の要素の中身
     if (!titleMatch) titleMatch = after.match(/<(?:p|span|h[1-6]|dd|dt)[^>]*>([^<]{5,200})</i);
     if (!titleMatch) continue;
     const title = cleanText(titleMatch[1]);
     if (!title) continue;
+    // ノイズ除外
+    if (/^(ラジオ|テレビ|ライブ|イベント|SCHEDULE|MEMBER)$/i.test(title)) continue;
 
     const key = `${day}|${cate}|${title.slice(0, 30)}`;
     if (seen.has(key)) continue;
     seen.add(key);
-
     results.push({ cate, title, dayOfMonth: day });
     if (results.length >= MAX_ITEMS) break;
   }
@@ -268,8 +288,8 @@ async function scrapeMemberFeeds(m, cfg) {
   }
   await sleep(THROTTLE_MS);
 
-  // サムネが無いエントリについては詳細ページから og:image を取りに行く
-  const needThumb = entry.blog.filter(b => !b.thumbnail).slice(0, 5);
+  // サムネが無いエントリは全件、詳細ページから og:image を取りに行く
+  const needThumb = entry.blog.filter(b => !b.thumbnail);
   for (const b of needThumb) {
     await enrichThumbnailFromDetail(b, cfg);
     await sleep(THROTTLE_MS);
