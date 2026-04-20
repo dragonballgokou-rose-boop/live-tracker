@@ -2440,41 +2440,9 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
 
 /* Apple Music 風の flat nav では SVG liquid-glass を適用しない */
 
-/* アクティブタブをぬるっと追いかけるスライドインジケーター（水感） */
+/* アクティブタブ枠は撤去（Apple Music 同様、色変化のみで示す） */
 .tab-indicator {
-  position: absolute;
-  top: 50%;
-  left: 0;
-  width: 0;
-  height: 52px;
-  transform: translateY(-50%);
-  border-radius: 22px;
-  border: 1px solid rgba(167, 139, 250, 0.55);
-  background: rgba(167, 139, 250, 0.12);
-  box-shadow:
-    0 0 0 1px rgba(167, 139, 250, 0.08),
-    0 6px 18px -6px rgba(167, 139, 250, 0.45),
-    inset 0 0.5px 0 rgba(255, 255, 255, 0.12);
-  pointer-events: none;
-  z-index: 0;
-  /* iOS 風 rubbery スプリング感（slight overshoot） */
-  transition:
-    left  0.46s cubic-bezier(0.34, 1.36, 0.32, 1),
-    width 0.46s cubic-bezier(0.34, 1.36, 0.32, 1),
-    border-color 0.25s ease,
-    background 0.25s ease;
-}
-
-/* Chrome の liquid-glass distortion が有効な時は屈折もつける */
-@supports (backdrop-filter: url('#')) {
-  .liquid-glass-ready .tab-indicator {
-    backdrop-filter: blur(14px) saturate(180%) url(#liquid-glass-indicator);
-    -webkit-backdrop-filter: blur(14px) saturate(180%);
-  }
-}
-
-.tab-indicator.no-transition {
-  transition: none !important;
+  display: none;
 }
 
 /* ── Tab items ── Apple Music 風 */
