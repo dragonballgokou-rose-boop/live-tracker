@@ -120,8 +120,9 @@ function parseBlogList(html, host) {
     if (!url || seenUrls.has(url)) continue;
     seenUrls.add(url);
 
-    const start = Math.max(0, m.index - 300);
-    const end   = Math.min(html.length, m.index + 2000);
+    // 周辺 ~3000 文字を取得（image が anchor の前後どちらにあっても拾えるよう）
+    const start = Math.max(0, m.index - 1000);
+    const end   = Math.min(html.length, m.index + 2500);
     const chunk = html.slice(start, end);
 
     // タイトル候補（class 属性バリエーション）
@@ -140,10 +141,19 @@ function parseBlogList(html, host) {
       chunk.match(/(\d{4}[\.\/\-]\d{1,2}[\.\/\-]\d{1,2}(?:[ T]+\d{1,2}:\d{2})?)/);
     if (dateMatch) date = normalizeDateTime(dateMatch[1]);
 
-    // サムネイル: <img src="..."> の src
+    // サムネイル: <img> の src/data-src/data-original or background-image:url(...)
+    // Sony Music CMS は lazyload で多種属性を使うので幅広に
     let thumbnail = null;
-    const imgMatch = chunk.match(/<img[^>]+(?:src|data-src)=["']([^"']+\.(?:jpg|jpeg|png|webp)[^"']*)["']/i);
-    if (imgMatch) thumbnail = absoluteUrl(imgMatch[1], host);
+    const imgMatch =
+      chunk.match(/<img[^>]+(?:src|data-src|data-original|data-lazy-src|data-image)=["']([^"']+)["']/i)
+      || chunk.match(/background(?:-image)?:\s*url\(["']?([^"')]+)["']?\)/i);
+    if (imgMatch) {
+      const candidate = imgMatch[1];
+      // 1x1 pixel placeholder や spacer は除外
+      if (!/spacer|blank|loading|placeholder/i.test(candidate)) {
+        thumbnail = absoluteUrl(candidate, host);
+      }
+    }
 
     if (!title) continue;
     results.push({ url, title, date, thumbnail });
