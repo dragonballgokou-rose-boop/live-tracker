@@ -34,10 +34,13 @@ const GROUP_CONFIG = {
     referer: 'https://www.nogizaka46.com/s/n46',
     blogList: code => `https://www.nogizaka46.com/s/n46/diary/MEMBER/list?ima=0000&ct=${encodeURIComponent(code)}`,
     // スケジュールは複数 URL パターンを試す（Sony Music CMS は変更しがち）
+    // ブログが /diary/MEMBER/list?ct=<code> で取れるので、schedule も同じ形を優先
     scheduleCandidates: code => [
+      `https://www.nogizaka46.com/s/n46/schedule/MEMBER/list?ima=0000&ct=${encodeURIComponent(code)}`,
+      `https://www.nogizaka46.com/s/n46/api/list/schedule?ct=${encodeURIComponent(code)}`,
+      `https://www.nogizaka46.com/s/n46/api/list/schedule?ima=0000&ct=${encodeURIComponent(code)}`,
       `https://www.nogizaka46.com/s/n46/artist/${encodeURIComponent(code)}/SCHEDULE?ima=0000`,
       `https://www.nogizaka46.com/s/n46/artist/${encodeURIComponent(code)}/schedule?ima=0000`,
-      `https://www.nogizaka46.com/s/n46/artist/${encodeURIComponent(code)}?ima=0000&page=schedule`,
       `https://www.nogizaka46.com/s/n46/schedule/list?ima=0000&ct=${encodeURIComponent(code)}`,
     ],
   },
@@ -46,6 +49,9 @@ const GROUP_CONFIG = {
     referer: 'https://sakurazaka46.com/s/s46',
     blogList: code => `https://sakurazaka46.com/s/s46/diary/blog/list?ima=0000&ct=${encodeURIComponent(code)}`,
     scheduleCandidates: code => [
+      `https://sakurazaka46.com/s/s46/schedule/MEMBER/list?ima=0000&ct=${encodeURIComponent(code)}`,
+      `https://sakurazaka46.com/s/s46/api/list/schedule?ct=${encodeURIComponent(code)}`,
+      `https://sakurazaka46.com/s/s46/api/list/schedule?ima=0000&ct=${encodeURIComponent(code)}`,
       `https://sakurazaka46.com/s/s46/artist/${encodeURIComponent(code)}/SCHEDULE?ima=0000`,
       `https://sakurazaka46.com/s/s46/artist/${encodeURIComponent(code)}/schedule?ima=0000`,
       `https://sakurazaka46.com/s/s46/schedule/list?ima=0000&ct=${encodeURIComponent(code)}`,
@@ -174,55 +180,153 @@ function parseBlogList(html, host) {
 
 // ---------- schedule parser ----------
 
+const CAT_KEYWORDS = 'ラジオ|テレビ|ＴＶ|TV|ライブ|イベント|雑誌|ネット|MC|ファンミ|舞台|配信|CM|写真集|書籍|リリース|コンサート|WEB|ウェブ|新聞|映画';
+const CAT_ONLY_RE = new RegExp(`^(?:${CAT_KEYWORDS}|SCHEDULE|MEMBER)$`, 'i');
+
 /**
  * スケジュールページかどうかを判定する。
  * MEMBER'S SCHEDULE ヘッダや schedule 専用のマーカーが見えなければ false。
  */
 function looksLikeSchedulePage(html) {
   if (!html) return false;
-  // 明確なマーカー
   if (/MEMBER.{0,5}SCHEDULE/i.test(html)) return true;
-  if (/class=["'][^"']*(?:sc--|schedule|sched-day|sc-day)[^"']*["']/i.test(html)) return true;
-  // 月ナビ ("<span>04</span> Apr") + カテゴリ両方
+  if (/class=["'][^"']*(?:sc--|schedule|sched-day|sc-day|sc__)[^"']*["']/i.test(html)) return true;
   if (/\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\b/.test(html)
-      && /(ラジオ|テレビ|ライブ|イベント)/.test(html)) {
+      && new RegExp(`(${CAT_KEYWORDS})`).test(html)) {
     return true;
   }
   return false;
 }
 
+/** JSON API レスポンス（Sony Music CMS 互換の JSONP/JSON）を items 配列へ正規化 */
+function parseScheduleJson(body) {
+  let text = String(body || '').trim();
+  if (!text) return [];
+  const jsonp = text.match(/^[a-zA-Z_][\w$]*\s*\(([\s\S]*)\)\s*;?\s*$/);
+  if (jsonp) text = jsonp[1];
+  let data;
+  try { data = JSON.parse(text); } catch { return []; }
+  const list = Array.isArray(data) ? data
+    : (data.list || data.data || data.items || data.result || data.results || []);
+  if (!Array.isArray(list) || list.length === 0) return [];
+
+  const results = [];
+  const seen = new Set();
+  for (const item of list) {
+    const cate = cleanText(item.cate || item.category || item.type || '') || '';
+    const title = cleanText(item.title || item.name || item.subject || '');
+    if (!title || CAT_ONLY_RE.test(title)) continue;
+    // 日付は "YYYY.MM.DD" / "YYYY-MM-DD" / item.day
+    const dateRaw = item.date || item.day || item.startDate || item.start_date || '';
+    const dm = String(dateRaw).match(/(\d{4})[.\/\-](\d{1,2})[.\/\-](\d{1,2})/);
+    const day = dm ? Number(dm[3]) : (Number(item.day) || null);
+    if (!day || day < 1 || day > 31) continue;
+    const key = `${day}|${cate}|${title.slice(0, 30)}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    results.push({ cate: cate || 'その他', title, dayOfMonth: day });
+    if (results.length >= MAX_ITEMS) break;
+  }
+  return results;
+}
+
+/**
+ * HTML 内の「日付アンカー」を全て見つける。
+ * スクリーンショットの "02 Thu" のような表示は以下のような DOM になりがち:
+ *   <p class="sc--day"><span>02</span><span>Thu</span></p>
+ *   <dt class="a-sche__dt">02 <span>Thu</span></dt>
+ *   <p class="date">02<span class="week">Thu</span></p>
+ * いずれも「1〜2 桁の日 + 英語曜日 (Mon..Sun) が近接」という共通点があるので、
+ * 数字と曜日が 0〜60 文字の間に現れる箇所をアンカーとして拾う。
+ */
+function findDayAnchors(html) {
+  const anchors = [];
+  // 日+曜日: 1〜2 桁 → 0〜80 文字の HTML タグ・空白 → 英3文字曜日
+  const re = /(?<!\d)(\d{1,2})(?!\d)[\s\S]{0,80}?\b(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\b/g;
+  let m;
+  while ((m = re.exec(html)) !== null) {
+    const day = Number(m[1]);
+    if (!day || day < 1 || day > 31) continue;
+    // YYYY.MM.DD や URL パス内の数字のような偽マッチを除外
+    const ctx = html.slice(Math.max(0, m.index - 6), m.index);
+    if (/[.\/\-]$/.test(ctx)) continue;
+    anchors.push({ index: m.index, end: re.lastIndex, day });
+  }
+  return anchors;
+}
+
 /**
  * MEMBER'S SCHEDULE HTML から 直近スケジュールを抽出する。
- * スケジュールページだと判定できた場合のみパース。
- * カテゴリキーワードの周辺に 1〜2 桁の日付があり、まともなタイトルが続く
- * ことを要件にして、他ページで偶然マッチした「乃木坂工事中」などを除外する。
+ * 戦略:
+ *   A) 日付アンカーを全て見つけ、隣接する 2 アンカー間のセクションに
+ *      カテゴリキーワード + タイトル が含まれていれば 1 エントリとして採用。
+ *      これが最も頑強で、Sony Music CMS のクラス名変更に耐える。
+ *   B) アンカーが全く見つからない旧テンプレでは、カテゴリキーワード起点の
+ *      旧ロジックをフォールバックで使う（厳しめの day 照合）。
  */
 function parseSchedule(html) {
   if (!looksLikeSchedulePage(html)) return [];
 
   const results = [];
-  const catRe = /(ラジオ|テレビ|ＴＶ|TV|ライブ|イベント|雑誌|ネット|MC|ファンミ|舞台|配信|CM|写真集|書籍|リリース|コンサート)/g;
   const seen = new Set();
+  const catRe = new RegExp(`(${CAT_KEYWORDS})`, 'g');
+  const titleInAfter = after => {
+    let tm = after.match(/class=["'][^"']*(?:ttl|title|name|subject)[^"']*["'][^>]*>([^<]{3,200})</i);
+    if (!tm) tm = after.match(/<(?:p|span|h[1-6]|dd|dt|a)[^>]*>([^<]{5,200})</i);
+    if (!tm) return null;
+    const t = cleanText(tm[1]);
+    if (!t || CAT_ONLY_RE.test(t)) return null;
+    return t;
+  };
+
+  // Strategy A: 日付アンカー → 次のアンカーまでをセクションとして走査
+  const anchors = findDayAnchors(html);
+  if (anchors.length > 0) {
+    for (let i = 0; i < anchors.length; i++) {
+      const a = anchors[i];
+      const sectionEnd = (i + 1 < anchors.length) ? anchors[i + 1].index : Math.min(html.length, a.end + 4000);
+      const section = html.slice(a.end, sectionEnd);
+      let cm;
+      catRe.lastIndex = 0;
+      while ((cm = catRe.exec(section)) !== null) {
+        const cate = cm[1];
+        const after = section.slice(cm.index + cate.length, cm.index + cate.length + 1500);
+        const title = titleInAfter(after);
+        if (!title) continue;
+        const key = `${a.day}|${cate}|${title.slice(0, 30)}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        results.push({ cate, title, dayOfMonth: a.day });
+        if (results.length >= MAX_ITEMS) return results;
+      }
+    }
+    if (results.length > 0) return results;
+  }
+
+  // Strategy B: カテゴリ起点フォールバック
   let m;
+  catRe.lastIndex = 0;
   while ((m = catRe.exec(html)) !== null) {
     const cate = m[1];
-    const before = html.slice(Math.max(0, m.index - 1500), m.index);
-    // day: より厳格に schedule 日付要素に見えるもののみ
+    const before = html.slice(Math.max(0, m.index - 2000), m.index);
+    // 緩めの day 照合（class 名は問わず、近接した数字+曜日 or class hint）
     const dayMatch =
-      before.match(/class=["'][^"']*(?:sc[-_][^"']*__?d|sched[-_]?d|day[-_]?num|date[-_]?d)[^"']*["'][^>]*>\s*(\d{1,2})\s*</i)
-      || before.match(/<(?:p|span|div|dt)[^>]*>\s*(\d{1,2})\s*<\/(?:p|span|div|dt)>\s*<(?:p|span|div)[^>]*>\s*(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)/i);
-    if (!dayMatch) continue; // day が取れない = 疑似
+      before.match(/class=["'][^"']*(?:sc|sched|day|date)[^"']*["'][^>]*>\s*(\d{1,2})\b/i)
+      || before.match(/(\d{1,2})[\s\S]{0,60}\b(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)\b(?![\s\S]{0,300}<\/tr)/i);
+    if (!dayMatch) continue;
     const day = Number(dayMatch[1]);
     if (!day || day < 1 || day > 31) continue;
 
-    const after = html.slice(m.index + cate.length, m.index + cate.length + 1200);
-    let titleMatch = after.match(/class=["'][^"']*(?:ttl|title|name)[^"']*["'][^>]*>([^<]{3,200})</i);
-    if (!titleMatch) titleMatch = after.match(/<(?:p|span|h[1-6]|dd|dt)[^>]*>([^<]{5,200})</i);
-    if (!titleMatch) continue;
-    const title = cleanText(titleMatch[1]);
+    const after = html.slice(m.index + cate.length, m.index + cate.length + 1500);
+    const title = (function() {
+      let tm = after.match(/class=["'][^"']*(?:ttl|title|name|subject)[^"']*["'][^>]*>([^<]{3,200})</i);
+      if (!tm) tm = after.match(/<(?:p|span|h[1-6]|dd|dt|a)[^>]*>([^<]{5,200})</i);
+      if (!tm) return null;
+      const t = cleanText(tm[1]);
+      if (!t || CAT_ONLY_RE.test(t)) return null;
+      return t;
+    })();
     if (!title) continue;
-    // ノイズ除外
-    if (/^(ラジオ|テレビ|ライブ|イベント|SCHEDULE|MEMBER)$/i.test(title)) continue;
 
     const key = `${day}|${cate}|${title.slice(0, 30)}`;
     if (seen.has(key)) continue;
@@ -296,23 +400,33 @@ async function scrapeMemberFeeds(m, cfg) {
   }
 
   // スケジュール（複数 URL パターンを試す）
-  let scheduleOK = false;
+  // 最初に items が取れたものを採用。全て失敗なら最後の診断を errors に残す。
+  const scheduleDiag = [];
   for (const url of cfg.scheduleCandidates(m.code)) {
+    const short = url.replace(cfg.host, '').replace(/\?.*$/, '');
     try {
       const html = await fetchHtml(url, cfg.referer);
-      const parsed = parseSchedule(html);
+      // JSON API っぽければ JSON パースを先に試す
+      const trimmed = html.trim();
+      const looksJson = trimmed.startsWith('{') || trimmed.startsWith('[')
+        || /^[a-zA-Z_][\w$]*\s*\(/.test(trimmed);
+      let parsed = [];
+      if (looksJson) parsed = parseScheduleJson(html);
+      if (parsed.length === 0) parsed = parseSchedule(html);
       if (parsed.length > 0) {
         entry.schedule = parsed;
-        scheduleOK = true;
+        scheduleDiag.length = 0;
         break;
       }
+      const kind = looksJson ? 'json' : (looksLikeSchedulePage(html) ? 'sched-html' : 'other-html');
+      scheduleDiag.push(`${short}: 0 items (${kind}, ${html.length}b)`);
     } catch (e) {
-      // try next candidate
+      scheduleDiag.push(`${short}: ${e.message}`);
     }
     await sleep(THROTTLE_MS);
   }
-  if (!scheduleOK && entry.schedule.length === 0) {
-    entry.errors.push(`schedule: no items from any URL`);
+  if (entry.schedule.length === 0 && scheduleDiag.length > 0) {
+    entry.errors.push(`schedule: ${scheduleDiag.join(' | ')}`);
   }
 
   return entry;
