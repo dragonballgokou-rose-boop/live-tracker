@@ -69,14 +69,21 @@ async function getRegistration(): Promise<ServiceWorkerRegistration | null> {
   try {
     const reg = await navigator.serviceWorker.getRegistration();
     if (reg) return reg;
-    return await navigator.serviceWorker.ready;
+    // iOS PWA で ready が無限待ちになるケースがあるので 3 秒で諦める
+    const timeout = new Promise<null>(resolve => setTimeout(() => resolve(null), 3000));
+    const ready = navigator.serviceWorker.ready as unknown as Promise<ServiceWorkerRegistration | null>;
+    return (await Promise.race([ready, timeout])) as ServiceWorkerRegistration | null;
   } catch { return null; }
 }
 
 async function getSubscription(): Promise<PushSubscription | null> {
   const reg = await getRegistration();
   if (!reg) return null;
-  return reg.pushManager.getSubscription();
+  try {
+    // pushManager 未サポート (iOS Safari 16.3 以下など) でも throw するので try-catch
+    if (!('pushManager' in reg)) return null;
+    return await reg.pushManager.getSubscription();
+  } catch { return null; }
 }
 
 /** Supabase から現在の prefs を取得。無ければ null */

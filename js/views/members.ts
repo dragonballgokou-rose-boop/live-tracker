@@ -309,8 +309,12 @@ async function openOshiModal(memberId: string): Promise<void> {
     </div>
   `);
 
-  // 通知設定の非同期初期化
-  wireUpPushSection();
+  // 通知設定の非同期初期化（未ハンドル throw で UI がハングしないよう catch）
+  wireUpPushSection().catch(err => {
+    console.warn('wireUpPushSection failed:', err);
+    const root = document.getElementById('oshi-push-section');
+    if (root) root.innerHTML = `<p style="color:var(--text-tertiary);font-size:12px;">通知設定の読み込みに失敗しました: ${String(err?.message || err)}</p>`;
+  });
 }
 
 async function wireUpPushSection(): Promise<void> {
