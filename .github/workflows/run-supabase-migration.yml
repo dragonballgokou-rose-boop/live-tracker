@@ -1,0 +1,61 @@
+name: Run Supabase Migration (one-shot)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/run-supabase-migration.yml'
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Execute migration via Supabase Management API
+        env:
+          SUPABASE_PAT: ${{ secrets.SUPABASE_PAT }}
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+        run: |
+          set -euo pipefail
+          # VITE_SUPABASE_URL = https://<ref>.supabase.co からプロジェクト ref を抽出
+          REF=$(echo "$VITE_SUPABASE_URL" | sed -E 's#https?://([^.]+)\.supabase\.co.*#\1#')
+          echo "Project ref: $REF"
+
+          SQL='create table if not exists push_subscriptions (
+            endpoint text primary key,
+            p256dh text not null,
+            auth text not null,
+            member_id text not null,
+            oshi_code text,
+            oshi_group text,
+            prefs jsonb not null default '"'"'{"blog":true,"schedule":true,"live_prev_day":true,"live_day":true}'"'"'::jsonb,
+            user_agent text,
+            created_at timestamptz default now(),
+            updated_at timestamptz default now()
+          );
+          create index if not exists push_subscriptions_member_id_idx on push_subscriptions (member_id);
+          create index if not exists push_subscriptions_oshi_idx on push_subscriptions (oshi_group, oshi_code);
+          alter table push_subscriptions enable row level security;
+          drop policy if exists "allow all for push_subscriptions" on push_subscriptions;
+          create policy "allow all for push_subscriptions" on push_subscriptions for all using (true) with check (true);'
+
+          # JSON に安全に埋め込む (jq 経由)
+          BODY=$(jq -n --arg q "$SQL" '{query: $q}')
+
+          HTTP_CODE=$(curl -s -o /tmp/resp.json -w "%{http_code}" \
+            -X POST \
+            -H "Authorization: Bearer $SUPABASE_PAT" \
+            -H "Content-Type: application/json" \
+            -d "$BODY" \
+            "https://api.supabase.com/v1/projects/$REF/database/query")
+
+          echo "HTTP $HTTP_CODE"
+          cat /tmp/resp.json
+          echo
+          if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "201" ]; then
+            exit 1
+          fi
+          echo "Migration succeeded"
