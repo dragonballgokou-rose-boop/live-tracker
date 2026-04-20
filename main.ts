@@ -322,10 +322,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 // Register Service Worker
+// GitHub Pages ではアプリの base が /live-tracker/ なので絶対 /sw.js は 404。
+// import.meta.env.BASE_URL ("/live-tracker/") を使って正しいパスを生成する。
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js').catch(() => {
-            // Service worker registration failed - that's OK in development
+        const swUrl = (import.meta.env.BASE_URL || '/') + 'sw.js';
+        navigator.serviceWorker.register(swUrl, { scope: import.meta.env.BASE_URL || '/' }).catch((err) => {
+            console.warn('[sw] registration failed:', err);
         });
     });
 }
