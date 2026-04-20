@@ -325,10 +325,18 @@ document.addEventListener('DOMContentLoaded', async () => {
 // GitHub Pages ではアプリの base が /live-tracker/ なので絶対 /sw.js は 404。
 // import.meta.env.BASE_URL ("/live-tracker/") を使って正しいパスを生成する。
 if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-        const swUrl = (import.meta.env.BASE_URL || '/') + 'sw.js';
-        navigator.serviceWorker.register(swUrl, { scope: import.meta.env.BASE_URL || '/' }).catch((err) => {
-            console.warn('[sw] registration failed:', err);
-        });
-    });
+    const swUrl = (import.meta.env.BASE_URL || '/') + 'sw.js';
+    const scope = import.meta.env.BASE_URL || '/';
+    const doRegister = () => {
+        navigator.serviceWorker.register(swUrl, { scope })
+            .then(reg => console.log('[sw] registered:', reg.scope))
+            .catch(err => console.warn('[sw] registration failed:', err));
+    };
+    // モジュール読み込みが遅延して load イベントが既に発火している場合もあるので
+    // readyState を見て即登録するか load を待つかを選ぶ。
+    if (document.readyState === 'complete') {
+        doRegister();
+    } else {
+        window.addEventListener('load', doRegister);
+    }
 }

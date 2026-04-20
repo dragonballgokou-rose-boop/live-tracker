@@ -127,7 +127,21 @@ export async function enablePush(args: EnableArgs): Promise<{ ok: true; prefs: P
   const perm = await Notification.requestPermission();
   if (perm !== 'granted') return { ok: false, reason: 'permission-denied' };
 
-  const reg = await getRegistration();
+  let reg = await getRegistration();
+  if (!reg) {
+    // 起動タイミングで SW 登録が間に合ってないケース: この場で登録を試みる
+    try {
+      const swUrl = ((import.meta.env as any).BASE_URL || '/') + 'sw.js';
+      const scope = (import.meta.env as any).BASE_URL || '/';
+      reg = await navigator.serviceWorker.register(swUrl, { scope });
+      // ready を待つ (最長 5 秒)
+      const timeout = new Promise<null>(resolve => setTimeout(() => resolve(null), 5000));
+      await Promise.race([navigator.serviceWorker.ready, timeout]);
+    } catch (err) {
+      console.warn('[push] fallback SW registration failed:', err);
+      return { ok: false, reason: 'no-sw: ' + (err instanceof Error ? err.message : String(err)) };
+    }
+  }
   if (!reg) return { ok: false, reason: 'no-sw' };
 
   let sub = await reg.pushManager.getSubscription();
