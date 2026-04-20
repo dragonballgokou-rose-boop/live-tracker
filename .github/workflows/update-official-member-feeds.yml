@@ -56,10 +56,11 @@ jobs:
       - name: Send Web Push for new blog / schedule
         if: steps.commit.outputs.changed == 'true' && github.ref_name == 'main'
         env:
-          VAPID_PUBLIC_KEY:     ${{ secrets.VAPID_PUBLIC_KEY }}
-          VAPID_PRIVATE_KEY:    ${{ secrets.VAPID_PRIVATE_KEY }}
-          VAPID_SUBJECT:        ${{ secrets.VAPID_SUBJECT }}
-          SUPABASE_URL:         ${{ secrets.SUPABASE_URL }}
-          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
-          APP_URL:              ${{ secrets.APP_URL }}
+          VAPID_PUBLIC_KEY:   ${{ secrets.VAPID_PUBLIC_KEY }}
+          VAPID_PRIVATE_KEY:  ${{ secrets.VAPID_PRIVATE_KEY }}
+          VAPID_SUBJECT:      ${{ secrets.VAPID_SUBJECT }}
+          # 既存の同期用 Secret を再利用 (RLS allow-all なので anon key で十分)
+          SUPABASE_URL:       ${{ secrets.VITE_SUPABASE_URL }}
+          SUPABASE_ANON_KEY:  ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          APP_URL:            ${{ secrets.APP_URL }}
         run: node scripts/send-push-notifications.mjs --feeds-diff
