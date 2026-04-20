@@ -166,46 +166,38 @@ function parseBlogList(html, host) {
 
 /**
  * MEMBER'S SCHEDULE HTML から 直近スケジュールを抽出する。
- * 構造例:
- *   <div class="sc--day">
- *     <p class="sc--day__d">02</p>
- *     <p class="sc--day__w">Thu</p>
- *   </div>
- *   <ul class="sc--lists">
- *     <li class="sc--list">
- *       <p class="sc--list__cate">ラジオ</p>
- *       <p class="sc--list__ttl">TOKYO FM「SCHOOL OF LOCK!...」</p>
- *     </li>
- *   </ul>
- *
- * 「直近スケジュール」のみ（過去は除く）。年月は URL パラメータ `yy=YYYY&mm=MM`
- * でページに反映されるが、デフォルトで現在月が返ると想定する。
+ * Sony Music CMS の class 命名が流動的なため、カテゴリキーワード
+ * (ラジオ/テレビ/ライブ など) を起点に周辺のテキストを取りに行く
+ * より頑強なパース戦略を採る。
  */
 function parseSchedule(html) {
   const results = [];
-  // <li class="sc--list"> ...  </li> の塊を拾う
-  const liRe = /<li[^>]+class=["'][^"']*sc--list[^"']*["'][^>]*>([\s\S]*?)<\/li>/g;
+  const catRe = /(ラジオ|テレビ|ＴＶ|TV|ライブ|イベント|雑誌|ネット|MC|ファンミ|舞台|配信|CM|写真集|書籍|リリース|コンサート)/g;
+  const seen = new Set();
   let m;
-  while ((m = liRe.exec(html)) !== null) {
-    const inner = m[1];
-    const cate = cleanText(
-      (inner.match(/class=["'][^"']*(?:sc--list__cate|cate)[^"']*["'][^>]*>([^<]+)</i) || [])[1] || ''
-    ) || null;
-    const title = cleanText(
-      (inner.match(/class=["'][^"']*(?:sc--list__ttl|ttl|title)[^"']*["'][^>]*>([^<]+)</i) || [])[1] || ''
-    );
-    if (!title) continue;
-    // liRe で見つけた範囲の直前までさかのぼって "sc--day" ブロックを探す
-    const beforeIdx = m.index;
-    const head = html.slice(Math.max(0, beforeIdx - 800), beforeIdx);
-    const dayMatch = head.match(/class=["'][^"']*sc--day__d[^"']*["'][^>]*>\s*(\d{1,2})\s*</);
-    const day = dayMatch ? dayMatch[1] : null;
+  while ((m = catRe.exec(html)) !== null) {
+    const cate = m[1];
+    // 日付: m.index より前 800 文字から 1〜2 桁の数字を拾う
+    const before = html.slice(Math.max(0, m.index - 1200), m.index);
+    const dayMatch = before.match(/(?:sc[-_][^"'>]*__?d|day[-_]?num|date[-_]?d)["'][^>]*>\s*(\d{1,2})\s*</i)
+                  || before.match(/<(?:p|span|div|dt)[^>]*>\s*(\d{1,2})\s*(?:<span[^>]*>(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)|<\/)/i);
+    const day = dayMatch ? Number(dayMatch[1]) : null;
 
-    results.push({
-      cate,
-      title,
-      dayOfMonth: day ? Number(day) : null,
-    });
+    // タイトル: m.index より後 1500 文字の間で長めの日本語/英語テキスト
+    const after = html.slice(m.index + cate.length, m.index + cate.length + 1500);
+    // まず class に ttl/title を含む要素
+    let titleMatch = after.match(/class=["'][^"']*(?:ttl|title|name)[^"']*["'][^>]*>([^<]{3,200})</i);
+    // なければ普通の要素の中身
+    if (!titleMatch) titleMatch = after.match(/<(?:p|span|h[1-6]|dd|dt)[^>]*>([^<]{5,200})</i);
+    if (!titleMatch) continue;
+    const title = cleanText(titleMatch[1]);
+    if (!title) continue;
+
+    const key = `${day}|${cate}|${title.slice(0, 30)}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+
+    results.push({ cate, title, dayOfMonth: day });
     if (results.length >= MAX_ITEMS) break;
   }
   return results;
@@ -233,10 +225,31 @@ async function readExistingFeeds() {
   }
 }
 
+/** ブログ詳細ページから og:image を抽出して thumbnail を埋める fallback */
+async function enrichThumbnailFromDetail(blog, cfg) {
+  if (!blog.url) return;
+  try {
+    const html = await fetchHtml(blog.url, cfg.referer);
+    const ogMatch =
+      html.match(/<meta[^>]+property=["']og:image["'][^>]*content=["']([^"']+)["']/i)
+      || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i)
+      || html.match(/<meta[^>]+name=["']twitter:image["'][^>]*content=["']([^"']+)["']/i);
+    if (ogMatch) {
+      blog.thumbnail = absoluteUrl(ogMatch[1], cfg.host);
+      return;
+    }
+    // og:image が無ければ 本文中の最初の img を探す
+    const imgMatch = html.match(/<img[^>]+(?:src|data-src)=["']([^"']+\.(?:jpg|jpeg|png|webp)[^"']*)["']/i);
+    if (imgMatch) blog.thumbnail = absoluteUrl(imgMatch[1], cfg.host);
+  } catch {
+    /* silent */
+  }
+}
+
 async function scrapeMemberFeeds(m, cfg) {
   const entry = { blog: [], schedule: [], errors: [] };
 
-  // ブログ
+  // ブログ一覧
   try {
     const html = await fetchHtml(cfg.blogList(m.code), cfg.referer);
     entry.blog = parseBlogList(html, cfg.host);
@@ -244,6 +257,13 @@ async function scrapeMemberFeeds(m, cfg) {
     entry.errors.push(`blog: ${e.message}`);
   }
   await sleep(THROTTLE_MS);
+
+  // サムネが無いエントリについては詳細ページから og:image を取りに行く
+  const needThumb = entry.blog.filter(b => !b.thumbnail).slice(0, 5);
+  for (const b of needThumb) {
+    await enrichThumbnailFromDetail(b, cfg);
+    await sleep(THROTTLE_MS);
+  }
 
   // スケジュール
   try {
