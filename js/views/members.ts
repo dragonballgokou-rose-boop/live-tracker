@@ -211,10 +211,11 @@ async function openOshiModal(memberId: string): Promise<void> {
 
   const feeds = getMemberFeedSync(link.officialCode, link.officialGroup);
   const blogUrl = buildOfficialBlogUrl(link.officialCode, link.officialGroup);
+  // 確認済: スケジュールはメンバー詳細ページ /artist/<code> に埋め込まれている
   const scheduleUrl = oshiData.group === 'nogi'
-    ? `https://www.nogizaka46.com/s/n46/artist/SCHEDULE/${encodeURIComponent(oshiData.code)}?ima=0000`
+    ? `https://www.nogizaka46.com/s/n46/artist/${encodeURIComponent(oshiData.code)}?ima=0000`
     : oshiData.group === 'saku'
-    ? `https://sakurazaka46.com/s/s46/artist/SCHEDULE/${encodeURIComponent(oshiData.code)}?ima=0000`
+    ? `https://sakurazaka46.com/s/s46/artist/${encodeURIComponent(oshiData.code)}?ima=0000`
     : null;
   const artist = oshiData.artist || (oshiData.group === 'nogi' ? '乃木坂46' : oshiData.group === 'saku' ? '櫻坂46' : '');
 

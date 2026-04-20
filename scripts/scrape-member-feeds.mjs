@@ -33,44 +33,62 @@ const GROUP_CONFIG = {
     host: 'https://www.nogizaka46.com',
     referer: 'https://www.nogizaka46.com/s/n46',
     blogList: code => `https://www.nogizaka46.com/s/n46/diary/MEMBER/list?ima=0000&ct=${encodeURIComponent(code)}`,
-    // スケジュールは複数 URL パターンを試す（Sony Music CMS は変更しがち）
-    // ブログが /diary/MEMBER/list?ct=<code> で取れるので、schedule も同じ形を優先
-    scheduleCandidates: code => [
-      `https://www.nogizaka46.com/s/n46/schedule/MEMBER/list?ima=0000&ct=${encodeURIComponent(code)}`,
-      `https://www.nogizaka46.com/s/n46/api/list/schedule?ct=${encodeURIComponent(code)}`,
-      `https://www.nogizaka46.com/s/n46/api/list/schedule?ima=0000&ct=${encodeURIComponent(code)}`,
-      `https://www.nogizaka46.com/s/n46/artist/${encodeURIComponent(code)}/SCHEDULE?ima=0000`,
-      `https://www.nogizaka46.com/s/n46/artist/${encodeURIComponent(code)}/schedule?ima=0000`,
-      `https://www.nogizaka46.com/s/n46/schedule/list?ima=0000&ct=${encodeURIComponent(code)}`,
-    ],
+    // 確認済: SPA が叩いている本物の API は
+    //   /api/list/schedule?list[]=<code>&dy=YYYYMM
+    // （PHP 配列形式のパラメータ。ct= ではない）
+    scheduleCandidates: code => {
+      const ym = currentYyyymm();
+      const nextYm = nextMonthYyyymm();
+      return [
+        `https://www.nogizaka46.com/s/n46/api/list/schedule?list[]=${encodeURIComponent(code)}&dy=${ym}`,
+        `https://www.nogizaka46.com/s/n46/api/list/schedule?list[]=${encodeURIComponent(code)}&dy=${nextYm}`,
+        `https://www.nogizaka46.com/s/n46/artist/${encodeURIComponent(code)}?ima=0000`,
+        `https://www.nogizaka46.com/s/n46/api/list/schedule?ct=${encodeURIComponent(code)}`,
+      ];
+    },
   },
   saku: {
     host: 'https://sakurazaka46.com',
     referer: 'https://sakurazaka46.com/s/s46',
     blogList: code => `https://sakurazaka46.com/s/s46/diary/blog/list?ima=0000&ct=${encodeURIComponent(code)}`,
-    scheduleCandidates: code => [
-      `https://sakurazaka46.com/s/s46/schedule/MEMBER/list?ima=0000&ct=${encodeURIComponent(code)}`,
-      `https://sakurazaka46.com/s/s46/api/list/schedule?ct=${encodeURIComponent(code)}`,
-      `https://sakurazaka46.com/s/s46/api/list/schedule?ima=0000&ct=${encodeURIComponent(code)}`,
-      `https://sakurazaka46.com/s/s46/artist/${encodeURIComponent(code)}/SCHEDULE?ima=0000`,
-      `https://sakurazaka46.com/s/s46/artist/${encodeURIComponent(code)}/schedule?ima=0000`,
-      `https://sakurazaka46.com/s/s46/schedule/list?ima=0000&ct=${encodeURIComponent(code)}`,
-    ],
+    scheduleCandidates: code => {
+      const ym = currentYyyymm();
+      const nextYm = nextMonthYyyymm();
+      return [
+        `https://sakurazaka46.com/s/s46/api/list/schedule?list[]=${encodeURIComponent(code)}&dy=${ym}`,
+        `https://sakurazaka46.com/s/s46/api/list/schedule?list[]=${encodeURIComponent(code)}&dy=${nextYm}`,
+        `https://sakurazaka46.com/s/s46/artist/${encodeURIComponent(code)}?ima=0000`,
+        `https://sakurazaka46.com/s/s46/api/list/schedule?ct=${encodeURIComponent(code)}`,
+      ];
+    },
   },
 };
+
+function currentYyyymm() {
+  const d = new Date();
+  return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+function nextMonthYyyymm() {
+  const d = new Date();
+  d.setMonth(d.getMonth() + 1);
+  return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
 
 // ---------- fetch ----------
 
 async function fetchHtml(url, referer) {
-  const res = await fetch(url, {
-    redirect: 'follow',
-    headers: {
-      'User-Agent': UA,
-      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-      'Accept-Language': 'ja-JP,ja;q=0.9',
-      'Referer': referer,
-    },
-  });
+  // Sony Music CMS の /api/ 系は XHR として振る舞う必要がある（scrape-official.mjs と同じ戦略）
+  const isApi = /\/api\//.test(url);
+  const headers = {
+    'User-Agent': UA,
+    'Accept': isApi
+      ? 'application/json, text/plain, */*'
+      : 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+    'Accept-Language': 'ja-JP,ja;q=0.9',
+    'Referer': referer,
+  };
+  if (isApi) headers['X-Requested-With'] = 'XMLHttpRequest';
+  const res = await fetch(url, { redirect: 'follow', headers });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return await res.text();
 }
@@ -232,27 +250,50 @@ function parseScheduleJson(body) {
 
 /**
  * HTML 内の「日付アンカー」を全て見つける。
- * スクリーンショットの "02 Thu" のような表示は以下のような DOM になりがち:
+ * 表示は以下のような DOM になりがち:
  *   <p class="sc--day"><span>02</span><span>Thu</span></p>
  *   <dt class="a-sche__dt">02 <span>Thu</span></dt>
- *   <p class="date">02<span class="week">Thu</span></p>
- * いずれも「1〜2 桁の日 + 英語曜日 (Mon..Sun) が近接」という共通点があるので、
- * 数字と曜日が 0〜60 文字の間に現れる箇所をアンカーとして拾う。
+ *   <time datetime="2026-04-02">02</time>  ← 曜日はテキストにない
+ *   2026.4.2（木）  ← 日本語曜日
+ * 共通するのは「日を示す 1〜2 桁」なので、以下の 3 戦略で OR マッチ:
+ *   1) day + 英語3文字曜日（Mon..Sun）が 200 文字以内に近接
+ *   2) day + 日本語曜日括弧（月火水木金土日）
+ *   3) <time datetime="YYYY-MM-DD"> から day を直接抽出
  */
 function findDayAnchors(html) {
   const anchors = [];
-  // 日+曜日: 1〜2 桁 → 0〜80 文字の HTML タグ・空白 → 英3文字曜日
-  const re = /(?<!\d)(\d{1,2})(?!\d)[\s\S]{0,80}?\b(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\b/g;
+  const pushAnchor = (index, endIdx, day) => {
+    if (!day || day < 1 || day > 31) return;
+    const ctx = html.slice(Math.max(0, index - 6), index);
+    if (/[.\/\-]$/.test(ctx)) return;
+    anchors.push({ index, end: endIdx, day });
+  };
+
+  // 1) 数字 + 英語 or 日本語曜日 (200 文字以内に近接)
+  // 日数字の前は要素の開き括弧 `>`、空白、or 先頭のみ受理（<h1> の "1" など
+  // タグ名中の数字を排除）
+  const weekdayRe = /(?<=>|\s|^)(\d{1,2})(?!\d)[\s\S]{0,200}?(?:\b(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)\b|[（(][月火水木金土日][）)])/g;
   let m;
-  while ((m = re.exec(html)) !== null) {
-    const day = Number(m[1]);
-    if (!day || day < 1 || day > 31) continue;
-    // YYYY.MM.DD や URL パス内の数字のような偽マッチを除外
-    const ctx = html.slice(Math.max(0, m.index - 6), m.index);
-    if (/[.\/\-]$/.test(ctx)) continue;
-    anchors.push({ index: m.index, end: re.lastIndex, day });
+  while ((m = weekdayRe.exec(html)) !== null) {
+    pushAnchor(m.index, weekdayRe.lastIndex, Number(m[1]));
   }
-  return anchors;
+
+  // 2) <time datetime="YYYY-MM-DD"> が schedule セクション内にあれば day を抽出
+  const timeRe = /<time[^>]+datetime=["'](\d{4})[-\/](\d{1,2})[-\/](\d{1,2})["']/gi;
+  while ((m = timeRe.exec(html)) !== null) {
+    pushAnchor(m.index, timeRe.lastIndex, Number(m[3]));
+  }
+
+  // index でユニーク化（複数戦略が同じ地点で当たった場合の重複を排除）
+  // 近接した anchor (差 10 文字以内) も同じとみなす
+  anchors.sort((a, b) => a.index - b.index);
+  const deduped = [];
+  for (const a of anchors) {
+    const last = deduped[deduped.length - 1];
+    if (last && Math.abs(a.index - last.index) < 10 && last.day === a.day) continue;
+    deduped.push(a);
+  }
+  return deduped;
 }
 
 /**
@@ -380,6 +421,20 @@ async function enrichThumbnailFromDetail(blog, cfg) {
   }
 }
 
+/** parseSchedule の結果からメンバー名 / 短すぎる汎用語のタイトルを除外 */
+function sanitizeScheduleItems(items, memberName) {
+  const trimmedName = (memberName || '').replace(/\s+/g, '').trim();
+  return items.filter(it => {
+    const t = (it.title || '').replace(/\s+/g, '').trim();
+    if (!t) return false;
+    // タイトルがメンバー名と一致 or メンバー名のみ → 誤抽出
+    if (trimmedName && t === trimmedName) return false;
+    // 「2026.03.19」みたいな日付文字列が title に混入したケース
+    if (/^\d{4}[.\/\-]\d{1,2}[.\/\-]\d{1,2}$/.test(t)) return false;
+    return true;
+  });
+}
+
 async function scrapeMemberFeeds(m, cfg) {
   const entry = { blog: [], schedule: [], errors: [] };
 
@@ -413,13 +468,42 @@ async function scrapeMemberFeeds(m, cfg) {
       let parsed = [];
       if (looksJson) parsed = parseScheduleJson(html);
       if (parsed.length === 0) parsed = parseSchedule(html);
+      // 誤抽出（title = メンバー名 等）をサニタイズ
+      parsed = sanitizeScheduleItems(parsed, m.name);
       if (parsed.length > 0) {
         entry.schedule = parsed;
         scheduleDiag.length = 0;
         break;
       }
       const kind = looksJson ? 'json' : (looksLikeSchedulePage(html) ? 'sched-html' : 'other-html');
-      scheduleDiag.push(`${short}: 0 items (${kind}, ${html.length}b)`);
+      // 小さい応答は内容まで見せる（空エラー JSON の正体特定用）
+      let preview = '';
+      if (looksJson && html.length < 200) {
+        preview = ` body=${trimmed.replace(/\s+/g, ' ').slice(0, 120)}`;
+      } else if (!looksJson && html.length < 400) {
+        preview = ` body=${html.replace(/\s+/g, ' ').slice(0, 120)}`;
+      } else if (kind === 'sched-html') {
+        // SPA で schedule が後から JS で挿入されるケースでは、
+        // 初期 HTML 内の API URL / 関連 script を探して診断に残す
+        const hints = [];
+        // MEMBER'S SCHEDULE（アポストロフィ付き）ヘッダー直後をサンプル
+        const hdrIdx = html.search(/MEMBER['\u2019]S?\s*SCHEDULE/i);
+        if (hdrIdx >= 0) {
+          hints.push('hdr=' + html.slice(hdrIdx, hdrIdx + 400).replace(/\s+/g, ' ').slice(0, 160));
+        }
+        // /api/ URL 参照（SPA がフェッチしている可能性）
+        const apiUrls = [...new Set(
+          [...html.matchAll(/["'](\/s\/n46\/api\/[^"']{0,80})["']/gi)].map(x => x[1])
+        )].slice(0, 4);
+        if (apiUrls.length) hints.push('api=' + apiUrls.join(','));
+        // data-* 属性に埋め込まれた URL / endpoint
+        const dataAttrs = [...new Set(
+          [...html.matchAll(/data-(?:url|endpoint|src|ajax)=["']([^"']{1,100})["']/gi)].map(x => x[1])
+        )].slice(0, 3);
+        if (dataAttrs.length) hints.push('data=' + dataAttrs.join(','));
+        if (hints.length) preview = ' ' + hints.join(' | ');
+      }
+      scheduleDiag.push(`${short}: 0 items (${kind}, ${html.length}b)${preview}`);
     } catch (e) {
       scheduleDiag.push(`${short}: ${e.message}`);
     }
