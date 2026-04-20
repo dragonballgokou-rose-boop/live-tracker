@@ -237,27 +237,50 @@ function parseScheduleJson(body) {
 
 /**
  * HTML 内の「日付アンカー」を全て見つける。
- * スクリーンショットの "02 Thu" のような表示は以下のような DOM になりがち:
+ * 表示は以下のような DOM になりがち:
  *   <p class="sc--day"><span>02</span><span>Thu</span></p>
  *   <dt class="a-sche__dt">02 <span>Thu</span></dt>
- *   <p class="date">02<span class="week">Thu</span></p>
- * いずれも「1〜2 桁の日 + 英語曜日 (Mon..Sun) が近接」という共通点があるので、
- * 数字と曜日が 0〜60 文字の間に現れる箇所をアンカーとして拾う。
+ *   <time datetime="2026-04-02">02</time>  ← 曜日はテキストにない
+ *   2026.4.2（木）  ← 日本語曜日
+ * 共通するのは「日を示す 1〜2 桁」なので、以下の 3 戦略で OR マッチ:
+ *   1) day + 英語3文字曜日（Mon..Sun）が 200 文字以内に近接
+ *   2) day + 日本語曜日括弧（月火水木金土日）
+ *   3) <time datetime="YYYY-MM-DD"> から day を直接抽出
  */
 function findDayAnchors(html) {
   const anchors = [];
-  // 日+曜日: 1〜2 桁 → 0〜80 文字の HTML タグ・空白 → 英3文字曜日
-  const re = /(?<!\d)(\d{1,2})(?!\d)[\s\S]{0,80}?\b(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\b/g;
+  const pushAnchor = (index, endIdx, day) => {
+    if (!day || day < 1 || day > 31) return;
+    const ctx = html.slice(Math.max(0, index - 6), index);
+    if (/[.\/\-]$/.test(ctx)) return;
+    anchors.push({ index, end: endIdx, day });
+  };
+
+  // 1) 数字 + 英語 or 日本語曜日 (200 文字以内に近接)
+  // 日数字の前は要素の開き括弧 `>`、空白、or 先頭のみ受理（<h1> の "1" など
+  // タグ名中の数字を排除）
+  const weekdayRe = /(?<=>|\s|^)(\d{1,2})(?!\d)[\s\S]{0,200}?(?:\b(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)\b|[（(][月火水木金土日][）)])/g;
   let m;
-  while ((m = re.exec(html)) !== null) {
-    const day = Number(m[1]);
-    if (!day || day < 1 || day > 31) continue;
-    // YYYY.MM.DD や URL パス内の数字のような偽マッチを除外
-    const ctx = html.slice(Math.max(0, m.index - 6), m.index);
-    if (/[.\/\-]$/.test(ctx)) continue;
-    anchors.push({ index: m.index, end: re.lastIndex, day });
+  while ((m = weekdayRe.exec(html)) !== null) {
+    pushAnchor(m.index, weekdayRe.lastIndex, Number(m[1]));
   }
-  return anchors;
+
+  // 2) <time datetime="YYYY-MM-DD"> が schedule セクション内にあれば day を抽出
+  const timeRe = /<time[^>]+datetime=["'](\d{4})[-\/](\d{1,2})[-\/](\d{1,2})["']/gi;
+  while ((m = timeRe.exec(html)) !== null) {
+    pushAnchor(m.index, timeRe.lastIndex, Number(m[3]));
+  }
+
+  // index でユニーク化（複数戦略が同じ地点で当たった場合の重複を排除）
+  // 近接した anchor (差 10 文字以内) も同じとみなす
+  anchors.sort((a, b) => a.index - b.index);
+  const deduped = [];
+  for (const a of anchors) {
+    const last = deduped[deduped.length - 1];
+    if (last && Math.abs(a.index - last.index) < 10 && last.day === a.day) continue;
+    deduped.push(a);
+  }
+  return deduped;
 }
 
 /**
@@ -430,6 +453,17 @@ async function scrapeMemberFeeds(m, cfg) {
         preview = ` body=${trimmed.replace(/\s+/g, ' ').slice(0, 120)}`;
       } else if (!looksJson && html.length < 400) {
         preview = ` body=${html.replace(/\s+/g, ' ').slice(0, 120)}`;
+      } else if (kind === 'sched-html') {
+        // 大きい schedule HTML で 0 件なのはパーサー側の問題。
+        // SCHEDULE セクション周辺と最初の日付っぽい要素のサンプルを残す。
+        const schedIdx = html.search(/MEMBER.{0,5}SCHEDULE|SCHEDULE/i);
+        if (schedIdx >= 0) {
+          const snippet = html
+            .slice(schedIdx, schedIdx + 600)
+            .replace(/\s+/g, ' ')
+            .slice(0, 280);
+          preview = ` snip=${snippet}`;
+        }
       }
       scheduleDiag.push(`${short}: 0 items (${kind}, ${html.length}b)${preview}`);
     } catch (e) {
