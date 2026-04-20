@@ -15,6 +15,8 @@ on:
 
 permissions:
   contents: write
+  # scraper commit 後に deploy.yml を workflow_dispatch で起動するため
+  actions: write
 
 jobs:
   scrape:
@@ -64,3 +66,17 @@ jobs:
           SUPABASE_ANON_KEY:  ${{ secrets.VITE_SUPABASE_ANON_KEY }}
           APP_URL:            ${{ secrets.APP_URL }}
         run: node scripts/send-push-notifications.mjs --feeds-diff
+
+      # GITHUB_TOKEN で push した commit は Pages deploy を trigger しないので
+      # workflow_dispatch で明示的に起動して最新 JSON を配信する
+      - name: Trigger Pages deploy
+        if: steps.commit.outputs.changed == 'true' && github.ref_name == 'main'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          curl -s -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/workflows/deploy.yml/dispatches" \
+            -d '{"ref":"main"}'
+          echo "deploy dispatch triggered"
