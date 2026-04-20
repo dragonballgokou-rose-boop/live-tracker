@@ -2441,9 +2441,31 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
 
 /* Apple Music 風の flat nav では SVG liquid-glass を適用しない */
 
-/* アクティブタブ枠は撤去（Apple Music 同様、色変化のみで示す） */
+/* Apple Music 風スライドインジケーター
+   アクティブタブの後ろに柔らかいピル背景がスプリング移動する。
+   offsetLeft / offsetWidth を BottomTabBar.ts が直接 style に書き込む。 */
 .tab-indicator {
-  display: none;
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 0;
+  height: 52px;
+  transform: translateY(-50%);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.09);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  pointer-events: none;
+  z-index: 0;
+  /* Apple Music のラバリーなスプリング感（overshoot 弱めの高速イージング） */
+  transition:
+    left  0.44s cubic-bezier(0.32, 0.72, 0.26, 1),
+    width 0.44s cubic-bezier(0.32, 0.72, 0.26, 1);
+}
+
+.tab-indicator.no-transition {
+  transition: none;
 }
 
 /* ── Tab items ── Apple Music 風 */
