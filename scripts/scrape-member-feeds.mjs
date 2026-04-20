@@ -33,13 +33,23 @@ const GROUP_CONFIG = {
     host: 'https://www.nogizaka46.com',
     referer: 'https://www.nogizaka46.com/s/n46',
     blogList: code => `https://www.nogizaka46.com/s/n46/diary/MEMBER/list?ima=0000&ct=${encodeURIComponent(code)}`,
-    schedule: code => `https://www.nogizaka46.com/s/n46/artist/SCHEDULE/${encodeURIComponent(code)}?ima=0000`,
+    // スケジュールは複数 URL パターンを試す（Sony Music CMS は変更しがち）
+    scheduleCandidates: code => [
+      `https://www.nogizaka46.com/s/n46/artist/${encodeURIComponent(code)}/SCHEDULE?ima=0000`,
+      `https://www.nogizaka46.com/s/n46/artist/${encodeURIComponent(code)}/schedule?ima=0000`,
+      `https://www.nogizaka46.com/s/n46/artist/${encodeURIComponent(code)}?ima=0000&page=schedule`,
+      `https://www.nogizaka46.com/s/n46/schedule/list?ima=0000&ct=${encodeURIComponent(code)}`,
+    ],
   },
   saku: {
     host: 'https://sakurazaka46.com',
     referer: 'https://sakurazaka46.com/s/s46',
     blogList: code => `https://sakurazaka46.com/s/s46/diary/blog/list?ima=0000&ct=${encodeURIComponent(code)}`,
-    schedule: code => `https://sakurazaka46.com/s/s46/artist/SCHEDULE/${encodeURIComponent(code)}?ima=0000`,
+    scheduleCandidates: code => [
+      `https://sakurazaka46.com/s/s46/artist/${encodeURIComponent(code)}/SCHEDULE?ima=0000`,
+      `https://sakurazaka46.com/s/s46/artist/${encodeURIComponent(code)}/schedule?ima=0000`,
+      `https://sakurazaka46.com/s/s46/schedule/list?ima=0000&ct=${encodeURIComponent(code)}`,
+    ],
   },
 };
 
@@ -265,12 +275,24 @@ async function scrapeMemberFeeds(m, cfg) {
     await sleep(THROTTLE_MS);
   }
 
-  // スケジュール
-  try {
-    const html = await fetchHtml(cfg.schedule(m.code), cfg.referer);
-    entry.schedule = parseSchedule(html);
-  } catch (e) {
-    entry.errors.push(`schedule: ${e.message}`);
+  // スケジュール（複数 URL パターンを試す）
+  let scheduleOK = false;
+  for (const url of cfg.scheduleCandidates(m.code)) {
+    try {
+      const html = await fetchHtml(url, cfg.referer);
+      const parsed = parseSchedule(html);
+      if (parsed.length > 0) {
+        entry.schedule = parsed;
+        scheduleOK = true;
+        break;
+      }
+    } catch (e) {
+      // try next candidate
+    }
+    await sleep(THROTTLE_MS);
+  }
+  if (!scheduleOK && entry.schedule.length === 0) {
+    entry.errors.push(`schedule: no items from any URL`);
   }
 
   return entry;

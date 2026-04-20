@@ -2419,17 +2419,18 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
 
-  /* コンテナは blur のみで枠は無し。アクティブ枠は sliding indicator のみで表現 */
-  background: rgba(26, 26, 32, 0.58);
-  backdrop-filter: blur(28px) saturate(180%);
-  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  /* 囲みは見せる（濃いガラス）。枠は付けない */
+  background: rgba(22, 22, 26, 0.82);
+  backdrop-filter: blur(30px) saturate(180%);
+  -webkit-backdrop-filter: blur(30px) saturate(180%);
 
   border-radius: 34px;
   border: none;
 
   box-shadow:
-    0 6px 22px rgba(0, 0, 0, 0.36),
-    0 1px 3px rgba(0, 0, 0, 0.20);
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 6px 22px rgba(0, 0, 0, 0.40),
+    0 1px 3px rgba(0, 0, 0, 0.22);
 
   z-index: 101;
   overflow: hidden;
