@@ -2419,13 +2419,13 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
 
-  /* Apple Music 風: 上の "全て / 予定" チップと同じ質感の柔らかいピル枠 */
-  background: rgba(26, 26, 32, 0.62);
+  /* コンテナは blur のみで枠は無し。アクティブ枠は sliding indicator のみで表現 */
+  background: rgba(26, 26, 32, 0.58);
   backdrop-filter: blur(28px) saturate(180%);
   -webkit-backdrop-filter: blur(28px) saturate(180%);
 
   border-radius: 34px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: none;
 
   box-shadow:
     0 6px 22px rgba(0, 0, 0, 0.36),
