@@ -24,23 +24,42 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.ref_name }}
-          fetch-depth: 1
+          # diff 送信のため HEAD~1 が必要
+          fetch-depth: 2
 
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
 
+      - name: Install deps (web-push + supabase)
+        run: npm install --no-audit --no-fund
+
       - name: Run member feeds scraper
         run: node scripts/scrape-member-feeds.mjs
 
       - name: Commit updated JSON if changed
+        id: commit
         run: |
           git add public/official-member-feeds.json
           if git diff --cached --quiet -- public/official-member-feeds.json; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
             echo "No changes"
             exit 0
           fi
+          echo "changed=true" >> "$GITHUB_OUTPUT"
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git commit -m "chore: update official member feeds (auto)"
           git push origin HEAD:${{ github.ref_name }}
+
+      # 差分があり main ブランチに対する実行のときのみ push 通知を送る
+      - name: Send Web Push for new blog / schedule
+        if: steps.commit.outputs.changed == 'true' && github.ref_name == 'main'
+        env:
+          VAPID_PUBLIC_KEY:     ${{ secrets.VAPID_PUBLIC_KEY }}
+          VAPID_PRIVATE_KEY:    ${{ secrets.VAPID_PRIVATE_KEY }}
+          VAPID_SUBJECT:        ${{ secrets.VAPID_SUBJECT }}
+          SUPABASE_URL:         ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          APP_URL:              ${{ secrets.APP_URL }}
+        run: node scripts/send-push-notifications.mjs --feeds-diff

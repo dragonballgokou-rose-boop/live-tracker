@@ -1,0 +1,36 @@
+name: Send Live Reminders
+
+on:
+  schedule:
+    # 毎朝 08:00 JST (= 23:00 UTC) に実行 — 前日通知 + 当日朝通知
+    - cron: '0 23 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install deps
+        run: npm install --no-audit --no-fund
+
+      - name: Send live reminders
+        env:
+          VAPID_PUBLIC_KEY:     ${{ secrets.VAPID_PUBLIC_KEY }}
+          VAPID_PRIVATE_KEY:    ${{ secrets.VAPID_PRIVATE_KEY }}
+          VAPID_SUBJECT:        ${{ secrets.VAPID_SUBJECT }}
+          SUPABASE_URL:         ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          APP_URL:              ${{ secrets.APP_URL }}
+        run: node scripts/send-push-notifications.mjs --live-reminders

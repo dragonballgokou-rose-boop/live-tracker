@@ -1,5 +1,5 @@
 // Service Worker - Cache Strategy
-const CACHE_NAME = 'live-tracker-v5-evttype-normalize';
+const CACHE_NAME = 'live-tracker-v6-push';
 
 const ASSETS = [
     '/',
@@ -57,4 +57,42 @@ self.addEventListener('fetch', (event) => {
                 return caches.match(event.request);
             })
     );
+});
+
+// ============================================
+// Web Push 通知
+// ============================================
+// payload 形式: { title, body, url?, tag?, icon? }
+
+self.addEventListener('push', (event) => {
+    let data = {};
+    try { data = event.data ? event.data.json() : {}; } catch { data = { body: event.data ? event.data.text() : '' }; }
+    const title = data.title || '推しメンちぇっく';
+    const options = {
+        body: data.body || '',
+        icon: data.icon || '/icon.svg',
+        badge: '/icon.svg',
+        tag:  data.tag || undefined,
+        data: { url: data.url || '/' },
+    };
+    event.waitUntil(self.registration.showNotification(title, options));
+});
+
+self.addEventListener('notificationclick', (event) => {
+    event.notification.close();
+    const target = (event.notification.data && event.notification.data.url) || '/';
+    event.waitUntil((async () => {
+        const all = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+        // 既にアプリタブがあればそれを focus + navigate
+        for (const client of all) {
+            if ('focus' in client) {
+                try {
+                    await client.focus();
+                    if ('navigate' in client && target && target !== '/') await client.navigate(target);
+                    return;
+                } catch { /* fallthrough */ }
+            }
+        }
+        await self.clients.openWindow(target);
+    })());
 });
