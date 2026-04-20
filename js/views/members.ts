@@ -336,7 +336,15 @@ async function wireUpPushSection(): Promise<void> {
     return;
   }
 
-  const status = await getCurrentStatus();
+  // getCurrentStatus が 5 秒以内に返らなければ「未購読」として扱い UI を進める
+  const timeout = new Promise<any>(resolve => setTimeout(() => resolve({
+    supported: true, permission: 'default' as NotificationPermission, subscribed: false, prefs: null,
+    _timedOut: true,
+  }), 5000));
+  const status = await Promise.race([getCurrentStatus(), timeout]);
+  if ((status as any)._timedOut) {
+    console.warn('[push] getCurrentStatus timed out; falling back to unsubscribed state');
+  }
 
   if (!status.subscribed) {
     render(`

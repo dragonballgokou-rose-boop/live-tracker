@@ -1,5 +1,5 @@
 // Service Worker - Cache Strategy
-const CACHE_NAME = 'live-tracker-v6-push';
+const CACHE_NAME = 'live-tracker-v7-push-fix';
 
 const ASSETS = [
     '/',
