@@ -408,6 +408,20 @@ async function enrichThumbnailFromDetail(blog, cfg) {
   }
 }
 
+/** parseSchedule の結果からメンバー名 / 短すぎる汎用語のタイトルを除外 */
+function sanitizeScheduleItems(items, memberName) {
+  const trimmedName = (memberName || '').replace(/\s+/g, '').trim();
+  return items.filter(it => {
+    const t = (it.title || '').replace(/\s+/g, '').trim();
+    if (!t) return false;
+    // タイトルがメンバー名と一致 or メンバー名のみ → 誤抽出
+    if (trimmedName && t === trimmedName) return false;
+    // 「2026.03.19」みたいな日付文字列が title に混入したケース
+    if (/^\d{4}[.\/\-]\d{1,2}[.\/\-]\d{1,2}$/.test(t)) return false;
+    return true;
+  });
+}
+
 async function scrapeMemberFeeds(m, cfg) {
   const entry = { blog: [], schedule: [], errors: [] };
 
@@ -441,6 +455,8 @@ async function scrapeMemberFeeds(m, cfg) {
       let parsed = [];
       if (looksJson) parsed = parseScheduleJson(html);
       if (parsed.length === 0) parsed = parseSchedule(html);
+      // 誤抽出（title = メンバー名 等）をサニタイズ
+      parsed = sanitizeScheduleItems(parsed, m.name);
       if (parsed.length > 0) {
         entry.schedule = parsed;
         scheduleDiag.length = 0;
@@ -454,16 +470,25 @@ async function scrapeMemberFeeds(m, cfg) {
       } else if (!looksJson && html.length < 400) {
         preview = ` body=${html.replace(/\s+/g, ' ').slice(0, 120)}`;
       } else if (kind === 'sched-html') {
-        // 大きい schedule HTML で 0 件なのはパーサー側の問題。
-        // SCHEDULE セクション周辺と最初の日付っぽい要素のサンプルを残す。
-        const schedIdx = html.search(/MEMBER.{0,5}SCHEDULE|SCHEDULE/i);
-        if (schedIdx >= 0) {
-          const snippet = html
-            .slice(schedIdx, schedIdx + 600)
-            .replace(/\s+/g, ' ')
-            .slice(0, 280);
-          preview = ` snip=${snippet}`;
+        // SPA で schedule が後から JS で挿入されるケースでは、
+        // 初期 HTML 内の API URL / 関連 script を探して診断に残す
+        const hints = [];
+        // MEMBER'S SCHEDULE（アポストロフィ付き）ヘッダー直後をサンプル
+        const hdrIdx = html.search(/MEMBER['\u2019]S?\s*SCHEDULE/i);
+        if (hdrIdx >= 0) {
+          hints.push('hdr=' + html.slice(hdrIdx, hdrIdx + 400).replace(/\s+/g, ' ').slice(0, 160));
         }
+        // /api/ URL 参照（SPA がフェッチしている可能性）
+        const apiUrls = [...new Set(
+          [...html.matchAll(/["'](\/s\/n46\/api\/[^"']{0,80})["']/gi)].map(x => x[1])
+        )].slice(0, 4);
+        if (apiUrls.length) hints.push('api=' + apiUrls.join(','));
+        // data-* 属性に埋め込まれた URL / endpoint
+        const dataAttrs = [...new Set(
+          [...html.matchAll(/data-(?:url|endpoint|src|ajax)=["']([^"']{1,100})["']/gi)].map(x => x[1])
+        )].slice(0, 3);
+        if (dataAttrs.length) hints.push('data=' + dataAttrs.join(','));
+        if (hints.length) preview = ' ' + hints.join(' | ');
       }
       scheduleDiag.push(`${short}: 0 items (${kind}, ${html.length}b)${preview}`);
     } catch (e) {
