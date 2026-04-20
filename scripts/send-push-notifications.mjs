@@ -108,8 +108,24 @@ async function loadPrevFeeds() {
 }
 
 function diffNewBlogs(prevFeed, nextFeed) {
+  // prev は URL と (title+date) の両方で既知とみなす（スクレイパが URL 違いで
+  // 同じ記事を重複収集した場合に、直前の diff でも同じ title+date が push 済みの
+  // ものとして扱うため）
   const prevUrls = new Set((prevFeed?.blog || []).map(b => b.url));
-  return (nextFeed?.blog || []).filter(b => !prevUrls.has(b.url));
+  const prevKeys = new Set((prevFeed?.blog || []).map(b => `${b.title ?? ''}|${b.date ?? ''}`));
+  const newOnes = (nextFeed?.blog || []).filter(b =>
+    !prevUrls.has(b.url) && !prevKeys.has(`${b.title ?? ''}|${b.date ?? ''}`)
+  );
+  // next 側でも title+date が同一のものは 1 件にまとめる（1 記事 1 通知）
+  const seen = new Set();
+  const deduped = [];
+  for (const b of newOnes) {
+    const k = `${b.title ?? ''}|${b.date ?? ''}`;
+    if (seen.has(k)) continue;
+    seen.add(k);
+    deduped.push(b);
+  }
+  return deduped;
 }
 
 function diffNewSchedules(prevFeed, nextFeed) {
