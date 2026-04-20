@@ -1,12 +1,14 @@
 // Service Worker - Cache Strategy
-const CACHE_NAME = 'live-tracker-v7-push-fix';
+const CACHE_NAME = 'live-tracker-v8-relpath';
 
+// self.registration.scope = アプリの base URL (例: /live-tracker/)
+const BASE = new URL(self.registration.scope).pathname;
+
+// プレキャッシュは失敗に寛容に。必須ではない（fetch でオンデマンドキャッシュされる）
 const ASSETS = [
-    '/',
-    '/index.html',
-    '/index.css',
-    '/main.js',
-    '/manifest.json'
+    BASE,
+    BASE + 'index.html',
+    BASE + 'manifest.json'
 ];
 
 // 公式ライブ JSON は毎回ネットワーク必須（キャッシュさせない）
@@ -14,11 +16,14 @@ function shouldBypassCache(url) {
     return url.pathname.endsWith('/official-lives.json') || url.search.includes('v=');
 }
 
-// Install
+// Install — addAll が失敗しても install 自体は成功させる
 self.addEventListener('install', (event) => {
     event.waitUntil(
-        caches.open(CACHE_NAME).then((cache) => {
-            return cache.addAll(ASSETS);
+        caches.open(CACHE_NAME).then(async (cache) => {
+            // 個別に add し失敗は無視（404 で install 全体が死なないように）
+            await Promise.all(ASSETS.map(url => cache.add(url).catch(err => {
+                console.warn('[sw] precache skip:', url, err);
+            })));
         })
     );
     self.skipWaiting();
@@ -70,17 +75,17 @@ self.addEventListener('push', (event) => {
     const title = data.title || '推しメンちぇっく';
     const options = {
         body: data.body || '',
-        icon: data.icon || '/icon.svg',
-        badge: '/icon.svg',
+        icon: data.icon || (BASE + 'icon.svg'),
+        badge: BASE + 'icon.svg',
         tag:  data.tag || undefined,
-        data: { url: data.url || '/' },
+        data: { url: data.url || BASE },
     };
     event.waitUntil(self.registration.showNotification(title, options));
 });
 
 self.addEventListener('notificationclick', (event) => {
     event.notification.close();
-    const target = (event.notification.data && event.notification.data.url) || '/';
+    const target = (event.notification.data && event.notification.data.url) || BASE;
     event.waitUntil((async () => {
         const all = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
         // 既にアプリタブがあればそれを focus + navigate
@@ -88,7 +93,7 @@ self.addEventListener('notificationclick', (event) => {
             if ('focus' in client) {
                 try {
                     await client.focus();
-                    if ('navigate' in client && target && target !== '/') await client.navigate(target);
+                    if ('navigate' in client && target && target !== BASE) await client.navigate(target);
                     return;
                 } catch { /* fallthrough */ }
             }
