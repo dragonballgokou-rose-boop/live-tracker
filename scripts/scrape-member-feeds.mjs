@@ -33,33 +33,46 @@ const GROUP_CONFIG = {
     host: 'https://www.nogizaka46.com',
     referer: 'https://www.nogizaka46.com/s/n46',
     blogList: code => `https://www.nogizaka46.com/s/n46/diary/MEMBER/list?ima=0000&ct=${encodeURIComponent(code)}`,
-    // ユーザー報告: スケジュールは メンバー詳細ページ /artist/<code> に埋まっている。
-    // 他の URL は 404 or 空 JSON なので、確認済みのこれを最優先。
-    scheduleCandidates: code => [
-      `https://www.nogizaka46.com/s/n46/artist/${encodeURIComponent(code)}?ima=0000`,
-      `https://www.nogizaka46.com/s/n46/schedule/MEMBER/list?ima=0000&ct=${encodeURIComponent(code)}`,
-      `https://www.nogizaka46.com/s/n46/api/list/schedule?ct=${encodeURIComponent(code)}`,
-      `https://www.nogizaka46.com/s/n46/api/list/schedule?ima=0000&ct=${encodeURIComponent(code)}`,
-      `https://www.nogizaka46.com/s/n46/artist/SCHEDULE/${encodeURIComponent(code)}?ima=0000`,
-      `https://www.nogizaka46.com/s/n46/artist/${encodeURIComponent(code)}/SCHEDULE?ima=0000`,
-      `https://www.nogizaka46.com/s/n46/schedule/list?ima=0000&ct=${encodeURIComponent(code)}`,
-    ],
+    // 確認済: SPA が叩いている本物の API は
+    //   /api/list/schedule?list[]=<code>&dy=YYYYMM
+    // （PHP 配列形式のパラメータ。ct= ではない）
+    scheduleCandidates: code => {
+      const ym = currentYyyymm();
+      const nextYm = nextMonthYyyymm();
+      return [
+        `https://www.nogizaka46.com/s/n46/api/list/schedule?list[]=${encodeURIComponent(code)}&dy=${ym}`,
+        `https://www.nogizaka46.com/s/n46/api/list/schedule?list[]=${encodeURIComponent(code)}&dy=${nextYm}`,
+        `https://www.nogizaka46.com/s/n46/artist/${encodeURIComponent(code)}?ima=0000`,
+        `https://www.nogizaka46.com/s/n46/api/list/schedule?ct=${encodeURIComponent(code)}`,
+      ];
+    },
   },
   saku: {
     host: 'https://sakurazaka46.com',
     referer: 'https://sakurazaka46.com/s/s46',
     blogList: code => `https://sakurazaka46.com/s/s46/diary/blog/list?ima=0000&ct=${encodeURIComponent(code)}`,
-    scheduleCandidates: code => [
-      `https://sakurazaka46.com/s/s46/artist/${encodeURIComponent(code)}?ima=0000`,
-      `https://sakurazaka46.com/s/s46/schedule/MEMBER/list?ima=0000&ct=${encodeURIComponent(code)}`,
-      `https://sakurazaka46.com/s/s46/api/list/schedule?ct=${encodeURIComponent(code)}`,
-      `https://sakurazaka46.com/s/s46/api/list/schedule?ima=0000&ct=${encodeURIComponent(code)}`,
-      `https://sakurazaka46.com/s/s46/artist/SCHEDULE/${encodeURIComponent(code)}?ima=0000`,
-      `https://sakurazaka46.com/s/s46/artist/${encodeURIComponent(code)}/SCHEDULE?ima=0000`,
-      `https://sakurazaka46.com/s/s46/schedule/list?ima=0000&ct=${encodeURIComponent(code)}`,
-    ],
+    scheduleCandidates: code => {
+      const ym = currentYyyymm();
+      const nextYm = nextMonthYyyymm();
+      return [
+        `https://sakurazaka46.com/s/s46/api/list/schedule?list[]=${encodeURIComponent(code)}&dy=${ym}`,
+        `https://sakurazaka46.com/s/s46/api/list/schedule?list[]=${encodeURIComponent(code)}&dy=${nextYm}`,
+        `https://sakurazaka46.com/s/s46/artist/${encodeURIComponent(code)}?ima=0000`,
+        `https://sakurazaka46.com/s/s46/api/list/schedule?ct=${encodeURIComponent(code)}`,
+      ];
+    },
   },
 };
+
+function currentYyyymm() {
+  const d = new Date();
+  return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+function nextMonthYyyymm() {
+  const d = new Date();
+  d.setMonth(d.getMonth() + 1);
+  return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
 
 // ---------- fetch ----------
 
