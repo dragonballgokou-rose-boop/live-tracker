@@ -567,7 +567,16 @@ async function scrapeMemberFeeds(m, cfg) {
   // ブログ一覧
   try {
     const html = await fetchHtml(cfg.blogList(m.code), cfg.referer);
-    entry.blog = parseBlogList(html, cfg.host);
+    const raw = parseBlogList(html, cfg.host);
+    // title + date が完全一致するものは 1 件のみ保持（パーサが同じ記事を
+    // 異なる URL で複数回拾うケース対策）
+    const seen = new Set();
+    entry.blog = raw.filter(b => {
+      const k = `${b.title ?? ''}|${b.date ?? ''}`;
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    });
   } catch (e) {
     entry.errors.push(`blog: ${e.message}`);
   }
