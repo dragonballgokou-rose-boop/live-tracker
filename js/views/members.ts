@@ -211,7 +211,7 @@ async function openOshiModal(memberId: string): Promise<void> {
     fetchOfficialMembers()
       .then(() => { oshiData = getOfficialMemberSync(link.officialCode, link.officialGroup); })
       .catch(() => {}),
-    fetchOfficialMemberFeeds().catch(() => null),
+    fetchOfficialMemberFeeds({ noCache: true }).catch(() => null),
   ]);
 
   if (!oshiData) {

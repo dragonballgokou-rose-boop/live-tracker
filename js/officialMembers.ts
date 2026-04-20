@@ -46,7 +46,8 @@ export async function fetchOfficialMemberFeeds(
   if (_feedsCached && !opts.noCache) return _feedsCached;
   try {
     const url = `${OFFICIAL_FEEDS_URL}?v=${Date.now()}`;
-    const res = await fetch(url);
+    // iOS Safari / CDN が aggressive にキャッシュするので、HTTP cache も明示回避
+    const res = await fetch(url, { cache: 'no-store' });
     if (!res.ok) return null;
     const data = await res.json() as OfficialMemberFeedsFile;
     _feedsCached = data;
