@@ -33,22 +33,16 @@ const GROUP_CONFIG = {
     host: 'https://www.nogizaka46.com',
     referer: 'https://www.nogizaka46.com/s/n46',
     blogList: code => `https://www.nogizaka46.com/s/n46/diary/MEMBER/list?ima=0000&ct=${encodeURIComponent(code)}`,
-    // スケジュールは複数 URL パターンを試す（Sony Music CMS は変更しがち）
-    // ブログが /diary/MEMBER/list?ct=<code> で取れるので、schedule も同じ形を優先
+    // ユーザー報告: スケジュールは メンバー詳細ページ /artist/<code> に埋まっている。
+    // 他の URL は 404 or 空 JSON なので、確認済みのこれを最優先。
     scheduleCandidates: code => [
+      `https://www.nogizaka46.com/s/n46/artist/${encodeURIComponent(code)}?ima=0000`,
       `https://www.nogizaka46.com/s/n46/schedule/MEMBER/list?ima=0000&ct=${encodeURIComponent(code)}`,
       `https://www.nogizaka46.com/s/n46/api/list/schedule?ct=${encodeURIComponent(code)}`,
       `https://www.nogizaka46.com/s/n46/api/list/schedule?ima=0000&ct=${encodeURIComponent(code)}`,
-      // アプリ UI 側も使ってる旧 URL。現在 404 らしいが念のため
       `https://www.nogizaka46.com/s/n46/artist/SCHEDULE/${encodeURIComponent(code)}?ima=0000`,
       `https://www.nogizaka46.com/s/n46/artist/${encodeURIComponent(code)}/SCHEDULE?ima=0000`,
-      `https://www.nogizaka46.com/s/n46/artist/${encodeURIComponent(code)}/schedule?ima=0000`,
       `https://www.nogizaka46.com/s/n46/schedule/list?ima=0000&ct=${encodeURIComponent(code)}`,
-      // CMS 推測: mode / rw パラメータで絞り込むバリアント
-      `https://www.nogizaka46.com/s/n46/api/list/schedule?mode=A&ct=${encodeURIComponent(code)}`,
-      `https://www.nogizaka46.com/s/n46/schedule/member?ima=0000&ct=${encodeURIComponent(code)}`,
-      // メンバー詳細ページ（スケジュール枠が埋め込まれている可能性）
-      `https://www.nogizaka46.com/s/n46/artist/${encodeURIComponent(code)}?ima=0000`,
     ],
   },
   saku: {
@@ -56,15 +50,13 @@ const GROUP_CONFIG = {
     referer: 'https://sakurazaka46.com/s/s46',
     blogList: code => `https://sakurazaka46.com/s/s46/diary/blog/list?ima=0000&ct=${encodeURIComponent(code)}`,
     scheduleCandidates: code => [
+      `https://sakurazaka46.com/s/s46/artist/${encodeURIComponent(code)}?ima=0000`,
       `https://sakurazaka46.com/s/s46/schedule/MEMBER/list?ima=0000&ct=${encodeURIComponent(code)}`,
       `https://sakurazaka46.com/s/s46/api/list/schedule?ct=${encodeURIComponent(code)}`,
       `https://sakurazaka46.com/s/s46/api/list/schedule?ima=0000&ct=${encodeURIComponent(code)}`,
       `https://sakurazaka46.com/s/s46/artist/SCHEDULE/${encodeURIComponent(code)}?ima=0000`,
       `https://sakurazaka46.com/s/s46/artist/${encodeURIComponent(code)}/SCHEDULE?ima=0000`,
-      `https://sakurazaka46.com/s/s46/artist/${encodeURIComponent(code)}/schedule?ima=0000`,
       `https://sakurazaka46.com/s/s46/schedule/list?ima=0000&ct=${encodeURIComponent(code)}`,
-      `https://sakurazaka46.com/s/s46/api/list/schedule?mode=A&ct=${encodeURIComponent(code)}`,
-      `https://sakurazaka46.com/s/s46/artist/${encodeURIComponent(code)}?ima=0000`,
     ],
   },
 };
