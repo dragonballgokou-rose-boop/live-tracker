@@ -47,12 +47,12 @@ const SUPABASE_URL  = process.env.SUPABASE_URL      || '';
 const SUPABASE_KEY  = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_ANON_KEY || '';
 
 if (!VAPID_PUBLIC || !VAPID_PRIVATE) {
-  console.error('VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY が未設定です');
-  process.exit(1);
+  console.warn('VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY が未設定です。push 送信をスキップします。');
+  process.exit(0);
 }
 if (!SUPABASE_URL || !SUPABASE_KEY) {
-  console.error('SUPABASE_URL / SUPABASE_SERVICE_KEY が未設定です');
-  process.exit(1);
+  console.warn('SUPABASE_URL / SUPABASE_SERVICE_KEY が未設定です。push 送信をスキップします。');
+  process.exit(0);
 }
 
 webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC, VAPID_PRIVATE);
