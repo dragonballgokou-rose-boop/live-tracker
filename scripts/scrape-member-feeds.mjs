@@ -39,9 +39,16 @@ const GROUP_CONFIG = {
       `https://www.nogizaka46.com/s/n46/schedule/MEMBER/list?ima=0000&ct=${encodeURIComponent(code)}`,
       `https://www.nogizaka46.com/s/n46/api/list/schedule?ct=${encodeURIComponent(code)}`,
       `https://www.nogizaka46.com/s/n46/api/list/schedule?ima=0000&ct=${encodeURIComponent(code)}`,
+      // アプリ UI 側も使ってる旧 URL。現在 404 らしいが念のため
+      `https://www.nogizaka46.com/s/n46/artist/SCHEDULE/${encodeURIComponent(code)}?ima=0000`,
       `https://www.nogizaka46.com/s/n46/artist/${encodeURIComponent(code)}/SCHEDULE?ima=0000`,
       `https://www.nogizaka46.com/s/n46/artist/${encodeURIComponent(code)}/schedule?ima=0000`,
       `https://www.nogizaka46.com/s/n46/schedule/list?ima=0000&ct=${encodeURIComponent(code)}`,
+      // CMS 推測: mode / rw パラメータで絞り込むバリアント
+      `https://www.nogizaka46.com/s/n46/api/list/schedule?mode=A&ct=${encodeURIComponent(code)}`,
+      `https://www.nogizaka46.com/s/n46/schedule/member?ima=0000&ct=${encodeURIComponent(code)}`,
+      // メンバー詳細ページ（スケジュール枠が埋め込まれている可能性）
+      `https://www.nogizaka46.com/s/n46/artist/${encodeURIComponent(code)}?ima=0000`,
     ],
   },
   saku: {
@@ -52,9 +59,12 @@ const GROUP_CONFIG = {
       `https://sakurazaka46.com/s/s46/schedule/MEMBER/list?ima=0000&ct=${encodeURIComponent(code)}`,
       `https://sakurazaka46.com/s/s46/api/list/schedule?ct=${encodeURIComponent(code)}`,
       `https://sakurazaka46.com/s/s46/api/list/schedule?ima=0000&ct=${encodeURIComponent(code)}`,
+      `https://sakurazaka46.com/s/s46/artist/SCHEDULE/${encodeURIComponent(code)}?ima=0000`,
       `https://sakurazaka46.com/s/s46/artist/${encodeURIComponent(code)}/SCHEDULE?ima=0000`,
       `https://sakurazaka46.com/s/s46/artist/${encodeURIComponent(code)}/schedule?ima=0000`,
       `https://sakurazaka46.com/s/s46/schedule/list?ima=0000&ct=${encodeURIComponent(code)}`,
+      `https://sakurazaka46.com/s/s46/api/list/schedule?mode=A&ct=${encodeURIComponent(code)}`,
+      `https://sakurazaka46.com/s/s46/artist/${encodeURIComponent(code)}?ima=0000`,
     ],
   },
 };
@@ -62,15 +72,18 @@ const GROUP_CONFIG = {
 // ---------- fetch ----------
 
 async function fetchHtml(url, referer) {
-  const res = await fetch(url, {
-    redirect: 'follow',
-    headers: {
-      'User-Agent': UA,
-      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-      'Accept-Language': 'ja-JP,ja;q=0.9',
-      'Referer': referer,
-    },
-  });
+  // Sony Music CMS の /api/ 系は XHR として振る舞う必要がある（scrape-official.mjs と同じ戦略）
+  const isApi = /\/api\//.test(url);
+  const headers = {
+    'User-Agent': UA,
+    'Accept': isApi
+      ? 'application/json, text/plain, */*'
+      : 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+    'Accept-Language': 'ja-JP,ja;q=0.9',
+    'Referer': referer,
+  };
+  if (isApi) headers['X-Requested-With'] = 'XMLHttpRequest';
+  const res = await fetch(url, { redirect: 'follow', headers });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return await res.text();
 }
@@ -419,7 +432,14 @@ async function scrapeMemberFeeds(m, cfg) {
         break;
       }
       const kind = looksJson ? 'json' : (looksLikeSchedulePage(html) ? 'sched-html' : 'other-html');
-      scheduleDiag.push(`${short}: 0 items (${kind}, ${html.length}b)`);
+      // 小さい応答は内容まで見せる（空エラー JSON の正体特定用）
+      let preview = '';
+      if (looksJson && html.length < 200) {
+        preview = ` body=${trimmed.replace(/\s+/g, ' ').slice(0, 120)}`;
+      } else if (!looksJson && html.length < 400) {
+        preview = ` body=${html.replace(/\s+/g, ' ').slice(0, 120)}`;
+      }
+      scheduleDiag.push(`${short}: 0 items (${kind}, ${html.length}b)${preview}`);
     } catch (e) {
       scheduleDiag.push(`${short}: ${e.message}`);
     }
