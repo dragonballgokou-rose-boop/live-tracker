@@ -327,6 +327,9 @@ async function wireUpPushSection(): Promise<void> {
 
   const render = (inner: string) => { root.innerHTML = inner; };
 
+  // 即座に「進捗が分かる」表示に差し替える
+  render(`<p style="color:var(--text-tertiary);font-size:11px;">環境を確認中…</p>`);
+
   if (!isPushSupported()) {
     render(`<p style="color:var(--text-tertiary);font-size:12px;">この端末のブラウザでは通知に対応していません。<br/>iOS は Safari の「ホーム画面に追加」で開いてください。</p>`);
     return;
@@ -336,6 +339,7 @@ async function wireUpPushSection(): Promise<void> {
     return;
   }
 
+  render(`<p style="color:var(--text-tertiary);font-size:11px;">購読状態を確認中…</p>`);
   // getCurrentStatus が 5 秒以内に返らなければ「未購読」として扱い UI を進める
   const timeout = new Promise<any>(resolve => setTimeout(() => resolve({
     supported: true, permission: 'default' as NotificationPermission, subscribed: false, prefs: null,
