@@ -303,7 +303,7 @@ async function openOshiModal(memberId: string): Promise<void> {
       <div class="oshi-section">
         <h4 class="oshi-section-head">${ICON_BELL}<span>通知設定</span></h4>
         <div id="oshi-push-section" data-member-id="${user.id}" data-oshi-code="${escapeAttr(oshiData.code || '')}" data-oshi-group="${escapeAttr(oshiData.group || '')}">
-          <p style="color:var(--text-tertiary);font-size:12px;">読み込み中…</p>
+          <p style="color:var(--text-tertiary);font-size:12px;">初期化中… <span style="opacity:0.5;">(build: ${__BUILD_ID__})</span></p>
         </div>
       </div>
     </div>
