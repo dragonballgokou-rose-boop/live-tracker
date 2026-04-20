@@ -14,6 +14,13 @@ import {
   getOfficialMemberSync, fetchOfficialMemberFeeds, getMemberFeedSync,
 } from '../officialMembers.js';
 
+// ── セクション見出し用 SVG アイコン（feather スタイル / 14px / stroke=currentColor）
+const ICON_ATTR = 'width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"';
+const ICON_CLIPBOARD = `<svg class="oshi-section-icon" ${ICON_ATTR}><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>`;
+const ICON_EDIT = `<svg class="oshi-section-icon" ${ICON_ATTR}><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>`;
+const ICON_CALENDAR = `<svg class="oshi-section-icon" ${ICON_ATTR}><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`;
+const ICON_EDIT_LG = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>`;
+
 const MEMBER_COLORS = [
   // パープル・バイオレット
   '#7C3AED', '#8B5CF6', '#A78BFA', '#C4B5FD',
@@ -223,7 +230,7 @@ async function openOshiModal(memberId: string): Promise<void> {
     <a class="oshi-blog-row" href="${escapeAttr(b.url)}" target="_blank" rel="noopener noreferrer">
       ${b.thumbnail
         ? `<img class="oshi-blog-thumb" src="${escapeAttr(b.thumbnail)}" referrerpolicy="no-referrer" loading="lazy" />`
-        : '<div class="oshi-blog-thumb oshi-blog-thumb-ph">📝</div>'}
+        : `<div class="oshi-blog-thumb oshi-blog-thumb-ph">${ICON_EDIT_LG}</div>`}
       <div class="oshi-blog-body">
         <div class="oshi-blog-title">${escapeHtml(b.title)}</div>
         ${b.date ? `<div class="oshi-blog-date">${escapeHtml(formatBlogDate(b.date))}</div>` : ''}
@@ -263,7 +270,7 @@ async function openOshiModal(memberId: string): Promise<void> {
 
       ${feeds && feeds.profile && Object.values(feeds.profile).some(v => v != null) ? `
       <div class="oshi-section">
-        <h4 class="oshi-section-head">📋 プロフィール</h4>
+        <h4 class="oshi-section-head">${ICON_CLIPBOARD}<span>プロフィール</span></h4>
         <dl class="oshi-profile">
           ${feeds.profile.birthday ? `<dt>誕生日</dt><dd>${escapeHtml(formatProfileBirthday(feeds.profile.birthday))}</dd>` : ''}
           ${feeds.profile.height ? `<dt>身長</dt><dd>${escapeHtml(feeds.profile.height)}</dd>` : ''}
@@ -275,14 +282,14 @@ async function openOshiModal(memberId: string): Promise<void> {
       ` : ''}
 
       <div class="oshi-section">
-        <h4 class="oshi-section-head">📝 最新ブログ</h4>
+        <h4 class="oshi-section-head">${ICON_EDIT}<span>最新ブログ</span></h4>
         ${feeds && feeds.blog.length > 0
           ? `<div class="oshi-blog-list">${feeds.blog.slice(0, 10).map(renderBlogRow).join('')}</div>`
           : `<p style="color:var(--text-tertiary);font-size:13px;">${feeds ? 'ブログ記事はありません。' : 'フィードデータが未生成です（毎日自動更新）。公式ブログリンクから直接ご覧ください。'}</p>`}
       </div>
 
       <div class="oshi-section">
-        <h4 class="oshi-section-head">🗓 直近の出演予定</h4>
+        <h4 class="oshi-section-head">${ICON_CALENDAR}<span>直近の出演予定</span></h4>
         ${feeds && feeds.schedule.length > 0
           ? `<ul class="oshi-sched-list">${feeds.schedule.slice(0, 10).map(renderScheduleRow).join('')}</ul>`
           : `<p style="color:var(--text-tertiary);font-size:13px;">${feeds ? '直近の予定はありません。' : 'フィードデータが未生成です。出演予定リンクから直接ご覧ください。'}</p>`}
