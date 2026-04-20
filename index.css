@@ -1677,7 +1677,10 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
 .oshi-section { margin-top: 16px; }
 .oshi-section-head {
   font-size: 13px; font-weight: 700; margin-bottom: 8px; color: var(--text-primary);
+  display: inline-flex; align-items: center; gap: 6px;
 }
+.oshi-section-icon { color: var(--text-secondary); flex-shrink: 0; }
+.oshi-blog-thumb-ph { color: var(--text-tertiary); }
 .oshi-live-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
 .oshi-live-row {
   display: grid; grid-template-columns: 100px 1fr auto; gap: 6px 10px;
