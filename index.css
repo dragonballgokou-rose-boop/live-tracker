@@ -3293,6 +3293,7 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
   padding: 3px;
   backdrop-filter: blur(12px);
   box-shadow: var(--glass-inset);
+  flex-shrink: 0;
 }
 
 .view-mode-btn {
