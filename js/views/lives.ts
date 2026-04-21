@@ -618,7 +618,7 @@ export function renderLives() {
     ${orphanBannerHtml}
     <div class="section-header">
       <div style="display:flex;flex-direction:column;gap:6px;">
-        <div style="display:flex;align-items:center;gap:8px;">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
           <div class="live-filter-bar">
             <button class="live-filter-btn${livesFilter === 'all' ? ' active' : ''}" data-filter="all">
               全て <span class="filter-count">${allNonTourCount}</span>
