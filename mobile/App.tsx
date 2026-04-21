@@ -10,7 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import DashboardScreen from './src/screens/DashboardScreen';
 import TallyScreen from './src/screens/TallyScreen';
-import ChartScreen from './src/screens/ChartScreen';
+import PhotosScreen from './src/screens/PhotosScreen';
 import LivesScreen from './src/screens/LivesScreen';
 import LiveDetailScreen from './src/screens/LiveDetailScreen';
 import MembersScreen from './src/screens/MembersScreen';
@@ -30,9 +30,9 @@ const LivesStack = createNativeStackNavigator<LivesStackParamList>();
 const TAB_ITEMS = [
   { name: 'TOP',   iconFocused: 'home'        as const, iconUnfocused: 'home-outline'         as const, label: 'TOP' },
   { name: '集計表', iconFocused: 'stats-chart' as const, iconUnfocused: 'stats-chart-outline'  as const, label: '集計表' },
-  { name: 'グラフ', iconFocused: 'bar-chart'   as const, iconUnfocused: 'bar-chart-outline'    as const, label: 'グラフ' },
   { name: 'ライブ', iconFocused: 'star'         as const, iconUnfocused: 'star-outline'         as const, label: 'ライブ' },
   { name: 'メンバー', iconFocused: 'people'    as const, iconUnfocused: 'people-outline'       as const, label: 'メンバー' },
+  { name: '生写真', iconFocused: 'camera'     as const, iconUnfocused: 'camera-outline'       as const, label: '生写真' },
   { name: '設定',  iconFocused: 'settings'    as const, iconUnfocused: 'settings-outline'     as const, label: '設定' },
 ];
 
@@ -201,9 +201,9 @@ export default function App() {
         >
           <Tab.Screen name="TOP"    component={DashboardScreen}    options={{ title: 'ダッシュボード' }} />
           <Tab.Screen name="集計表" component={TallyScreen}        options={{ title: '集計表' }} />
-          <Tab.Screen name="グラフ" component={ChartScreen}        options={{ title: 'グラフ' }} />
           <Tab.Screen name="ライブ" component={LivesStackNavigator} options={{ headerShown: false }} />
           <Tab.Screen name="メンバー" component={MembersScreen}    options={{ title: 'メンバー' }} />
+          <Tab.Screen name="生写真" component={PhotosScreen}       options={{ title: '生写真レート' }} />
           <Tab.Screen name="設定"   component={SettingsScreen}     options={{ title: '設定' }} />
         </Tab.Navigator>
       </NavigationContainer>

@@ -9,7 +9,7 @@ import { renderDashboard } from './js/views/dashboard.js';
 import { renderTally } from './js/views/tally.js';
 import { renderLives } from './js/views/lives.js';
 import { renderMembers } from './js/views/members.js';
-import { renderChart } from './js/views/chart.js';
+import { renderPhotos } from './js/views/photos.js';
 import { exportData, importData, fetchFromSupabase } from './js/store.js';
 import { showToast } from './js/utils.js';
 import { showLiveDetailsModal, showMemberDetailsModal } from './js/views/details.js';
@@ -31,7 +31,7 @@ const pageTitles: Record<string, string> = {
     '/tally':    '集計表',
     '/lives':    'ライブ管理',
     '/members':  'メンバー管理',
-    '/chart':    'グラフ',
+    '/photos':   '生写真レート',
     '/history':  'ライブ管理',
 };
 
@@ -184,10 +184,10 @@ const router = new Router([
         }
     },
     {
-        path: '/chart',
+        path: '/photos',
         handler: () => {
-            updateNav('/chart');
-            renderChart();
+            updateNav('/photos');
+            renderPhotos();
         }
     },
     {
