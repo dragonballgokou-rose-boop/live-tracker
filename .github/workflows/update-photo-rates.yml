@@ -1,0 +1,45 @@
+name: Update Photo Rates
+
+on:
+  schedule:
+    # 毎日 07:00 JST (= 22:00 UTC) — 公式ライブ更新 (06:00 JST) の1時間後
+    - cron: '0 22 * * *'
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - 'claude/**'
+    paths:
+      - '.github/workflows/update-photo-rates.yml'
+      - 'scripts/scrape-photo-rates.mjs'
+
+permissions:
+  contents: write
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run scraper
+        run: node scripts/scrape-photo-rates.mjs
+
+      - name: Commit updated JSON if changed
+        run: |
+          if git diff --quiet -- public/photo-rates.json; then
+            echo "No changes"
+            exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/photo-rates.json
+          git commit -m "chore: update photo rates (auto)"
+          git push origin HEAD:${{ github.ref_name }}

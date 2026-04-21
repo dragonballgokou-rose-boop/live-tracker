@@ -1,5 +1,5 @@
 // Service Worker - Cache Strategy
-const CACHE_NAME = 'live-tracker-v8-relpath';
+const CACHE_NAME = 'live-tracker-v9-photos';
 
 // self.registration.scope = アプリの base URL (例: /live-tracker/)
 const BASE = new URL(self.registration.scope).pathname;
@@ -11,9 +11,11 @@ const ASSETS = [
     BASE + 'manifest.json'
 ];
 
-// 公式ライブ JSON は毎回ネットワーク必須（キャッシュさせない）
+// 公式ライブ JSON / 生写真レート JSON は毎回ネットワーク必須（キャッシュさせない）
 function shouldBypassCache(url) {
-    return url.pathname.endsWith('/official-lives.json') || url.search.includes('v=');
+    return url.pathname.endsWith('/official-lives.json')
+        || url.pathname.endsWith('/photo-rates.json')
+        || url.search.includes('v=');
 }
 
 // Install — addAll が失敗しても install 自体は成功させる

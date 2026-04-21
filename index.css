@@ -4591,3 +4591,48 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
 .os-new-child-venue {
   color: var(--text-secondary);
 }
+
+/* ============================================
+   Photo Rates — rank badges / watch button
+   ============================================ */
+.rate-rank-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  padding: 3px 6px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.3px;
+  color: #0f0f23;
+}
+.rate-rank-badge.rank-s { background: linear-gradient(135deg, #fcd34d, #f59e0b); color: #3b2a00; }
+.rate-rank-badge.rank-a { background: linear-gradient(135deg, #c4b5fd, #8b5cf6); color: #1a0b3b; }
+.rate-rank-badge.rank-b { background: linear-gradient(135deg, #93c5fd, #3b82f6); color: #0b1a3b; }
+.rate-rank-badge.rank-c { background: rgba(255,255,255,0.08); color: var(--text-secondary); }
+
+.rate-watch-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border-color);
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition: transform 0.08s ease, background 0.15s ease, color 0.15s ease;
+  flex-shrink: 0;
+}
+.rate-watch-btn:hover   { background: rgba(236, 72, 153, 0.08); color: #f9a8d4; }
+.rate-watch-btn:active  { transform: scale(0.92); }
+.rate-watch-btn.is-watching {
+  background: rgba(236, 72, 153, 0.18);
+  border-color: rgba(236, 72, 153, 0.4);
+  color: #f472b6;
+}
+.photo-rate-row:last-child { border-bottom: 0 !important; }
