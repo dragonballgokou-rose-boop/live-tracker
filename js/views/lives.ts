@@ -1693,9 +1693,25 @@ function renderLivesCalendar(filteredLives, members, now, content) {
         .join('');
       const evColor = live.color || 'rgba(139,92,246,0.4)';
       const evBg = isPast ? 'rgba(255,255,255,0.05)' : `${evColor}28`;
-      const evIconHtml = live.iconImg
-        ? `<img src="${live.iconImg}" style="width:10px;height:10px;border-radius:2px;object-fit:cover;flex-shrink:0;vertical-align:middle;margin-right:2px;" />`
-        : live.icon ? `<span style="font-size:9px;margin-right:1px;">${live.icon}</span>` : '';
+      // 親ツアーの iconImg を子公演に継承（getLiveIconHtml と同じロジックを小サイズで）
+      let eff = live;
+      if (live.parentId && !live.iconImg) {
+        const parent = allLivesData.find(l => l.id === live.parentId);
+        if (parent?.iconImg) eff = { ...live, iconImg: parent.iconImg };
+        else if (parent?.icon && !live.icon) eff = { ...live, icon: parent.icon };
+      }
+      let evIconHtml = '';
+      if (eff.iconImg) {
+        evIconHtml = `<img src="${eff.iconImg}" style="width:10px;height:10px;border-radius:2px;object-fit:cover;flex-shrink:0;vertical-align:middle;margin-right:2px;" />`;
+      } else if (eff.icon && eff.icon.startsWith('svg:')) {
+        const def = EVENT_SVG_ICONS.find(i => i.id === eff.icon.slice(4));
+        if (def) {
+          const svgSmall = def.svg.replace('<svg ', '<svg width="10" height="10" ');
+          evIconHtml = `<span style="display:inline-flex;flex-shrink:0;margin-right:2px;color:${eff.color || 'currentColor'};">${svgSmall}</span>`;
+        }
+      } else if (eff.icon) {
+        evIconHtml = `<span style="font-size:9px;margin-right:1px;">${eff.icon}</span>`;
+      }
       return `<div class="cal-event${isPast ? ' cal-event-past' : ''}" onclick="window.showLiveDetailsModal('${live.id}')" title="${escapeAttr(live.name)}" style="background:${evBg};border-left:2px solid ${evColor};">
         <span class="cal-event-name" style="display:flex;align-items:center;">${evIconHtml}${escapeHtml(live.name)}</span>
         ${goingDots ? `<div class="cal-member-dots">${goingDots}</div>` : ''}
