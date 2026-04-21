@@ -24,6 +24,7 @@ import { fileURLToPath } from 'node:url';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const OUT_PATH         = resolve(__dirname, '..', 'public', 'photo-rates.json');
 const MOBILE_COPY_PATH = resolve(__dirname, '..', 'mobile', 'src', 'data', 'photo-rates.json');
+const MEMBERS_PATH     = resolve(__dirname, '..', 'public', 'official-members.json');
 
 const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0 Safari/537.36';
 
@@ -200,6 +201,25 @@ function extractNames(text) {
 
 // ---------- main ----------
 
+async function loadGraduatedNames() {
+  // 卒業済みメンバー名の集合（normalize 済み）を返す。読めなければ空集合。
+  try {
+    const data = JSON.parse(await readFile(MEMBERS_PATH, 'utf8'));
+    const set = new Set();
+    for (const m of data.members || []) {
+      if (m.graduated && m.name) set.add(normalizeMemberName(m.name));
+    }
+    return set;
+  } catch (e) {
+    console.warn(`failed to read ${MEMBERS_PATH}: ${e.message} — graduate filter disabled`);
+    return new Set();
+  }
+}
+
+function normalizeMemberName(s) {
+  return String(s).replace(/\s+/g, '').normalize('NFKC');
+}
+
 async function main() {
   let existing;
   try {
@@ -209,22 +229,41 @@ async function main() {
     process.exit(1);
   }
 
+  const graduatedNames = await loadGraduatedNames();
+  console.log(`loaded ${graduatedNames.size} graduated members for filtering`);
+
+  // 0. 卒業生の一掃は毎回実施（スクレイプ成否にかかわらず既存データからも除去）
+  let prunedFromExisting = 0;
+  for (const s of existing.series) {
+    const before = s.rates.length;
+    s.rates = s.rates.filter(r => !graduatedNames.has(normalizeMemberName(r.memberName)));
+    prunedFromExisting += (before - s.rates.length);
+  }
+  if (prunedFromExisting > 0) {
+    console.log(`pruned ${prunedFromExisting} graduated entries from existing JSON`);
+  }
+
   // 1. インデックスを取得してリンクを抽出
   let links = [];
+  let indexFetchOk = false;
   try {
     const indexHtml = await fetchText(INDEX_URL);
     console.log(`fetched index ${INDEX_URL} (${indexHtml.length} bytes)`);
     links = extractLinks(indexHtml);
     console.log(`extracted ${links.length} links`);
+    indexFetchOk = true;
   } catch (e) {
     console.warn(`failed to fetch index: ${e.message}`);
-    console.warn('keeping existing JSON as-is (no updates)');
-    return;
+    console.warn('skipping scrape; may still write pruned existing JSON');
   }
 
   const bySeriesId = new Map(existing.series.map(s => [s.id, s]));
   let updated = 0;
   let skipped = 0;
+  if (!indexFetchOk) {
+    // index が取れなくても卒業生の prune 分だけはコミットしたい
+    skipped = existing.series.length;
+  }
 
   for (const target of TARGETS) {
     console.log(`\n[${target.id}]`);
@@ -245,9 +284,9 @@ async function main() {
     try {
       const html = await fetchText(url);
       console.log(`  ↳ fetched ${url} (${html.length} bytes)`);
-      const rates = parseRates(html);
+      const rates = parseRates(html).filter(r => !graduatedNames.has(normalizeMemberName(r.memberName)));
       if (rates.length < 5) {
-        console.warn(`  ↳ only ${rates.length} rates parsed — keeping existing`);
+        console.warn(`  ↳ only ${rates.length} rates parsed (post-grad-filter) — keeping existing`);
         skipped++;
         continue;
       }
@@ -262,8 +301,8 @@ async function main() {
     }
   }
 
-  if (updated === 0) {
-    console.log(`\nNo series updated (${skipped} skipped). Leaving file untouched.`);
+  if (updated === 0 && prunedFromExisting === 0) {
+    console.log(`\nNo series updated and no graduates pruned. Leaving file untouched.`);
     return;
   }
 

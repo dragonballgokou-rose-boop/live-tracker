@@ -1,21 +1,51 @@
 {
   "version": "1",
-  "generatedAt": "2026-04-21T00:00:00+09:00",
+  "generatedAt": "2026-04-21T14:51:05.350Z",
   "sources": [
     "https://nogizakaworld.com/rate/",
     "https://nogizakarate.com/"
   ],
   "rankPriceYen": {
-    "S+": { "low": 3000, "high": 5000 },
-    "S":  { "low": 2000, "high": 3000 },
-    "S-": { "low": 1500, "high": 2000 },
-    "A+": { "low": 1000, "high": 1500 },
-    "A":  { "low":  700, "high": 1000 },
-    "A-": { "low":  500, "high":  700 },
-    "B+": { "low":  300, "high":  500 },
-    "B":  { "low":  200, "high":  300 },
-    "B-": { "low":  100, "high":  200 },
-    "C":  { "low":   50, "high":  100 }
+    "S+": {
+      "low": 3000,
+      "high": 5000
+    },
+    "S": {
+      "low": 2000,
+      "high": 3000
+    },
+    "S-": {
+      "low": 1500,
+      "high": 2000
+    },
+    "A+": {
+      "low": 1000,
+      "high": 1500
+    },
+    "A": {
+      "low": 700,
+      "high": 1000
+    },
+    "A-": {
+      "low": 500,
+      "high": 700
+    },
+    "B+": {
+      "low": 300,
+      "high": 500
+    },
+    "B": {
+      "low": 200,
+      "high": 300
+    },
+    "B-": {
+      "low": 100,
+      "high": 200
+    },
+    "C": {
+      "low": 50,
+      "high": 100
+    }
   },
   "series": [
     {
@@ -26,15 +56,30 @@
       "saleYear": 2025,
       "price": 1200,
       "rates": [
-        { "memberName": "与田 祐希",   "rank": "S+" },
-        { "memberName": "山下 美月",   "rank": "S"  },
-        { "memberName": "遠藤 さくら", "rank": "S"  },
-        { "memberName": "賀喜 遥香",   "rank": "S"  },
-        { "memberName": "久保 史緒里", "rank": "S-" },
-        { "memberName": "井上 和",     "rank": "S+" },
-        { "memberName": "筒井 あやめ", "rank": "A+" },
-        { "memberName": "菅原 咲月",   "rank": "A"  },
-        { "memberName": "岡本 姫奈",   "rank": "A"  }
+        {
+          "memberName": "遠藤 さくら",
+          "rank": "S"
+        },
+        {
+          "memberName": "賀喜 遥香",
+          "rank": "S"
+        },
+        {
+          "memberName": "井上 和",
+          "rank": "S+"
+        },
+        {
+          "memberName": "筒井 あやめ",
+          "rank": "A+"
+        },
+        {
+          "memberName": "菅原 咲月",
+          "rank": "A"
+        },
+        {
+          "memberName": "岡本 姫奈",
+          "rank": "A"
+        }
       ]
     },
     {
@@ -45,12 +90,18 @@
       "saleYear": 2025,
       "price": 1200,
       "rates": [
-        { "memberName": "与田 祐希",   "rank": "S"  },
-        { "memberName": "山下 美月",   "rank": "A+" },
-        { "memberName": "遠藤 さくら", "rank": "S-" },
-        { "memberName": "賀喜 遥香",   "rank": "S-" },
-        { "memberName": "久保 史緒里", "rank": "A+" },
-        { "memberName": "井上 和",     "rank": "S"  }
+        {
+          "memberName": "遠藤 さくら",
+          "rank": "S-"
+        },
+        {
+          "memberName": "賀喜 遥香",
+          "rank": "S-"
+        },
+        {
+          "memberName": "井上 和",
+          "rank": "S"
+        }
       ]
     },
     {
@@ -61,12 +112,18 @@
       "saleYear": 2024,
       "price": 1100,
       "rates": [
-        { "memberName": "与田 祐希",   "rank": "S+" },
-        { "memberName": "山下 美月",   "rank": "S"  },
-        { "memberName": "遠藤 さくら", "rank": "S"  },
-        { "memberName": "賀喜 遥香",   "rank": "A+" },
-        { "memberName": "久保 史緒里", "rank": "A+" },
-        { "memberName": "井上 和",     "rank": "S"  }
+        {
+          "memberName": "遠藤 さくら",
+          "rank": "S"
+        },
+        {
+          "memberName": "賀喜 遥香",
+          "rank": "A+"
+        },
+        {
+          "memberName": "井上 和",
+          "rank": "S"
+        }
       ]
     },
     {
@@ -77,10 +134,14 @@
       "saleYear": 2024,
       "price": 1100,
       "rates": [
-        { "memberName": "与田 祐希",   "rank": "S"  },
-        { "memberName": "賀喜 遥香",   "rank": "A+" },
-        { "memberName": "山下 美月",   "rank": "A+" },
-        { "memberName": "遠藤 さくら", "rank": "A+" }
+        {
+          "memberName": "賀喜 遥香",
+          "rank": "A+"
+        },
+        {
+          "memberName": "遠藤 さくら",
+          "rank": "A+"
+        }
       ]
     },
     {
@@ -91,11 +152,10 @@
       "saleYear": 2023,
       "price": 1100,
       "rates": [
-        { "memberName": "齋藤 飛鳥",   "rank": "S+" },
-        { "memberName": "与田 祐希",   "rank": "S"  },
-        { "memberName": "山下 美月",   "rank": "S-" },
-        { "memberName": "久保 史緒里", "rank": "A+" },
-        { "memberName": "賀喜 遥香",   "rank": "A+" }
+        {
+          "memberName": "賀喜 遥香",
+          "rank": "A+"
+        }
       ]
     },
     {
@@ -106,11 +166,10 @@
       "saleYear": 2023,
       "price": 1100,
       "rates": [
-        { "memberName": "齋藤 飛鳥",   "rank": "S+" },
-        { "memberName": "与田 祐希",   "rank": "S"  },
-        { "memberName": "遠藤 さくら", "rank": "S-" },
-        { "memberName": "山下 美月",   "rank": "S-" },
-        { "memberName": "久保 史緒里", "rank": "A+" }
+        {
+          "memberName": "遠藤 さくら",
+          "rank": "S-"
+        }
       ]
     },
     {
@@ -120,13 +179,7 @@
       "event": "10th YEAR BIRTHDAY LIVE",
       "saleYear": 2022,
       "price": 1000,
-      "rates": [
-        { "memberName": "齋藤 飛鳥",   "rank": "S+" },
-        { "memberName": "白石 麻衣",   "rank": "S+" },
-        { "memberName": "生田 絵梨花", "rank": "S+" },
-        { "memberName": "与田 祐希",   "rank": "S"  },
-        { "memberName": "山下 美月",   "rank": "S-" }
-      ]
+      "rates": []
     }
   ]
 }
