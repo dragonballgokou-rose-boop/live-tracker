@@ -1,6 +1,6 @@
 {
   "version": "1",
-  "generatedAt": "2026-04-21T14:51:05.350Z",
+  "generatedAt": "2026-04-21T15:03:22.408Z",
   "sources": [
     "https://nogizakaworld.com/rate/",
     "https://nogizakarate.com/"
@@ -80,7 +80,8 @@
           "memberName": "岡本 姫奈",
           "rank": "A"
         }
-      ]
+      ],
+      "saleDate": "2025-02"
     },
     {
       "id": "13th-birthday-tshirt",
@@ -102,7 +103,8 @@
           "memberName": "井上 和",
           "rank": "S"
         }
-      ]
+      ],
+      "saleDate": "2025-02"
     },
     {
       "id": "12th-birthday-anniv",
@@ -124,7 +126,8 @@
           "memberName": "井上 和",
           "rank": "S"
         }
-      ]
+      ],
+      "saleDate": "2024-02"
     },
     {
       "id": "12th-birthday-animal",
@@ -142,44 +145,8 @@
           "memberName": "遠藤 さくら",
           "rank": "A+"
         }
-      ]
-    },
-    {
-      "id": "11th-birthday-varsity",
-      "label": "スタジャン",
-      "group": "nogi",
-      "event": "11th YEAR BIRTHDAY LIVE",
-      "saleYear": 2023,
-      "price": 1100,
-      "rates": [
-        {
-          "memberName": "賀喜 遥香",
-          "rank": "A+"
-        }
-      ]
-    },
-    {
-      "id": "11th-birthday-anniv",
-      "label": "11周年記念",
-      "group": "nogi",
-      "event": "11th YEAR BIRTHDAY LIVE",
-      "saleYear": 2023,
-      "price": 1100,
-      "rates": [
-        {
-          "memberName": "遠藤 さくら",
-          "rank": "S-"
-        }
-      ]
-    },
-    {
-      "id": "10th-birthday-anniv",
-      "label": "10周年記念（ソロカット）",
-      "group": "nogi",
-      "event": "10th YEAR BIRTHDAY LIVE",
-      "saleYear": 2022,
-      "price": 1000,
-      "rates": []
+      ],
+      "saleDate": "2024-02"
     }
   ]
 }

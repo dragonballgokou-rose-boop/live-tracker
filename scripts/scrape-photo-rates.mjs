@@ -74,6 +74,12 @@ const TARGETS = [
 
 const VALID_RANKS = new Set(['S+', 'S', 'S-', 'A+', 'A', 'A-', 'B+', 'B', 'B-', 'C']);
 
+// 直近 N ヶ月のみ JSON に残す（それ以前のシリーズは自動 discovery の対象外）
+const RECENT_MONTHS = 24;
+
+// 1 回の実行で新規追加するシリーズの上限（暴走防止）
+const MAX_NEW_SERIES = 30;
+
 // 日本人名っぽい 2〜4 文字＋スペース＋2〜4 文字 のゆるいフィルタ
 const NAME_RE = /([一-龥々ぁ-んァ-ヶー]{1,5})\s*[・\s]?\s*([一-龥々ぁ-んァ-ヶー]{1,6})/g;
 
@@ -113,24 +119,64 @@ function extractLinks(html) {
 }
 
 function matchTarget(links, target) {
-  // Birthday Live 系のページに限定: href が /rate-/ 系 + テキストに BD 匂い
-  const candidates = links.filter(l => {
-    const h = l.href;
-    if (!/\/rate-|\/hinatarate-|\/sakurate-/i.test(h)) return false;
-    const combined = l.text;
-    // 「周年」 or 「BD」 or 「Birthday」 を含まないと BD ライブではない
-    if (!/周年|バースデー|Birthday|BD|バースデイ/i.test(combined)) return false;
-    return true;
-  });
-
+  // href が /rate-/ 系のページ（乃木坂・日向・櫻）からキーワードで絞る
+  const candidates = links.filter(l => /\/rate-|\/hinatarate-|\/sakurate-/i.test(l.href));
   const hit = candidates.find(l => {
     const combined = `${l.text} ${l.href}`;
     if (target.allOf && !target.allOf.every(kw => combined.includes(kw))) return false;
     if (target.anyOf && !target.anyOf.some(kw => combined.toLowerCase().includes(kw.toLowerCase()))) return false;
     return true;
   });
-
   return hit ? new URL(hit.href, INDEX_URL).toString() : null;
+}
+
+/**
+ * インデックスから rate-... 系の全リンクを取って、{url, label, slug} として返す。
+ * 自動 discovery 用。既存 TARGETS にヒットしたものは別扱いで除外する前提。
+ */
+function allRateLinks(links) {
+  const out = [];
+  const seen = new Set();
+  for (const l of links) {
+    if (!/\/rate-|\/hinatarate-|\/sakurate-/i.test(l.href)) continue;
+    const url = new URL(l.href, INDEX_URL).toString();
+    if (seen.has(url)) continue;
+    seen.add(url);
+    const slugMatch = /\/(rate-[^/?#]+|hinatarate-[^/?#]+|sakurate-[^/?#]+)/i.exec(url);
+    if (!slugMatch) continue;
+    out.push({ url, label: l.text, slug: slugMatch[1] });
+  }
+  return out;
+}
+
+/** ページ HTML から発売月 (YYYY-MM) を推定する。見つからなければ null。 */
+function extractSaleDate(html) {
+  // "発売日: 2025年3月1日" や "2025年03月" のような日本語表記を拾う
+  const re = /(\d{4})年\s*(\d{1,2})月/;
+  const m = re.exec(html);
+  if (!m) return null;
+  const y = parseInt(m[1], 10);
+  const mo = parseInt(m[2], 10);
+  if (!y || !mo || mo < 1 || mo > 12) return null;
+  return `${y}-${String(mo).padStart(2, '0')}`;
+}
+
+function cutoffKeyNow() {
+  // 「直近2年」= 今年・去年・一昨年の 1 月 1 日。月粒度の比較なので YYYY-01 を cutoff とする
+  const now = new Date();
+  return `${now.getFullYear() - 2}-01`;
+}
+
+/**
+ * slug から group を推定する。
+ *   rate-xxx        → nogi
+ *   hinatarate-xxx  → hina
+ *   sakurate-xxx    → saku
+ */
+function groupFromSlug(slug) {
+  if (slug.startsWith('hinatarate-')) return 'hina';
+  if (slug.startsWith('sakurate-'))   return 'saku';
+  return 'nogi';
 }
 
 // ---------- 個別ページ解析 ----------
@@ -292,7 +338,9 @@ async function main() {
       }
       existingSeries.rates = dedupe(rates);
       existingSeries.sourceUrl = url;
-      console.log(`  ↳ updated: ${rates.length} rates`);
+      const sd = extractSaleDate(html);
+      if (sd) existingSeries.saleDate = sd;
+      console.log(`  ↳ updated: ${rates.length} rates${sd ? ` (saleDate=${sd})` : ''}`);
       updated++;
     } catch (e) {
       console.warn(`  ↳ fetch/parse failed: ${e.message}`);
@@ -301,8 +349,66 @@ async function main() {
     }
   }
 
-  if (updated === 0 && prunedFromExisting === 0) {
-    console.log(`\nNo series updated and no graduates pruned. Leaving file untouched.`);
+  // ---------- 自動 discovery: TARGETS 以外のシリーズ ----------
+  let discovered = 0;
+  if (indexFetchOk) {
+    const cutoff = cutoffKeyNow();
+    // 既に JSON に存在する sourceUrl を避けて新規のみ処理
+    const existingUrls = new Set(existing.series.map(s => s.sourceUrl).filter(Boolean));
+    const existingIds  = new Set(existing.series.map(s => s.id));
+
+    const allLinks = allRateLinks(links);
+    console.log(`\ndiscovery: ${allLinks.length} candidate rate-... links in index`);
+
+    for (const link of allLinks) {
+      if (discovered >= MAX_NEW_SERIES) break;
+      if (existingUrls.has(link.url)) continue;
+      if (existingIds.has(link.slug)) continue;
+
+      try {
+        const html = await fetchText(link.url);
+        const sd = extractSaleDate(html);
+        if (!sd) continue;                    // 発売日不明はスキップ
+        if (sd < cutoff) continue;            // 2年より古いページはスキップ
+        const rates = parseRates(html).filter(r => !graduatedNames.has(normalizeMemberName(r.memberName)));
+        if (rates.length < 5) continue;       // 人数少ないページはノイズとしてスキップ
+
+        const series = {
+          id: link.slug,
+          label: link.label || link.slug,
+          group: groupFromSlug(link.slug),
+          saleDate: sd,
+          saleYear: parseInt(sd.slice(0, 4), 10),
+          sourceUrl: link.url,
+          rates: dedupe(rates),
+        };
+        existing.series.push(series);
+        existingIds.add(link.slug);
+        existingUrls.add(link.url);
+        discovered++;
+        console.log(`  + discovered ${link.slug} (${sd}, ${rates.length} rates) "${link.label}"`);
+      } catch (e) {
+        // ページ不達は無視 — 次回の実行で再トライ
+      }
+    }
+    console.log(`discovery: ${discovered} new series added`);
+  }
+
+  // ---------- 2年より古いシリーズは JSON から削除 ----------
+  let droppedOld = 0;
+  const cutoff = cutoffKeyNow();
+  const before = existing.series.length;
+  existing.series = existing.series.filter(s => {
+    const sd = s.saleDate || (s.saleYear ? `${s.saleYear}-06` : null);
+    if (!sd) return true;                     // saleDate 不明は残す（手動エントリ保護）
+    if (sd >= cutoff) return true;
+    return false;
+  });
+  droppedOld = before - existing.series.length;
+  if (droppedOld > 0) console.log(`\npruned ${droppedOld} series older than ${cutoff}`);
+
+  if (updated === 0 && prunedFromExisting === 0 && discovered === 0 && droppedOld === 0) {
+    console.log(`\nNo changes. Leaving file untouched.`);
     return;
   }
 
@@ -310,7 +416,7 @@ async function main() {
   const serialized = JSON.stringify(existing, null, 2) + '\n';
   await writeFile(OUT_PATH, serialized, 'utf8');
   await writeFile(MOBILE_COPY_PATH, serialized, 'utf8');
-  console.log(`\n✓ wrote ${OUT_PATH} + mobile copy (${updated} updated, ${skipped} skipped)`);
+  console.log(`\n✓ wrote ${OUT_PATH} + mobile copy (${updated} updated, ${discovered} discovered, ${droppedOld} pruned-old, ${skipped} skipped)`);
 }
 
 function dedupe(rates) {

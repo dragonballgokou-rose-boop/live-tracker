@@ -2,6 +2,7 @@
 import { getLiveById, getMemberById, getMembers, getLives, getDatesForLive, getEffectiveDatesForLive, getDayAttendanceStatus, buildAttendanceLookup, lookupDayAttendance } from '../store.js';
 import { showModal, memberAvatarHtml, isJapaneseHoliday } from '../utils.js';
 import { formatDateRange, extractPrefecture, getLiveIconHtml } from './lives.js';
+import { fetchPhotoRates, getMemberRateHistory, rankClass as photoRankClass } from '../photoRates.js';
 
 const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
 
@@ -47,6 +48,51 @@ function fmtDate(dateStr) {
 
 function liveIconHtml(live, size = 16) {
     return getLiveIconHtml(live, size);
+}
+
+// ============================================
+// 生写真レート推移（メンバー詳細モーダル用）
+// ============================================
+async function fillMemberRateTrend(memberName) {
+    const container = document.getElementById('member-rate-trend');
+    if (!container) return;
+    const data = await fetchPhotoRates();
+    // レンダ中にモーダルが閉じられた / 別メンバーに切り替わった可能性を最新 DOM で確認
+    const currentContainer = document.getElementById('member-rate-trend');
+    if (!currentContainer) return;
+    if (!data) {
+        currentContainer.innerHTML = `<p style="color:var(--text-tertiary);font-size:12px;margin:0;">レートデータを取得できませんでした。</p>`;
+        return;
+    }
+    const points = getMemberRateHistory(data, memberName, 24);
+    if (points.length === 0) {
+        currentContainer.innerHTML = `<p style="color:var(--text-tertiary);font-size:12px;margin:0;">直近2年の生写真レートデータはありません。</p>`;
+        return;
+    }
+    // 横スクロール可能な rail: 古い→新しい
+    const prices = data.rankPriceYen;
+    const items = points.map(p => {
+        const price = prices[p.rank];
+        const priceText = price ? `¥${price.low.toLocaleString()}〜` : '—';
+        return `
+            <div style="flex:0 0 auto;min-width:120px;padding:8px 10px;background:rgba(255,255,255,0.04);border:1px solid var(--border-color);border-radius:8px;">
+                <div style="font-size:10px;color:var(--text-tertiary);margin-bottom:4px;">${escapeHtml(formatSaleDate(p.saleDate))}</div>
+                <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+                    <span class="rate-rank-badge ${photoRankClass(p.rank)}" style="min-width:32px;">${escapeHtml(p.rank)}</span>
+                    <span style="font-size:11px;color:var(--text-secondary);font-variant-numeric:tabular-nums;">${priceText}</span>
+                </div>
+                <div style="font-size:11px;color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:110px;">${escapeHtml(p.seriesLabel)}</div>
+            </div>
+        `;
+    }).join('');
+    currentContainer.innerHTML = `
+        <div style="display:flex;gap:8px;overflow-x:auto;padding:2px 2px 6px;-webkit-overflow-scrolling:touch;">${items}</div>
+    `;
+}
+
+function formatSaleDate(s) {
+    // "YYYY-MM" → "YYYY/MM"
+    return String(s || '').replace('-', '/');
 }
 
 // ============================================
@@ -403,6 +449,20 @@ export function showMemberDetailsModal(memberId) {
         </div>
     `;
 
+    // ── 生写真レート推移（直近2年） ──
+    html += `
+        <div style="margin-bottom:20px;">
+            <h4 style="margin-bottom:10px;font-size:14px;font-weight:700;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border-color);padding-bottom:8px;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                生写真レート推移
+                <span style="font-size:11px;font-weight:400;color:var(--text-tertiary);">直近2年</span>
+            </h4>
+            <div id="member-rate-trend" style="min-height:40px;">
+                <div style="color:var(--text-tertiary);font-size:12px;padding:8px 0;">読み込み中...</div>
+            </div>
+        </div>
+    `;
+
     // ライブカードを生成するヘルパー
     function liveCard(live) {
         const goingDates = liveStatusMap[live.id].goingDates;
@@ -458,6 +518,9 @@ export function showMemberDetailsModal(memberId) {
 
     html += `</div>`;
     showModal(`メンバー詳細：${member.name}`, html);
+
+    // 生写真レート推移を非同期で埋める
+    fillMemberRateTrend(member.name);
 
     // カレンダーのナビゲーションとライブクリックを設定
     window.showLiveDetailsModal = showLiveDetailsModal;

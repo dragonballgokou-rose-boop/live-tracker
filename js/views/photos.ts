@@ -18,6 +18,7 @@ interface SeriesEntry  {
   group: 'nogi' | 'saku' | 'hina';
   event?: string;
   saleYear?: number;
+  saleDate?: string;         // "YYYY-MM" — scraper が埋める
   price?: number;            // 発売時の定価 (円)
   sourceUrl?: string;
   rates: RateEntry[];
@@ -146,29 +147,46 @@ function renderBody(data: RatesFile, body: HTMLElement): void {
     members.map((m: any) => [normalizeName(m.name || ''), (m.nickname as string | null) || null]),
   );
 
-  // フラット化: 全シリーズの全 rates に seriesId/seriesLabel を付与
+  // saleDate を取り出す（無ければ saleYear-06 で代替）
+  const effectiveSaleDate = (s: SeriesEntry): string => {
+    if (s.saleDate && /^\d{4}-\d{2}$/.test(s.saleDate)) return s.saleDate;
+    if (s.saleYear) return `${s.saleYear}-06`;
+    return '0000-00';
+  };
+
+  // フラット化: 全シリーズの全 rates に seriesId/seriesLabel/saleDate を付与
   const flat = data.series.flatMap(s =>
-    s.rates.map(r => ({ ...r, seriesId: s.id, seriesLabel: s.label, saleYear: s.saleYear ?? 0 })),
+    s.rates.map(r => ({
+      ...r,
+      seriesId: s.id,
+      seriesLabel: s.label,
+      saleYear: s.saleYear ?? 0,
+      saleDate: effectiveSaleDate(s),
+    })),
   );
 
-  // フィルタ適用
+  // フィルタ適用（直近2年はスクレイパ側で強制しているのでここでは触らない）
   const filtered = flat.filter(r => {
     if (activeSeriesFilter && r.seriesId !== activeSeriesFilter) return false;
     if (watchlistOnly && !watchlist.has(watchKey(r.seriesId, r.memberName))) return false;
     return true;
   });
 
-  // 並び替え: ランク → シリーズ新しい順 → 名前
+  // 並び替え: 発売日 新しい順 → ランク → 名前
   filtered.sort((a, b) => {
+    const dd = b.saleDate.localeCompare(a.saleDate);
+    if (dd !== 0) return dd;
     const rd = RANK_ORDER[a.rank] - RANK_ORDER[b.rank];
     if (rd !== 0) return rd;
-    const yd = (b.saleYear ?? 0) - (a.saleYear ?? 0);
-    if (yd !== 0) return yd;
     return a.memberName.localeCompare(b.memberName, 'ja');
   });
 
   const chips = data.series
-    .map(s => `<button class="history-chip ${activeSeriesFilter === s.id ? 'history-chip-active' : ''}" data-series="${escapeHtml(s.id)}">${escapeHtml(s.label)}${s.saleYear ? ` <span style="opacity:0.5;">'${String(s.saleYear).slice(2)}</span>` : ''}</button>`)
+    .map(s => {
+      const d = effectiveSaleDate(s);
+      const tag = /^\d{4}-\d{2}$/.test(d) ? ` <span style="opacity:0.5;">${d.replace('-', '/')}</span>` : '';
+      return `<button class="history-chip ${activeSeriesFilter === s.id ? 'history-chip-active' : ''}" data-series="${escapeHtml(s.id)}">${escapeHtml(s.label)}${tag}</button>`;
+    })
     .join('');
 
   const watchCount = watchlist.size;

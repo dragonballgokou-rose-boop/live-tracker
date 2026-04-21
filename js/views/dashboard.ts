@@ -6,6 +6,7 @@ import { getLives, getMembers, getStats, getDayAttendanceStatus, getDatesForLive
 import { formatDateRange, getLiveIconHtml, getEventTypeBadgeExport } from './lives.js';
 import { showLiveDetailsModal, showMemberDetailsModal } from './details.js';
 import { isJapaneseHoliday, memberAvatarHtml } from '../utils.js';
+import { fetchPhotoRates, getMemberRateHistory, rankClass as photoRankClass } from '../photoRates.js';
 
 let dashboardViewMode = 'tl';      // 'tl' | 'calendar'
 let dashboardCalendarDate = null;  // null = use current month on first load
@@ -148,6 +149,11 @@ export function renderDashboard() {
     });
 
     updateSchedule();
+  }
+
+  // ランキング行のレート sparkline を非同期で埋める（メンバーがいる時のみ）
+  if (members.length > 0) {
+    renderDashboardMemberRateTrends();
   }
 }
 
@@ -324,19 +330,40 @@ function getMemberRanking(members, lives, attMap) {
     return { ...member, goingCount };
   }).sort((a, b) => b.goingCount - a.goingCount);
 
+  // レート sparkline は非同期で埋める（renderDashboardMemberRateTrends が担当）
   return `
     <div style="display:flex;flex-direction:column;gap:8px;">
       ${ranked.map((member, idx) => `
         <div style="display:flex;align-items:center;gap:12px;padding:8px 12px;border-radius:8px;background:${idx < 3 ? 'rgba(139,92,246,0.06)' : 'transparent'};">
           <span style="width:24px;text-align:center;font-weight:700;color:${idx === 0 ? 'var(--accent-amber)' : idx === 1 ? 'var(--text-secondary)' : idx === 2 ? '#CD7F32' : 'var(--text-tertiary)'};font-size:14px;">${idx + 1}</span>
           <div style="cursor:pointer;" onclick="showMemberDetailsModal('${member.id}')">${memberAvatarHtml(member, 32)}</div>
-          <span style="flex:1;font-weight:500;font-size:14px;cursor:pointer;text-decoration:underline;text-decoration-color:rgba(255,255,255,0.2);" onclick="showMemberDetailsModal('${member.id}')">${escapeHtml(member.name)}</span>
+          <span style="flex:1;min-width:0;font-weight:500;font-size:14px;cursor:pointer;text-decoration:underline;text-decoration-color:rgba(255,255,255,0.2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" onclick="showMemberDetailsModal('${member.id}')">${escapeHtml(member.name)}</span>
+          <span class="dashboard-rate-trend" data-member-name="${escapeHtml(member.name)}" style="display:flex;gap:2px;align-items:center;"></span>
           <span style="font-weight:700;color:var(--accent-purple-light);font-size:14px;">${member.goingCount}</span>
           <span style="color:var(--text-tertiary);font-size:12px;">参戦</span>
         </div>
       `).join('')}
     </div>
   `;
+}
+
+// ダッシュボード上のメンバー行にレート sparkline を埋める（非同期）
+async function renderDashboardMemberRateTrends() {
+  const slots = document.querySelectorAll('.dashboard-rate-trend');
+  if (slots.length === 0) return;
+  const data = await fetchPhotoRates();
+  if (!data) return;
+  slots.forEach(slot => {
+    const name = slot.getAttribute('data-member-name');
+    if (!name) return;
+    const points = getMemberRateHistory(data, name, 24);
+    if (points.length === 0) return;
+    // 直近 4 件を新しい→古い順に並べて sparkline 化
+    const recent = points.slice(-4).reverse();
+    slot.innerHTML = recent.map(p =>
+      `<span class="rate-rank-badge ${photoRankClass(p.rank)}" style="min-width:22px;font-size:10px;padding:1px 4px;line-height:1.5;" title="${escapeHtml(p.seriesLabel)} (${p.saleDate})">${escapeHtml(p.rank)}</span>`
+    ).join('');
+  });
 }
 
 // ---------- Live Card ----------
