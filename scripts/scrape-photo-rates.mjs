@@ -31,6 +31,14 @@ const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (
 
 const INDEX_URL = 'https://nogizakaworld.com/rate/';
 
+// index が 403 等で弾かれる場合の代替候補。順次試行。
+const INDEX_URL_CANDIDATES = [
+  INDEX_URL,
+  'https://nogizakaworld.com/category/nogizaka46/rate-nogizaka46/',
+  'https://nogizakaworld.com/',
+  'https://nogizakarate.com/',
+];
+
 // ---------- 追跡対象シリーズ ----------
 // id は public/photo-rates.json 内の series.id と揃える。
 // keywords: インデックスページのリンクテキストから該当ページを引き当てるためのキーワード。
@@ -337,21 +345,32 @@ async function main() {
     console.log(`pruned ${prunedFromExisting} graduated entries from existing JSON`);
   }
 
-  // 1. インデックスを取得してリンクを抽出
+  // 1. インデックスを取得してリンクを抽出 — 候補 URL を順次試す
   let links = [];
   let indexFetchOk = false;
-  try {
-    const indexHtml = await fetchText(INDEX_URL);
-    console.log(`fetched index ${INDEX_URL} (${indexHtml.length} bytes)`);
-    links = extractLinks(indexHtml);
-    console.log(`extracted ${links.length} links`);
-    indexFetchOk = true;
-    diag.indexFetch = { ok: true, htmlSize: indexHtml.length };
-    diag.linkCount = links.length;
-  } catch (e) {
-    console.warn(`failed to fetch index: ${e.message}`);
-    console.warn('skipping scrape; may still write pruned existing JSON');
-    diag.indexFetch = { ok: false, error: String(e.message || e) };
+  const attempts = [];
+  for (const url of INDEX_URL_CANDIDATES) {
+    try {
+      const indexHtml = await fetchText(url);
+      links = extractLinks(indexHtml);
+      console.log(`fetched ${url} (${indexHtml.length} bytes, ${links.length} links)`);
+      indexFetchOk = true;
+      attempts.push({ url, ok: true, htmlSize: indexHtml.length, linkCount: links.length });
+      diag.indexFetch = { ok: true, url, htmlSize: indexHtml.length };
+      diag.linkCount = links.length;
+      // 最初に「rate-」系のリンクが一定数取れた候補で確定
+      const rateLinks = links.filter(l => /\/rate-|\/hinatarate-|\/sakurate-/i.test(l.href));
+      if (rateLinks.length >= 3) break;
+      console.log(`  (only ${rateLinks.length} rate-... links; trying next candidate)`);
+    } catch (e) {
+      console.warn(`failed to fetch ${url}: ${e.message}`);
+      attempts.push({ url, ok: false, error: String(e.message || e) });
+    }
+  }
+  diag.indexAttempts = attempts;
+  if (!indexFetchOk) {
+    diag.indexFetch = { ok: false, error: 'all candidates failed' };
+    console.warn('all index candidates failed; skipping scrape');
   }
 
   const bySeriesId = new Map(existing.series.map(s => [s.id, s]));
