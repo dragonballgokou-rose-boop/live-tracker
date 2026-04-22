@@ -34,12 +34,13 @@ jobs:
 
       - name: Commit updated JSON if changed
         run: |
-          if git diff --quiet -- public/photo-rates.json mobile/src/data/photo-rates.json; then
+          # diag は毎回更新されるので、レート実データ or diag のどちらかに差分があればコミット
+          if git diff --quiet -- public/photo-rates.json mobile/src/data/photo-rates.json public/photo-rates-diag.json; then
             echo "No changes"
             exit 0
           fi
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add public/photo-rates.json mobile/src/data/photo-rates.json
+          git add public/photo-rates.json mobile/src/data/photo-rates.json public/photo-rates-diag.json
           git commit -m "chore: update photo rates (auto)"
           git push origin HEAD:${{ github.ref_name }}
