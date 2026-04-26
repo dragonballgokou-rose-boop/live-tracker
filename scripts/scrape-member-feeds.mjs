@@ -26,7 +26,8 @@ const OUT_PATH     = resolve(__dirname, '..', 'public', 'official-member-feeds.j
 
 const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0 Safari/537.36';
 const THROTTLE_MS = 120;           // 連続リクエスト間の待ち
-const MAX_ITEMS   = 10;
+const MAX_ITEMS   = 30;            // 1 候補あたりの上限（merge 後に再制限）
+const MAX_TOTAL   = 30;            // 最終的な schedule 配列の上限
 
 const GROUP_CONFIG = {
   nogi: {
@@ -590,8 +591,14 @@ async function scrapeMemberFeeds(m, cfg) {
   }
 
   // スケジュール（複数 URL パターンを試す）
-  // 最初に items が取れたものを採用。全て失敗なら最後の診断を errors に残す。
+  // 各候補から取れた items を merge（重複は dayOfMonth+cate+title で除去）。
+  // 単一候補で break すると、API が返す月内分しか取れず HTML 側にしか無い
+  // 項目（例: 「佑捺の部屋」WEB）が漏れるため、全候補から集める。
   const scheduleDiag = [];
+  const merged = [];
+  const mergedKeys = new Set();
+  const mergeKey = it => `${it.dayOfMonth}|${(it.cate||'').toLowerCase()}|${(it.title||'').slice(0, 30)}`;
+
   for (const url of cfg.scheduleCandidates(m.code)) {
     const short = url.replace(cfg.host, '').replace(/\?.*$/, '');
     try {
@@ -605,10 +612,20 @@ async function scrapeMemberFeeds(m, cfg) {
       if (parsed.length === 0) parsed = parseSchedule(html);
       // 誤抽出（title = メンバー名 等）をサニタイズ
       parsed = sanitizeScheduleItems(parsed, m.name);
+      // merge: 既知キーに無いものだけ追加
+      for (const it of parsed) {
+        const k = mergeKey(it);
+        if (mergedKeys.has(k)) continue;
+        mergedKeys.add(k);
+        merged.push(it);
+        if (merged.length >= MAX_TOTAL) break;
+      }
+      if (merged.length >= MAX_TOTAL) break;
+      // 取れたが merge 済みなだけ、というケースもあるので diag をクリアしすぎない
       if (parsed.length > 0) {
-        entry.schedule = parsed;
         scheduleDiag.length = 0;
-        break;
+        // 全候補回さず早期 break するのは MAX_TOTAL 到達時のみ
+        continue;
       }
       const kind = looksJson ? 'json' : (looksLikeSchedulePage(html) ? 'sched-html' : 'other-html');
       // 小さい応答は内容まで見せる（空エラー JSON の正体特定用）
@@ -644,6 +661,9 @@ async function scrapeMemberFeeds(m, cfg) {
     }
     await sleep(THROTTLE_MS);
   }
+  // merge 結果を確定。日順にソートしておくと UI 側で扱いやすい。
+  merged.sort((a, b) => (a.dayOfMonth || 0) - (b.dayOfMonth || 0));
+  entry.schedule = merged;
   if (entry.schedule.length === 0 && scheduleDiag.length > 0) {
     entry.errors.push(`schedule: ${scheduleDiag.join(' | ')}`);
   }
