@@ -67,6 +67,18 @@ jobs:
           APP_URL:            ${{ secrets.APP_URL }}
         run: node scripts/send-push-notifications.mjs --feeds-diff
 
+      # 送信履歴を git に追加（public/push-log.json）
+      - name: Commit push log
+        if: steps.commit.outputs.changed == 'true' && github.ref_name == 'main'
+        run: |
+          if [ -f public/push-log.json ] && ! git diff --quiet -- public/push-log.json; then
+            git config user.name  "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add public/push-log.json
+            git commit -m "chore: update push log (auto)"
+            git push origin HEAD:${{ github.ref_name }}
+          fi
+
       # GITHUB_TOKEN で push した commit は Pages deploy を trigger しないので
       # workflow_dispatch で明示的に起動して最新 JSON を配信する
       - name: Trigger Pages deploy

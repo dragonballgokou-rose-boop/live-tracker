@@ -28,6 +28,7 @@ import { createClient } from '@supabase/supabase-js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const FEEDS_PATH = resolve(__dirname, '..', 'public', 'official-member-feeds.json');
+const LOG_PATH   = resolve(__dirname, '..', 'public', 'push-log.json');
 const APP_URL    = process.env.APP_URL || 'https://dragonballgokou-rose-boop.github.io/live-tracker/';
 
 const args = new Set(process.argv.slice(2));
@@ -70,7 +71,9 @@ async function cleanupDeadSubscription(endpoint) {
   }
 }
 
-/** 1 購読へ payload を送信。失敗時は 410/404 なら cleanup */
+/** 1 購読へ payload を送信。失敗時は 410/404 なら cleanup
+ *  返り値: 'sent' | 'dry' | 'cleaned' | `error:${code}` (送信失敗の HTTP code or 'unknown')
+ */
 async function sendOne(sub, payload) {
   const subscription = {
     endpoint: sub.endpoint,
@@ -78,17 +81,19 @@ async function sendOne(sub, payload) {
   };
   if (DRY_RUN) {
     console.log(`  [dry] would send to ${sub.endpoint.slice(0, 60)}… : ${payload.title} / ${payload.body}`);
-    return;
+    return 'dry';
   }
   try {
     await webpush.sendNotification(subscription, JSON.stringify(payload));
+    return 'sent';
   } catch (err) {
     const code = err?.statusCode;
     if (code === 404 || code === 410) {
       await cleanupDeadSubscription(sub.endpoint);
-    } else {
-      console.warn(`  send failed (${code}): ${err?.body || err?.message || err}`);
+      return 'cleaned';
     }
+    console.warn(`  send failed (${code}): ${err?.body || err?.message || err}`);
+    return `error:${code || 'unknown'}`;
   }
 }
 
@@ -138,14 +143,40 @@ function diffNewSchedules(prevFeed, nextFeed) {
 async function runFeedsDiff() {
   const next = JSON.parse(await readFile(FEEDS_PATH, 'utf8'));
   const prev = await loadPrevFeeds();
-  if (!prev) return;
+  const pushLog = {
+    ranAt: new Date().toISOString(),
+    mode: 'feeds-diff',
+    prevAvailable: !!prev,
+    subsCount: 0,
+    perFeed: [],
+    outcomes: {},   // 'sent' | 'cleaned' | 'error:404' などごとの件数
+    totalAttempts: 0,
+  };
+  if (!prev) {
+    await writeLog(pushLog);
+    return;
+  }
 
   // 購読者一覧（oshi_code / oshi_group でマッチ）
   const { data: subs, error } = await sb.from('push_subscriptions').select('*');
-  if (error) { console.error('fetch subs failed:', error); return; }
-  if (!subs || subs.length === 0) { console.log('購読者なし'); return; }
+  if (error) {
+    console.error('fetch subs failed:', error);
+    pushLog.fetchSubsError = String(error.message || error);
+    await writeLog(pushLog);
+    return;
+  }
+  pushLog.subsCount = subs?.length || 0;
+  if (!subs || subs.length === 0) {
+    console.log('購読者なし');
+    await writeLog(pushLog);
+    return;
+  }
 
   let sentBlog = 0, sentSched = 0;
+  const tally = (outcome) => {
+    pushLog.outcomes[outcome] = (pushLog.outcomes[outcome] || 0) + 1;
+    pushLog.totalAttempts++;
+  };
 
   for (const [key, nextFeed] of Object.entries(next.feeds || {})) {
     const [group, code] = key.split(':');
@@ -157,19 +188,32 @@ async function runFeedsDiff() {
     const targets = subs.filter(s =>
       s.oshi_code === code && s.oshi_group === group
     );
-    if (targets.length === 0) continue;
+    const feedRow = {
+      feedKey: key,
+      newBlogs: newBlogs.length,
+      newScheds: newScheds.length,
+      subscribers: targets.length,
+    };
+    if (targets.length === 0) {
+      feedRow.skipped = 'no subscribers';
+      pushLog.perFeed.push(feedRow);
+      continue;
+    }
 
     const memberName = await lookupMemberName(group, code);
+    feedRow.memberName = memberName;
+    pushLog.perFeed.push(feedRow);
 
     // ブログ通知（最大 3 件まで 1 通ずつ）
     for (const blog of newBlogs.slice(0, 3)) {
       for (const sub of targets.filter(t => t.prefs?.blog !== false)) {
-        await sendOne(sub, {
+        const outcome = await sendOne(sub, {
           title: `${memberName} の新着ブログ`,
           body: blog.title,
           url: blog.url,
           tag: `blog:${key}:${blog.url}`,
         });
+        tally(outcome);
         sentBlog++;
       }
     }
@@ -180,18 +224,42 @@ async function runFeedsDiff() {
         ? `新しい出演: ${newScheds[0].title}`
         : `出演予定が ${newScheds.length} 件追加されました`;
       for (const sub of targets.filter(t => t.prefs?.schedule !== false)) {
-        await sendOne(sub, {
+        const outcome = await sendOne(sub, {
           title: `${memberName} の出演情報`,
           body: summary,
           url: APP_URL,
           tag: `schedule:${key}`,
         });
+        tally(outcome);
         sentSched++;
       }
     }
   }
 
   console.log(`feeds-diff: sent ${sentBlog} blog, ${sentSched} schedule push`);
+  pushLog.sentBlog = sentBlog;
+  pushLog.sentSched = sentSched;
+  await writeLog(pushLog);
+}
+
+// ---------- push log ----------
+
+/**
+ * public/push-log.json に最近の実行履歴を残す（直近 14 件まで）。
+ * 端点 URL や購読 ID 等の機密は含めない（feedKey, memberName, 件数のみ）。
+ */
+async function writeLog(latest) {
+  let history = [];
+  try {
+    const raw = await readFile(LOG_PATH, 'utf8');
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed.runs)) history = parsed.runs;
+  } catch { /* ファイル無し / 壊れ */ }
+  history.unshift(latest);
+  history = history.slice(0, 14);
+  const out = { lastRunAt: latest.ranAt, runs: history };
+  const { writeFile } = await import('node:fs/promises');
+  await writeFile(LOG_PATH, JSON.stringify(out, null, 2) + '\n', 'utf8');
 }
 
 // ---------- live-reminders モード ----------
@@ -211,13 +279,30 @@ async function runLiveReminders() {
   const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
   const tomorrowStr = ymd(tomorrow);
 
+  const pushLog = {
+    ranAt: new Date().toISOString(),
+    mode: 'live-reminders',
+    todayJst: todayStr,
+    tomorrowJst: tomorrowStr,
+    livesCount: 0,
+    attendanceCount: 0,
+    subsCount: 0,
+    outcomes: {},
+    totalAttempts: 0,
+  };
+  const tally = (outcome) => {
+    pushLog.outcomes[outcome] = (pushLog.outcomes[outcome] || 0) + 1;
+    pushLog.totalAttempts++;
+  };
+
   // 今日 or 明日に開催のライブ
   const { data: lives, error: livesErr } = await sb
     .from('lives')
     .select('id,name,venue,date_start,date_end')
     .or(`date_start.eq.${todayStr},date_start.eq.${tomorrowStr}`);
-  if (livesErr) { console.error('lives fetch failed:', livesErr); return; }
-  if (!lives || lives.length === 0) { console.log('対象ライブなし'); return; }
+  if (livesErr) { console.error('lives fetch failed:', livesErr); pushLog.error = String(livesErr.message||livesErr); await writeLog(pushLog); return; }
+  pushLog.livesCount = lives?.length || 0;
+  if (!lives || lives.length === 0) { console.log('対象ライブなし'); await writeLog(pushLog); return; }
 
   // going 参戦者
   const liveIds = lives.map(l => l.id);
@@ -257,16 +342,21 @@ async function runLiveReminders() {
     const prefixLabel = isToday ? '【今日】' : '【明日】';
     const targets = (subsByMember.get(att.member_id) || []).filter(s => s.prefs?.[prefKey] !== false);
     for (const sub of targets) {
-      await sendOne(sub, {
+      const outcome = await sendOne(sub, {
         title: `${prefixLabel} ${live.name}`,
         body: live.venue ? `会場: ${live.venue}` : '参戦予定のライブです',
         url: APP_URL,
         tag: `live:${live.id}:${prefKey}`,
       });
+      tally(outcome);
       sent++;
     }
   }
   console.log(`live-reminders: sent ${sent} push (today=${todayStr}, tomorrow=${tomorrowStr})`);
+  pushLog.sent = sent;
+  pushLog.attendanceCount = attendance.length;
+  pushLog.subsCount = subs.length;
+  await writeLog(pushLog);
 }
 
 // ---------- helper: 公式メンバー名 lookup ----------
