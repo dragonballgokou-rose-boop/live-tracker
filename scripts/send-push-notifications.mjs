@@ -141,34 +141,42 @@ function diffNewSchedules(prevFeed, nextFeed) {
 }
 
 async function runFeedsDiff() {
-  const next = JSON.parse(await readFile(FEEDS_PATH, 'utf8'));
-  const prev = await loadPrevFeeds();
   const pushLog = {
     ranAt: new Date().toISOString(),
     mode: 'feeds-diff',
-    prevAvailable: !!prev,
     subsCount: 0,
     perFeed: [],
     outcomes: {},   // 'sent' | 'cleaned' | 'error:404' などごとの件数
     totalAttempts: 0,
   };
-  if (!prev) {
-    await writeLog(pushLog);
-    return;
+  try {
+    await runFeedsDiffInner(pushLog);
+  } catch (e) {
+    console.error('runFeedsDiff failed:', e);
+    pushLog.error = String(e?.stack || e?.message || e);
+    throw e;
+  } finally {
+    // 例外でも writeLog は必ず行う（push-log.json で原因が見えるように）
+    await writeLog(pushLog).catch(err => console.warn('writeLog failed:', err));
   }
+}
+
+async function runFeedsDiffInner(pushLog) {
+  const next = JSON.parse(await readFile(FEEDS_PATH, 'utf8'));
+  const prev = await loadPrevFeeds();
+  pushLog.prevAvailable = !!prev;
+  if (!prev) return;  // log は finally で書く
 
   // 購読者一覧（oshi_code / oshi_group でマッチ）
   const { data: subs, error } = await sb.from('push_subscriptions').select('*');
   if (error) {
     console.error('fetch subs failed:', error);
     pushLog.fetchSubsError = String(error.message || error);
-    await writeLog(pushLog);
     return;
   }
   pushLog.subsCount = subs?.length || 0;
   if (!subs || subs.length === 0) {
     console.log('購読者なし');
-    await writeLog(pushLog);
     return;
   }
 
@@ -239,7 +247,6 @@ async function runFeedsDiff() {
   console.log(`feeds-diff: sent ${sentBlog} blog, ${sentSched} schedule push`);
   pushLog.sentBlog = sentBlog;
   pushLog.sentSched = sentSched;
-  await writeLog(pushLog);
 }
 
 // ---------- push log ----------
@@ -290,39 +297,48 @@ async function runLiveReminders() {
     outcomes: {},
     totalAttempts: 0,
   };
+  try {
+    await runLiveRemindersInner(pushLog, todayStr, tomorrowStr);
+  } catch (e) {
+    console.error('runLiveReminders failed:', e);
+    pushLog.error = String(e?.stack || e?.message || e);
+    throw e;
+  } finally {
+    await writeLog(pushLog).catch(err => console.warn('writeLog failed:', err));
+  }
+}
+
+async function runLiveRemindersInner(pushLog, todayStr, tomorrowStr) {
   const tally = (outcome) => {
     pushLog.outcomes[outcome] = (pushLog.outcomes[outcome] || 0) + 1;
     pushLog.totalAttempts++;
   };
 
-  // 今日 or 明日に開催のライブ
   const { data: lives, error: livesErr } = await sb
     .from('lives')
     .select('id,name,venue,date_start,date_end')
     .or(`date_start.eq.${todayStr},date_start.eq.${tomorrowStr}`);
-  if (livesErr) { console.error('lives fetch failed:', livesErr); pushLog.error = String(livesErr.message||livesErr); await writeLog(pushLog); return; }
+  if (livesErr) { pushLog.error = String(livesErr.message||livesErr); return; }
   pushLog.livesCount = lives?.length || 0;
-  if (!lives || lives.length === 0) { console.log('対象ライブなし'); await writeLog(pushLog); return; }
+  if (!lives || lives.length === 0) { console.log('対象ライブなし'); return; }
 
-  // going 参戦者
   const liveIds = lives.map(l => l.id);
   const { data: attendance, error: attErr } = await sb
     .from('attendance')
     .select('live_id,member_id,status')
     .in('live_id', liveIds)
     .eq('status', 'going');
-  if (attErr) { console.error('attendance fetch failed:', attErr); return; }
-
+  if (attErr) { pushLog.error = String(attErr.message||attErr); return; }
   if (!attendance || attendance.length === 0) { console.log('going 参戦者なし'); return; }
+  pushLog.attendanceCount = attendance.length;
 
   const memberIds = [...new Set(attendance.map(a => a.member_id))];
-
-  // 該当メンバーの subscription
   const { data: subs, error: subsErr } = await sb
     .from('push_subscriptions')
     .select('*')
     .in('member_id', memberIds);
-  if (subsErr) { console.error('subs fetch failed:', subsErr); return; }
+  if (subsErr) { pushLog.error = String(subsErr.message||subsErr); return; }
+  pushLog.subsCount = subs?.length || 0;
   if (!subs || subs.length === 0) { console.log('購読者なし'); return; }
 
   const subsByMember = new Map();
@@ -354,9 +370,6 @@ async function runLiveReminders() {
   }
   console.log(`live-reminders: sent ${sent} push (today=${todayStr}, tomorrow=${tomorrowStr})`);
   pushLog.sent = sent;
-  pushLog.attendanceCount = attendance.length;
-  pushLog.subsCount = subs.length;
-  await writeLog(pushLog);
 }
 
 // ---------- helper: 公式メンバー名 lookup ----------
