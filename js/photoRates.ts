@@ -1,8 +1,11 @@
 // ============================================
 // Photo Rates — 生写真レートの読み込み・検索
 // ============================================
-// public/photo-rates.json をロードし、メンバー名で履歴を引くためのヘルパ。
-// Photos ビューとダッシュボード / メンバー詳細モーダルの双方から利用する。
+// public/photo-rates.json をロードし、ユーザの localStorage 上書きと merge して
+// メンバー名で履歴を引くためのヘルパ。Photos ビュー / ダッシュボード / メンバー
+// 詳細モーダル のいずれもこのモジュール経由で読むので、編集が即時に全画面へ反映される。
+
+import { mergeSeedWithOverrides } from './photoRatesUser.js';
 
 export type Rank = 'S+' | 'S' | 'S-' | 'A+' | 'A' | 'A-' | 'B+' | 'B' | 'B-' | 'C';
 
@@ -40,18 +43,19 @@ export const RANK_ORDER: Record<Rank, number> = {
   'C':  9,
 };
 
-let _cached: RatesFile | null = null;
+let _seedCache: RatesFile | null = null;
 let _inflight: Promise<RatesFile | null> | null = null;
 
-export async function fetchPhotoRates(opts: { noCache?: boolean } = {}): Promise<RatesFile | null> {
-  if (_cached && !opts.noCache) return _cached;
+/** seed JSON のみをロード（user 編集は merge しない、内部用）。 */
+async function loadSeed(opts: { noCache?: boolean } = {}): Promise<RatesFile | null> {
+  if (_seedCache && !opts.noCache) return _seedCache;
   if (_inflight) return _inflight;
   _inflight = (async () => {
     try {
       const res = await fetch(`./photo-rates.json?v=${Date.now()}`, { cache: 'no-store' });
       if (!res.ok) return null;
-      _cached = (await res.json()) as RatesFile;
-      return _cached;
+      _seedCache = (await res.json()) as RatesFile;
+      return _seedCache;
     } catch (e) {
       console.warn('[photoRates] load failed', e);
       return null;
@@ -62,8 +66,31 @@ export async function fetchPhotoRates(opts: { noCache?: boolean } = {}): Promise
   return _inflight;
 }
 
+/**
+ * seed JSON にユーザ編集を merge した結果を返す。
+ * - 各画面はこれを呼ぶだけで「seed + ユーザ編集」を見れる
+ * - ユーザ編集が変わった直後は noCache:true で再 merge
+ */
+export async function fetchPhotoRates(opts: { noCache?: boolean } = {}): Promise<RatesFile | null> {
+  const seed = await loadSeed(opts);
+  if (!seed) return null;
+  return {
+    ...seed,
+    series: mergeSeedWithOverrides(seed),
+  };
+}
+
 export function getPhotoRatesSync(): RatesFile | null {
-  return _cached;
+  if (!_seedCache) return null;
+  return {
+    ..._seedCache,
+    series: mergeSeedWithOverrides(_seedCache),
+  };
+}
+
+/** seed (read-only, ユーザ編集無視) を返す — 編集 UI のベース表示用。 */
+export function getPhotoRatesSeedSync(): RatesFile | null {
+  return _seedCache;
 }
 
 function normalizeName(s: string): string {
