@@ -2,8 +2,9 @@ name: Update Official Member Feeds
 
 on:
   schedule:
-    # 毎日 06:20 JST (= 21:20 UTC) members scraper の後
-    - cron: '20 21 * * *'
+    # 1 時間に 1 回（毎時 0 分 UTC）。 public repo の GitHub Actions は無制限のため OK。
+    # source 側 API への負荷が問題になったら 2〜3 時間に間隔を広げること。
+    - cron: '0 * * * *'
   workflow_dispatch:
   push:
     branches:

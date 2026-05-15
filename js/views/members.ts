@@ -271,6 +271,10 @@ async function openOshiModal(memberId: string): Promise<void> {
         </a>` : ''}
         ${scheduleUrl ? `<a class="btn btn-secondary" href="${escapeAttr(scheduleUrl)}" target="_blank" rel="noopener noreferrer">出演予定を開く ↗</a>` : ''}
         ${oshiData.detailUrl ? `<a class="btn btn-secondary" href="${escapeAttr(oshiData.detailUrl)}" target="_blank" rel="noopener noreferrer">プロフィール↗</a>` : ''}
+        <button id="oshi-refresh-feeds" class="btn btn-secondary" title="フィード JSON を最新化（cron は 07:00 JST 1回/日）">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px;"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+          更新
+        </button>
       </div>
 
       ${feeds && feeds.profile && Object.values(feeds.profile).some(v => v != null) ? `
@@ -315,6 +319,31 @@ async function openOshiModal(memberId: string): Promise<void> {
     const root = document.getElementById('oshi-push-section');
     if (root) root.innerHTML = `<p style="color:var(--text-tertiary);font-size:12px;">通知設定の読み込みに失敗しました: ${String(err?.message || err)}</p>`;
   });
+
+  // フィード手動更新: official-member-feeds.json を強制再取得してモーダルを再描画
+  const refreshBtn = document.getElementById('oshi-refresh-feeds') as HTMLButtonElement | null;
+  if (refreshBtn) {
+    refreshBtn.addEventListener('click', async () => {
+      const orig = refreshBtn.innerHTML;
+      refreshBtn.disabled = true;
+      refreshBtn.innerHTML = '更新中…';
+      try {
+        const fresh = await fetchOfficialMemberFeeds({ noCache: true });
+        if (!fresh) {
+          showToast('フィードを取得できませんでした', 'error');
+          return;
+        }
+        // 上書きされた _feedsCached を使ってモーダルを再オープン
+        showToast('最新フィードに更新しました', 'success');
+        openOshiModal(memberId);
+      } catch (e: any) {
+        showToast(`更新失敗: ${e?.message || e}`, 'error');
+      } finally {
+        refreshBtn.disabled = false;
+        refreshBtn.innerHTML = orig;
+      }
+    });
+  }
 }
 
 async function wireUpPushSection(): Promise<void> {
