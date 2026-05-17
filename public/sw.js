@@ -1,5 +1,5 @@
 // Service Worker - Cache Strategy
-const CACHE_NAME = 'live-tracker-v11-rate-edit';
+const CACHE_NAME = 'live-tracker-v12-icon';
 
 // self.registration.scope = アプリの base URL (例: /live-tracker/)
 const BASE = new URL(self.registration.scope).pathname;
