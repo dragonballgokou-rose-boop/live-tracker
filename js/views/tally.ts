@@ -13,16 +13,18 @@ function getTallyUrlParams() {
   const qIdx = hash.indexOf('?');
   if (qIdx === -1) return {};
   const p = new URLSearchParams(hash.slice(qIdx + 1));
-  return { status: p.get('status') || '', month: p.get('month') || '', search: p.get('search') || '' };
+  return { status: p.get('status') || '', month: p.get('month') || '', search: p.get('search') || '', artist: p.get('artist') || '' };
 }
 
 function updateTallyUrl() {
   const search = document.getElementById('tally-filter-live')?.value || '';
   const month  = document.getElementById('tally-filter-month')?.value  || '';
+  const artist = document.getElementById('tally-filter-artist')?.value || '';
   const p = new URLSearchParams();
   if (tallyStatusFilter !== 'all') p.set('status', tallyStatusFilter);
   if (month)  p.set('month',  month);
   if (search) p.set('search', search);
+  if (artist) p.set('artist', artist);
   const qs = p.toString();
   history.replaceState(null, '', `#/tally${qs ? '?' + qs : ''}`);
 }
@@ -55,6 +57,10 @@ export function renderTally() {
   const content = document.getElementById('page-content');
   const lives = getLives().filter(l => l.eventType !== 'tour');
   const members = getMembers();
+
+  // アーティスト一覧（ドロップダウン用 — 重複除去・ソート）
+  const artistSet = new Set(lives.map(l => l.artist).filter(Boolean));
+  const artists = [...artistSet].sort((a, b) => a.localeCompare(b, 'ja'));
 
   // URL params から初期フィルター状態を復元
   const urlParams = getTallyUrlParams();
@@ -127,6 +133,12 @@ export function renderTally() {
     <!-- Filter -->
     <div class="tally-filter-bar">
       <input type="text" id="tally-filter-live" class="form-input" placeholder="ライブ名を検索" value="${urlParams.search || ''}" />
+      ${artists.length > 1 ? `
+        <select id="tally-filter-artist" class="form-input" style="min-width:120px;">
+          <option value="">全アーティスト</option>
+          ${artists.map(a => `<option value="${escapeAttr(a)}" ${urlParams.artist === a ? 'selected' : ''}>${escapeHtml(a)}</option>`).join('')}
+        </select>
+      ` : '<input type="hidden" id="tally-filter-artist" value="" />'}
       <input type="month" id="tally-filter-month" class="form-input" value="${urlParams.month || ''}" />
       <button id="tally-filter-clear" class="btn btn-secondary btn-sm">クリア</button>
     </div>
@@ -303,7 +315,7 @@ function buildTallyTable(lives, members) {
     ].filter(Boolean).join(' ');
 
     return `
-            <tr class="${rowClasses}" data-live-name="${escapeAttr(row.live.name || '')}" data-date="${row.dateStr}">
+            <tr class="${rowClasses}" data-live-name="${escapeAttr(row.live.name || '')}" data-date="${row.dateStr}" data-artist="${escapeAttr(row.live.artist || '')}">
               <td>
                 ${label}
               </td>
@@ -395,6 +407,7 @@ function buildTallyCards(lives, members) {
       <div class="tally-card ${isPast ? 'tally-card-past' : ''}"
         data-live-name="${escapeAttr(row.live.name)}"
         data-date="${row.dateStr}"
+        data-artist="${escapeAttr(row.live.artist || '')}"
         style="${cardBorderStyle}">
         <div class="tally-card-header" onclick="showLiveDetailsModal('${row.live.id}')">
           <div class="tally-card-title-wrap">
@@ -493,42 +506,40 @@ function setupTallyEvents(members, filteredLives) {
   }
 
   // Filter events
-  const filterLive = document.getElementById('tally-filter-live');
-  const filterMonth = document.getElementById('tally-filter-month');
-  const filterClear = document.getElementById('tally-filter-clear');
+  const filterLive   = document.getElementById('tally-filter-live');
+  const filterMonth  = document.getElementById('tally-filter-month');
+  const filterArtist = document.getElementById('tally-filter-artist');
+  const filterClear  = document.getElementById('tally-filter-clear');
 
   filterLive.addEventListener('input', () => { applyFilters(); updateTallyUrl(); });
   filterMonth.addEventListener('change', () => { applyFilters(); updateTallyUrl(); });
+  filterArtist?.addEventListener('change', () => { applyFilters(); updateTallyUrl(); });
   filterClear.addEventListener('click', () => {
     filterLive.value = '';
     filterMonth.value = '';
+    if (filterArtist) filterArtist.value = '';
     applyFilters();
     updateTallyUrl();
   });
 }
 
 function applyFilters() {
-  const liveQuery = document.getElementById('tally-filter-live').value.toLowerCase();
-  const monthQuery = document.getElementById('tally-filter-month').value;
+  const liveQuery   = document.getElementById('tally-filter-live').value.toLowerCase();
+  const monthQuery  = document.getElementById('tally-filter-month').value;
+  const artistQuery = document.getElementById('tally-filter-artist')?.value || '';
 
-  // Filter table rows
+  const match = (liveName, date, artist) => {
+    if (liveQuery && !liveName.toLowerCase().includes(liveQuery)) return false;
+    if (monthQuery && !date.startsWith(monthQuery)) return false;
+    if (artistQuery && artist !== artistQuery) return false;
+    return true;
+  };
+
   document.querySelectorAll('.tally-table tbody tr').forEach(row => {
-    const liveName = (row.dataset.liveName || '').toLowerCase();
-    const date = row.dataset.date || '';
-    let visible = true;
-    if (liveQuery && !liveName.includes(liveQuery)) visible = false;
-    if (monthQuery && !date.startsWith(monthQuery)) visible = false;
-    row.style.display = visible ? '' : 'none';
+    row.style.display = match(row.dataset.liveName || '', row.dataset.date || '', row.dataset.artist || '') ? '' : 'none';
   });
-
-  // Filter cards
   document.querySelectorAll('.tally-card').forEach(card => {
-    const liveName = (card.dataset.liveName || '').toLowerCase();
-    const date = card.dataset.date || '';
-    let visible = true;
-    if (liveQuery && !liveName.includes(liveQuery)) visible = false;
-    if (monthQuery && !date.startsWith(monthQuery)) visible = false;
-    card.style.display = visible ? '' : 'none';
+    card.style.display = match(card.dataset.liveName || '', card.dataset.date || '', card.dataset.artist || '') ? '' : 'none';
   });
 }
 
