@@ -8,5 +8,15 @@ if (!supabaseUrl || !supabaseAnonKey) {
 }
 
 export const supabase: SupabaseClient | null = (supabaseUrl && supabaseAnonKey)
-  ? createClient(supabaseUrl, supabaseAnonKey)
+  ? createClient(supabaseUrl, supabaseAnonKey, {
+      realtime: { params: { eventsPerSecond: 0 } },
+      global: {
+        headers: { 'x-client-info': 'live-tracker' },
+      },
+    })
   : null;
+
+// Realtime チャンネルを自動接続しないよう切断
+if (supabase) {
+  supabase.removeAllChannels();
+}

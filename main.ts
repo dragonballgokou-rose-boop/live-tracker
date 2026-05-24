@@ -113,6 +113,11 @@ window.addEventListener('livetracker:sync-error', () => {
     hideTopProgress();
     setTimeout(hideSyncIndicator, 3000);
 });
+window.addEventListener('livetracker:sync-paused', () => {
+    showSyncIndicator('オフラインモード（クラウド制限超過）');
+    hideTopProgress();
+    showToast('Supabase の転送量制限を超えました。ローカルデータで動作します。', 'error');
+});
 
 // ---------- Pull to Refresh ----------
 function initPullToRefresh(router: Router): void {

@@ -179,17 +179,37 @@ function rowToAttendance(row: AttendanceRow): Attendance {
 // Supabase sync
 // ============================================
 
+let syncPaused = false;
+
+function isQuotaExceededError(err: unknown): boolean {
+  if (!err || typeof err !== 'object') return false;
+  const code = (err as any).code ?? (err as any).status ?? (err as any).statusCode;
+  if (code === 402 || code === '402') return true;
+  const msg = String((err as any).message ?? (err as any).msg ?? '');
+  return msg.includes('exceed_egress_quota') || msg.includes('restricted');
+}
+
+function pauseSyncOnQuotaError(err: unknown): void {
+  if (!isQuotaExceededError(err)) return;
+  syncPaused = true;
+  console.warn('Supabase エグレス制限超過を検出。クラウド同期を一時停止し、ローカルモードで動作します。');
+  window.dispatchEvent(new CustomEvent('livetracker:sync-paused', { detail: { reason: 'quota-exceeded' } }));
+}
+
 async function syncCollectionToSupabase<T extends { id: string }, R>(
   tableName: string,
   localItems: T[],
   toRow: (item: T) => R,
 ): Promise<void> {
-  if (!supabase) return;
+  if (!supabase || syncPaused) return;
 
   const { data: existing, error: fetchError } = await supabase
     .from(tableName)
     .select('id');
-  if (fetchError) throw fetchError;
+  if (fetchError) {
+    pauseSyncOnQuotaError(fetchError);
+    throw fetchError;
+  }
 
   const existingIds = new Set((existing || []).map((r: { id: string }) => r.id));
   const localIds    = new Set(localItems.map(i => i.id));
@@ -240,7 +260,7 @@ async function runSyncNow(): Promise<void> {
 }
 
 export function triggerSync(): void {
-  if (!supabase) return;
+  if (!supabase || syncPaused) return;
 
   window.dispatchEvent(new CustomEvent('livetracker:sync-start'));
 
@@ -263,6 +283,7 @@ export function triggerSync(): void {
  */
 export async function flushSyncNow(): Promise<SyncResult> {
   if (!supabase) return { ok: false, reason: 'supabase-not-configured' };
+  if (syncPaused) return { ok: false, reason: 'quota-exceeded' };
 
   if (syncTimeout) {
     clearTimeout(syncTimeout);
@@ -293,7 +314,7 @@ function mergePreservingLocalOnly<T extends { id: string }>(remoteArr: T[], loca
 }
 
 export async function fetchFromSupabase(): Promise<boolean> {
-  if (!supabase) return false;
+  if (!supabase || syncPaused) return false;
   try {
     window.dispatchEvent(new CustomEvent('livetracker:sync-start'));
 
@@ -302,6 +323,13 @@ export async function fetchFromSupabase(): Promise<boolean> {
       supabase.from('members').select('*'),
       supabase.from('attendance').select('*'),
     ]);
+
+    const firstError = livesRes.error || membersRes.error || attendanceRes.error;
+    if (firstError && isQuotaExceededError(firstError)) {
+      pauseSyncOnQuotaError(firstError);
+      window.dispatchEvent(new CustomEvent('livetracker:sync-error'));
+      return false;
+    }
 
     if (livesRes.error)      throw livesRes.error;
     if (membersRes.error)    throw membersRes.error;
