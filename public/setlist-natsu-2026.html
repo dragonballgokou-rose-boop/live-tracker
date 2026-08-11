@@ -1,0 +1,894 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>乃木坂46 真夏の全国ツアー2026 セットリストまとめ</title>
+<style>
+  :root {
+    --paper: #FBFAF6;
+    --card: #FFFFFF;
+    --ink: #22304A;
+    --ink-soft: #5A6883;
+    --line: #E3E1D8;
+    --navy: #1B2A52;
+    --chip-ink: #FFFFFF;
+    --hl-bg: #FFF3E4;
+    --shadow: 0 1px 3px rgba(27,42,82,.08);
+    /* 会場カラー（ペンライト・タオル配色より） */
+    --c-fukui: #17A29A;
+    --c-kanagawa: #E4718F;
+    --c-hokkaido: #4E9FD1;
+    --c-hiroshima: #4FAE7E;
+    --c-osaka: #DE9A2B;
+    --c-miyagi: #2C4A7A;
+    --c-fukuoka: #E87722;
+    --c-tokyo: #555C68;
+    --tag-red: #C43D3D;
+    --tag-teal: #0E8A80;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #141A28;
+      --card: #1D2536;
+      --ink: #E8EAF2;
+      --ink-soft: #9AA5BD;
+      --line: #323C52;
+      --navy: #C7D3F2;
+      --hl-bg: #3A2E1E;
+      --shadow: 0 1px 3px rgba(0,0,0,.4);
+      --c-fukui: #3EC4BC;
+      --c-kanagawa: #F08FA9;
+      --c-hokkaido: #74B9E6;
+      --c-hiroshima: #6FC79C;
+      --c-osaka: #EFB558;
+      --c-miyagi: #7E9CCC;
+      --c-fukuoka: #F49348;
+      --c-tokyo: #9AA2AE;
+      --tag-red: #E77070;
+      --tag-teal: #45BDB2;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #141A28;
+    --card: #1D2536;
+    --ink: #E8EAF2;
+    --ink-soft: #9AA5BD;
+    --line: #323C52;
+    --navy: #C7D3F2;
+    --hl-bg: #3A2E1E;
+    --shadow: 0 1px 3px rgba(0,0,0,.4);
+    --c-fukui: #3EC4BC;
+    --c-kanagawa: #F08FA9;
+    --c-hokkaido: #74B9E6;
+    --c-hiroshima: #6FC79C;
+    --c-osaka: #EFB558;
+    --c-miyagi: #7E9CCC;
+    --c-fukuoka: #F49348;
+    --c-tokyo: #9AA2AE;
+    --tag-red: #E77070;
+    --tag-teal: #45BDB2;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Noto Sans JP", "Yu Gothic Medium", "Yu Gothic", "Meiryo", sans-serif;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 16px 64px; }
+
+  /* ---- ヘッダー ---- */
+  header.site {
+    background: linear-gradient(135deg, var(--c-fukui), var(--c-hokkaido) 30%, var(--c-kanagawa) 65%, var(--c-fukuoka));
+    color: #fff;
+    padding: 40px 16px 32px;
+    text-align: center;
+  }
+  header.site .kicker {
+    font-size: .78rem;
+    letter-spacing: .35em;
+    text-indent: .35em;
+    opacity: .92;
+    margin-bottom: 8px;
+  }
+  header.site h1 {
+    font-size: clamp(1.5rem, 4.5vw, 2.4rem);
+    font-weight: 800;
+    letter-spacing: .06em;
+    text-wrap: balance;
+    text-shadow: 0 1px 4px rgba(27,42,82,.25);
+  }
+  header.site .sub {
+    margin-top: 10px;
+    font-size: .9rem;
+    opacity: .95;
+  }
+
+  /* ---- ナビ ---- */
+  nav.venues {
+    position: sticky; top: 0; z-index: 20;
+    background: var(--paper);
+    border-bottom: 1px solid var(--line);
+    padding: 10px 16px;
+  }
+  nav.venues .inner {
+    max-width: 1080px; margin: 0 auto;
+    display: flex; flex-wrap: wrap; gap: 8px; justify-content: center;
+  }
+  nav.venues a {
+    display: inline-block;
+    padding: 4px 14px;
+    border-radius: 999px;
+    background: var(--vc, var(--ink-soft));
+    color: var(--chip-ink);
+    font-size: .82rem;
+    font-weight: 700;
+    text-decoration: none;
+    letter-spacing: .04em;
+  }
+  nav.venues a:focus-visible, .toc-extra a:focus-visible { outline: 3px solid var(--c-hokkaido); outline-offset: 2px; }
+  nav.venues a.extra { background: transparent; color: var(--ink-soft); border: 1px solid var(--line); }
+
+  /* ---- 会場セクション ---- */
+  section.venue { margin-top: 44px; }
+  section.venue > .venue-head {
+    display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap;
+    border-bottom: 3px solid var(--vc);
+    padding-bottom: 8px; margin-bottom: 18px;
+  }
+  section.venue > .venue-head h2 {
+    font-size: 1.5rem; font-weight: 800; letter-spacing: .05em;
+    color: var(--vc);
+  }
+  section.venue > .venue-head .en {
+    font-size: .8rem; letter-spacing: .25em; color: var(--ink-soft); font-weight: 600;
+  }
+  section.venue > .venue-head .hall { font-size: .88rem; color: var(--ink-soft); margin-left: auto; }
+
+  .shows { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 860px) { .shows { grid-template-columns: 1fr; } }
+
+  /* ---- 公演カード ---- */
+  article.show {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    display: flex; flex-direction: column;
+  }
+  article.show .show-head {
+    background: var(--vc);
+    color: #fff;
+    padding: 10px 16px;
+    display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+  }
+  :root[data-theme="dark"] article.show .show-head, article.show .show-head { color: #fff; }
+  article.show .show-head .day {
+    font-weight: 800; font-size: 1.05rem; letter-spacing: .08em;
+  }
+  article.show .show-head .date { font-size: .9rem; font-weight: 600; opacity: .95; }
+  article.show .show-head .special {
+    width: 100%; font-size: .8rem; font-weight: 700;
+    background: rgba(255,255,255,.2); border-radius: 4px; padding: 2px 8px;
+  }
+  article.show .body { padding: 14px 16px 18px; flex: 1; }
+
+  ul.setlist { list-style: none; }
+  ul.setlist li {
+    display: grid;
+    grid-template-columns: 3.4em 3.1em 1fr;
+    gap: 6px;
+    align-items: baseline;
+    padding: 2.5px 0;
+    font-size: .92rem;
+  }
+  ul.setlist li .c {
+    font-size: .68rem; color: var(--ink-soft);
+    text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  ul.setlist li .n {
+    font-weight: 800; color: var(--vc);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: .02em;
+  }
+  ul.setlist li .t { min-width: 0; }
+  ul.setlist li .t .members { font-size: .72rem; color: var(--ink-soft); }
+  ul.setlist li.mc .t { color: var(--ink-soft); font-weight: 700; font-size: .84rem; letter-spacing: .06em; }
+  ul.setlist li.mc .t .mcnote { font-weight: 500; letter-spacing: 0; font-size: .78rem; }
+  ul.setlist li.vtr .t { color: var(--ink-soft); font-weight: 700; font-size: .84rem; letter-spacing: .12em; }
+  ul.setlist li.hl { background: var(--hl-bg); border-radius: 4px; }
+
+  .enc-head {
+    margin: 14px 0 4px;
+    font-size: .78rem; font-weight: 800; letter-spacing: .35em; text-indent: .1em;
+    color: var(--vc);
+    border-top: 1px dashed var(--line);
+    padding-top: 10px;
+  }
+
+  .tag {
+    display: inline-block; font-size: .66rem; font-weight: 700;
+    border-radius: 3px; padding: 0 5px; margin-left: 5px;
+    vertical-align: 1px; white-space: nowrap;
+  }
+  .tag.red { color: var(--tag-red); border: 1px solid var(--tag-red); }
+  .tag.teal { color: var(--tag-teal); border: 1px solid var(--tag-teal); }
+  .tag.ch { color: #fff; background: var(--vc); border: 1px solid var(--vc); }
+  .tag.sm { color: var(--vc); border: 1px solid var(--vc); }
+
+  .mission {
+    margin-top: 12px; padding: 8px 12px;
+    border: 1px dashed var(--vc);
+    border-radius: 6px;
+    font-size: .8rem; color: var(--ink-soft);
+  }
+  .mission b { color: var(--ink); }
+  .shownotes { margin-top: 10px; font-size: .78rem; color: var(--ink-soft); }
+  .shownotes li { margin-left: 1.2em; }
+
+  /* ---- 事件簿・スケジュール ---- */
+  section.extra { margin-top: 56px; }
+  section.extra h2 {
+    font-size: 1.3rem; font-weight: 800; letter-spacing: .05em;
+    border-bottom: 3px solid var(--navy);
+    padding-bottom: 8px; margin-bottom: 6px;
+  }
+  section.extra .lead { font-size: .86rem; color: var(--ink-soft); margin-bottom: 14px; }
+  .tbl-scroll { overflow-x: auto; }
+  table {
+    border-collapse: collapse; width: 100%; min-width: 640px;
+    background: var(--card);
+    box-shadow: var(--shadow);
+    font-size: .86rem;
+  }
+  th, td { border: 1px solid var(--line); padding: 7px 10px; text-align: left; vertical-align: top; }
+  th { background: var(--paper); font-size: .78rem; letter-spacing: .05em; color: var(--ink-soft); white-space: nowrap; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; color: var(--ink-soft); }
+  td .cc { display: block; font-size: .72rem; color: var(--ink-soft); }
+  td .area-dot {
+    display: inline-block; width: .7em; height: .7em; border-radius: 50%;
+    background: var(--vc); margin-right: 6px;
+  }
+  tr.done td { }
+  td .status-done { color: var(--tag-teal); font-size: .74rem; font-weight: 700; white-space: nowrap; }
+  td .status-next { color: var(--tag-red); font-size: .74rem; font-weight: 700; white-space: nowrap; }
+  td { font-variant-numeric: tabular-nums; }
+
+  footer.site {
+    margin-top: 56px; padding-top: 16px;
+    border-top: 1px solid var(--line);
+    font-size: .76rem; color: var(--ink-soft);
+  }
+
+  /* 会場カラー割当 */
+  .v-fukui    { --vc: var(--c-fukui); }
+  .v-kanagawa { --vc: var(--c-kanagawa); }
+  .v-hokkaido { --vc: var(--c-hokkaido); }
+  .v-hiroshima{ --vc: var(--c-hiroshima); }
+  .v-osaka    { --vc: var(--c-osaka); }
+  .v-miyagi   { --vc: var(--c-miyagi); }
+  .v-fukuoka  { --vc: var(--c-fukuoka); }
+  .v-tokyo    { --vc: var(--c-tokyo); }
+
+  /* ---- 印刷 ---- */
+  @media print {
+    nav.venues { display: none; }
+    body { background: #fff; }
+    article.show { break-inside: avoid; box-shadow: none; }
+    section.venue { margin-top: 24px; }
+    header.site { padding: 20px 16px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="site">
+  <p class="kicker">NOGIZAKA46 SUMMER TOUR 2026</p>
+  <h1>乃木坂46 真夏の全国ツアー2026<br>セットリストまとめ</h1>
+  <p class="sub">全国7都市14公演（2026.6.13 福井 〜 8.9 福岡）＋ 東京公演スケジュール</p>
+</header>
+
+<nav class="venues" aria-label="会場ナビゲーション">
+  <div class="inner">
+    <a class="v-fukui" href="#fukui">福井</a>
+    <a class="v-kanagawa" href="#kanagawa">神奈川</a>
+    <a class="v-hokkaido" href="#hokkaido">北海道</a>
+    <a class="v-hiroshima" href="#hiroshima">広島</a>
+    <a class="v-osaka" href="#osaka">大阪</a>
+    <a class="v-miyagi" href="#miyagi">宮城</a>
+    <a class="v-fukuoka" href="#fukuoka">福岡</a>
+    <a class="extra" href="#jikenbo">事件簿</a>
+    <a class="extra" href="#schedule">日程</a>
+  </div>
+</nav>
+
+<div class="wrap">
+  <main id="app"></main>
+
+  <section class="extra" id="jikenbo">
+    <h2>#乃木坂真夏の事件簿</h2>
+    <p class="lead">「奪われた夏曲たち14曲を取り戻すチャレンジ」──各公演で取り返しチャレンジ曲（上段）を披露し、課題ミッション達成で夏曲（下段）を取り戻す企画。</p>
+    <div class="tbl-scroll">
+      <table>
+        <thead>
+          <tr><th>#</th><th>日付</th><th>AREA</th><th>取り返しチャレンジ曲</th><th>夏曲</th><th>課題ミッション</th></tr>
+        </thead>
+        <tbody id="jikenbo-body"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="extra" id="schedule">
+    <h2>SCHEDULE 真夏の全国ツアー2026</h2>
+    <p class="lead">全8都市18公演。東京公演（明治神宮野球場）のセットリストは開催後に追加予定。</p>
+    <div class="tbl-scroll">
+      <table>
+        <thead>
+          <tr><th>#</th><th>日付</th><th>AREA</th><th>会場</th><th>開場 / 開演</th><th>状況</th></tr>
+        </thead>
+        <tbody id="schedule-body"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer class="site">
+    <p>センター表記（曲名左の名前）・特記事項は各公演のセトリ画像に準拠。M表記＝本編、EN表記＝アンコール。</p>
+    <p>※ 福岡DAY2（8.9）は吉田綾乃クリスティー卒業セレモニー公演。ハイライト表示はセトリ画像内で強調されていた楽曲。</p>
+  </footer>
+</div>
+
+<script>
+// ---------- データ ----------
+// 共通ブロック（M00〜M11）: 全公演共通（福岡DAY2はVTR追加あり）
+const OPEN = [
+  { n:'M00', t:'OVERTURE' },
+  { n:'M01', t:'光合成希望', c:'一ノ瀬' },
+  { n:'M02', t:'Monopoly', c:'遠藤/賀喜' },
+  { n:'M03', t:'ビリヤニ', c:'瀬戸口/矢田' },
+  { n:'M04', t:'空扉', c:'一ノ瀬' },
+  { mc:'MC1' },
+  { n:'M05', t:'あらかじめ語られるロマンス' },
+  { n:'M06', t:'君に叱られた', c:'賀喜' },
+  { n:'M07', t:'ジャンピングジョーカーフラッシュ', c:'筒井' },
+  { n:'M08', t:'不眠症', c:'瀬戸口' },
+  { n:'M09', t:'夜明けまで強がらなくてもいい', c:'遠藤' },
+  { n:'M10', t:'絶望の一秒前', c:'井上' },
+  { n:'M11', t:'もうすぐ〜ザンビ伝説〜', c:'一ノ瀬' },
+];
+
+// 終盤ブロック（M19〜M24）: sugawara=trueでM19に菅原表記
+function CLOSE(mcName, sugawara) {
+  return [
+    { n:'M19', t:'My respect', c: sugawara ? '菅原' : '' },
+    { n:'M20', t:'最後に階段を駆け上がったのはいつだ？', c:'池田' },
+    { n:'M21', t:'ごめんねFingers crossed', c:'遠藤' },
+    { n:'M22', t:'好きというのはロックだぜ！', c:'賀喜' },
+    { n:'M23', t:'おひとりさま天国', c:'井上' },
+    { mc: mcName },
+    { n:'M24', t:'是非に及ばず', c:'一ノ瀬' },
+  ];
+}
+
+const UNDER42 = { text:'42ndアンダー曲', cls:'red' };
+const GEN6    = { text:'6期生曲', cls:'teal' };
+const TAG_CH  = { text:'チャレンジ曲', cls:'ch' };
+const TAG_SM  = { text:'夏曲', cls:'sm' };
+
+const VENUES = [
+  {
+    id:'fukui', cls:'v-fukui', name:'福井', en:'FUKUI', hall:'サンドーム福井',
+    shows: [
+      {
+        day:'DAY1', date:'2026.6.13（土）',
+        main: [
+          ...OPEN,
+          { n:'M12', t:'チャンスは平等', c:'池田', tags:[TAG_CH] },
+          { n:'M13', t:'裸足でSummer', c:'川崎', tags:[TAG_SM] },
+          { mc:'MC2' },
+          { n:'M14', t:'落とし物', c:'奥田' },
+          { n:'M15', t:'愛って羨ましい', c:'岡本' },
+          { n:'M16', t:'年齢の境界線', c:'菅原' },
+          { n:'M17', t:'ってかさ' },
+          { n:'M18', t:'桜橋を教えてくれた', c:'愛宕' },
+          ...CLOSE('MC3', true),
+        ],
+        encore: [
+          { n:'EN1', t:'君ばかり' },
+          { n:'EN2', t:'帰り道は遠回りしたくなる', c:'一ノ瀬' },
+          { n:'EN3', t:'I see...', c:'賀喜' },
+          { mc:'MC4' },
+          { n:'EN4', t:'乃木坂の詩' },
+        ],
+        mission:'ペンライト',
+      },
+      {
+        day:'DAY2', date:'2026.6.14（日）',
+        main: [
+          ...OPEN,
+          { n:'M12', t:'ハウス！', c:'田村', tags:[TAG_CH] },
+          { n:'M13', t:'ロマンティックいか焼き', c:'森平/大越', tags:[TAG_SM] },
+          { mc:'MC2' },
+          { n:'M14', t:'それまでの猶予', c:'冨里' },
+          { n:'M15', t:'交感神経優位', c:'柴田' },
+          { n:'M16', t:'Spark a revolution!', m:'林,中西,海邊' },
+          { n:'M17', t:'天空の豆の木', m:'筒井,井上' },
+          { n:'M18', t:'桜橋を教えてくれた', c:'愛宕' },
+          ...CLOSE('MC3', true),
+        ],
+        encore: [
+          { n:'EN1', t:'君ばかり' },
+          { n:'EN2', t:'転がった鐘を鳴らせ！', c:'一ノ瀬' },
+          { n:'EN3', t:'I see...', c:'賀喜' },
+          { mc:'MC4' },
+          { n:'EN4', t:'乃木坂の詩' },
+        ],
+        mission:'コール',
+      },
+    ],
+  },
+  {
+    id:'kanagawa', cls:'v-kanagawa', name:'神奈川', en:'KANAGAWA', hall:'横浜アリーナ',
+    shows: [
+      {
+        day:'DAY1', date:'2026.6.24（水）',
+        main: [
+          ...OPEN,
+          { n:'M12', t:'好きになってみた', c:'川崎', tags:[TAG_CH] },
+          { n:'M13', t:'オフショアガール', c:'田村', tags:[TAG_SM] },
+          { mc:'MC2' },
+          { n:'M14', t:'交感神経優位', c:'柴田' },
+          { n:'M15', t:'フォルテシモ', c:'小川', tags:[UNDER42] },
+          { n:'M16', t:'世界一のダイヤモンド', m:'池田,賀喜,菅原,大越,矢田' },
+          { n:'M17', t:'羊飼いよ', m:'林,奥田,中西' },
+          { n:'M18', t:'桜橋を教えてくれた', c:'愛宕' },
+          { mc:'MC3' },
+          ...CLOSE('MC4', false),
+        ],
+        encore: [
+          { n:'EN1', t:'君ばかり' },
+          { n:'EN2', t:'他人のそら似', c:'一ノ瀬' },
+          { n:'EN3', t:'I see...', c:'賀喜' },
+          { mc:'MC5' },
+          { n:'EN4', t:'乃木坂の詩' },
+        ],
+        mission:'メンバーが観客をキュンキュンさせる',
+      },
+      {
+        day:'DAY2', date:'2026.6.25（木）',
+        main: [
+          ...OPEN,
+          { n:'M12', t:'シャキイズム', c:'井上', tags:[TAG_CH] },
+          { n:'M13', t:'ひと夏の長さより…', c:'中西/林', tags:[TAG_SM] },
+          { mc:'MC2' },
+          { n:'M14', t:'落とし物', c:'奥田' },
+          { n:'M15', t:'フォルテシモ', c:'小川', tags:[UNDER42] },
+          { n:'M16', t:'甘いエビデンス', m:'理々杏,森平,鈴木,柴田,林' },
+          { n:'M17', t:'夕陽は何色か？', m:'遠藤,筒井,岡本' },
+          { n:'M18', t:'桜橋を教えてくれた', c:'愛宕' },
+          { mc:'MC3' },
+          ...CLOSE('MC4', false),
+        ],
+        encore: [
+          { n:'EN1', t:'君ばかり' },
+          { n:'EN2', t:'全部 夢のまま', c:'一ノ瀬' },
+          { n:'EN3', t:'I see...', c:'賀喜' },
+          { mc:'MC5' },
+          { n:'EN4', t:'乃木坂の詩' },
+        ],
+        mission:'シンクロジェスチャー',
+      },
+    ],
+  },
+  {
+    id:'hokkaido', cls:'v-hokkaido', name:'北海道', en:'HOKKAIDO', hall:'真駒内セキスイハイムアイスアリーナ',
+    shows: [
+      {
+        day:'DAY1', date:'2026.7.4（土）',
+        main: [
+          ...OPEN,
+          { mc:'MC2' },
+          { n:'M12', t:'トキトキメキメキ', c:'岩本', tags:[TAG_CH] },
+          { n:'M13', t:'ジコチューで行こう！', c:'瀬戸口', tags:[TAG_SM] },
+          { n:'M14', t:'愛って羨ましい', c:'岡本' },
+          { n:'M15', t:'フォルテシモ', c:'小川', tags:[UNDER42] },
+          { n:'M16', t:'命の冒涜', m:'柴田,小川,奥田,菅原,冨里,中西,小津,川端' },
+          { n:'M17', t:'天空の豆の木', m:'筒井,井上' },
+          { n:'M18', t:'命の色', c:'長嶋', tags:[GEN6] },
+          { mc:'MC3' },
+          ...CLOSE('MC4', false),
+        ],
+        encore: [
+          { n:'EN1', t:'君ばかり' },
+          { n:'EN2', t:'転がった鐘を鳴らせ！', c:'一ノ瀬' },
+          { n:'EN3', t:'I see...', c:'賀喜' },
+          { mc:'MC5' },
+          { n:'EN4', t:'乃木坂の詩' },
+        ],
+        mission:'コール',
+      },
+      {
+        day:'DAY2', date:'2026.7.5（日）',
+        main: [
+          ...OPEN,
+          { mc:'MC2' },
+          { n:'M12', t:'13日の金曜日', c:'筒井', tags:[TAG_CH] },
+          { n:'M13', t:'不道徳な夏', c:'金川', tags:[TAG_SM] },
+          { n:'M14', t:'それまでの猶予', c:'冨里' },
+          { n:'M15', t:'フォルテシモ', c:'小川', tags:[UNDER42] },
+          { n:'M16', t:'パシフィック・リーグに連れてって' },
+          { n:'M17', t:'羊飼いよ', m:'林,奥田,中西' },
+          { n:'M18', t:'命の色', c:'長嶋', tags:[GEN6] },
+          { mc:'MC3' },
+          ...CLOSE('MC4', false),
+        ],
+        encore: [
+          { n:'EN1', t:'君ばかり' },
+          { n:'EN2', t:'全部 夢のまま', c:'一ノ瀬' },
+          { n:'EN3', t:'I see...', c:'賀喜' },
+          { mc:'MC5' },
+          { n:'EN4', t:'乃木坂の詩' },
+        ],
+        mission:'シンクロジェスチャー',
+      },
+    ],
+  },
+  {
+    id:'hiroshima', cls:'v-hiroshima', name:'広島', en:'HIROSHIMA', hall:'広島グリーンアリーナ',
+    shows: [
+      {
+        day:'DAY1', date:'2026.7.11（土）',
+        main: [
+          ...OPEN,
+          { mc:'MC2' },
+          { n:'M12', t:'サイコキネシスの可能性', c:'賀喜/森平', tags:[TAG_CH] },
+          { n:'M13', t:'スカイダイビング', c:'五百城/弓木', tags:[TAG_SM] },
+          { n:'M14', t:'交感神経優位', c:'柴田' },
+          { n:'M15', t:'フォルテシモ', c:'小川', tags:[UNDER42] },
+          { n:'M16', t:'Spark a revolution!', m:'林,中西,海邊' },
+          { n:'M17', t:'夕陽は何色か？', m:'遠藤,筒井,岡本' },
+          { n:'M18', t:'命の色', c:'長嶋', tags:[GEN6] },
+          { mc:'MC3' },
+          ...CLOSE('MC4', false),
+        ],
+        encore: [
+          { n:'EN1', t:'君ばかり' },
+          { n:'EN2', t:'転がった鐘を鳴らせ！', c:'一ノ瀬' },
+          { n:'EN3', t:'I see...', c:'賀喜' },
+          { n:'EN4', t:'告白したい病', c:'一ノ瀬' },
+          { mc:'MC5' },
+          { n:'EN5', t:'乃木坂の詩' },
+        ],
+        mission:'シンクロジェスチャー',
+      },
+      {
+        day:'DAY2', date:'2026.7.12（日）',
+        main: [
+          ...OPEN,
+          { mc:'MC2' },
+          { n:'M12', t:'シークレットグラフィティー', c:'中西', tags:[TAG_CH] },
+          { n:'M13', t:'真夏日よ', c:'賀喜', tags:[TAG_SM] },
+          { n:'M14', t:'それまでの猶予', c:'冨里' },
+          { n:'M15', t:'フォルテシモ', c:'小川', tags:[UNDER42] },
+          { n:'M16', t:'君と猫', m:'井上,田村,一ノ瀬,吉田,岩本' },
+          { n:'M17', t:'ひとつ手前のインターチェンジ', m:'川崎,筒井,冨里,弓木' },
+          { n:'M18', t:'命の色', c:'長嶋', tags:[GEN6] },
+          { mc:'MC3' },
+          ...CLOSE('MC4', false),
+        ],
+        encore: [
+          { n:'EN1', t:'君ばかり' },
+          { n:'EN2', t:'帰り道は遠回りしたくなる', c:'一ノ瀬' },
+          { n:'EN3', t:'I see...', c:'賀喜' },
+          { n:'EN4', t:'告白したい病', c:'一ノ瀬' },
+          { mc:'MC5' },
+          { n:'EN5', t:'乃木坂の詩' },
+        ],
+        mission:'クラップ',
+      },
+    ],
+  },
+  {
+    id:'osaka', cls:'v-osaka', name:'大阪', en:'OSAKA', hall:'大阪城ホール',
+    shows: [
+      {
+        day:'DAY1', date:'2026.7.15（水）',
+        main: [
+          ...OPEN,
+          { mc:'MC2' },
+          { n:'M12', t:'無表情', c:'弓木', tags:[TAG_CH] },
+          { n:'M13', t:'夏のFree&Easy', c:'池田', tags:[TAG_SM] },
+          { n:'M14', t:'愛って羨ましい', c:'岡本' },
+          { n:'M15', t:'フォルテシモ', c:'小川', tags:[UNDER42] },
+          { n:'M16', t:'パシフィック・リーグに連れてって' },
+          { n:'M17', t:'Kissのタイミング', m:'井上,菅原' },
+          { n:'M18', t:'命の色', c:'長嶋', tags:[GEN6] },
+          { mc:'MC3' },
+          ...CLOSE('MC4', false),
+        ],
+        encore: [
+          { n:'EN1', t:'君ばかり' },
+          { n:'EN2', t:'他人のそら似', c:'一ノ瀬' },
+          { n:'EN3', t:'I see...', c:'賀喜' },
+          { n:'EN4', t:'告白したい病', c:'一ノ瀬' },
+          { mc:'MC5' },
+          { n:'EN5', t:'乃木坂の詩' },
+        ],
+        mission:'コール',
+      },
+      {
+        day:'DAY2', date:'2026.7.16（木）',
+        main: [
+          ...OPEN,
+          { mc:'MC2' },
+          { n:'M12', t:'Am I Loving', c:'五百城', tags:[TAG_CH] },
+          { n:'M13', t:'チートデイ', c:'井上', tags:[TAG_SM] },
+          { n:'M14', t:'落とし物', c:'奥田' },
+          { n:'M15', t:'フォルテシモ', c:'小川', tags:[UNDER42] },
+          { n:'M16', t:'年齢の境界線', c:'菅原' },
+          { n:'M17', t:'ってかさ' },
+          { n:'M18', t:'命の色', c:'長嶋', tags:[GEN6] },
+          { mc:'MC3' },
+          ...CLOSE('MC4', false),
+        ],
+        encore: [
+          { n:'EN1', t:'君ばかり' },
+          { n:'EN2', t:'帰り道は遠回りしたくなる', c:'一ノ瀬' },
+          { n:'EN3', t:'I see...', c:'賀喜' },
+          { n:'EN4', t:'告白したい病', c:'一ノ瀬' },
+          { mc:'MC5' },
+          { n:'EN5', t:'乃木坂の詩' },
+        ],
+        mission:'ペンライト',
+      },
+    ],
+  },
+  {
+    id:'miyagi', cls:'v-miyagi', name:'宮城', en:'MIYAGI', hall:'セキスイハイムスーパーアリーナ',
+    shows: [
+      {
+        day:'DAY1', date:'2026.7.25（土）',
+        main: [
+          ...OPEN,
+          { mc:'MC2' },
+          { n:'M12', t:'ごめんね、スムージー', c:'矢田', tags:[TAG_CH] },
+          { n:'M13', t:'自惚れビーチ', c:'遠藤', tags:[TAG_SM] },
+          { n:'M14', t:'それまでの猶予', c:'冨里' },
+          { n:'M15', t:'フォルテシモ', c:'小川' },
+          { n:'M16', t:'パシフィック・リーグに連れてって' },
+          { n:'M17', t:'天空の豆の木', m:'筒井,井上' },
+          { n:'M18', t:'命の色', c:'長嶋', tags:[GEN6] },
+          { mc:'MC3' },
+          ...CLOSE('MC4', false),
+        ],
+        encore: [
+          { n:'EN1', t:'君ばかり' },
+          { n:'EN2', t:'全部 夢のまま', c:'一ノ瀬' },
+          { n:'EN3', t:'I see...', c:'賀喜' },
+          { n:'EN4', t:'告白したい病', c:'一ノ瀬' },
+          { mc:'MC5' },
+          { n:'EN5', t:'乃木坂の詩' },
+        ],
+        mission:'シンクロジェスチャー',
+      },
+      {
+        day:'DAY2', date:'2026.7.26（日）',
+        main: [
+          ...OPEN,
+          { mc:'MC2' },
+          { n:'M12', t:'ダンケシェーン', c:'林', tags:[TAG_CH] },
+          { n:'M13', t:'太陽ノック', c:'矢田', tags:[TAG_SM] },
+          { n:'M14', t:'落とし物', c:'奥田' },
+          { n:'M15', t:'フォルテシモ', c:'小川' },
+          { n:'M16', t:'君と猫', m:'井上,田村,一ノ瀬,吉田,岩本' },
+          { n:'M17', t:'ひとつ手前のインターチェンジ', m:'川崎,筒井,冨里,弓木' },
+          { n:'M18', t:'命の色', c:'長嶋', tags:[GEN6] },
+          { mc:'MC3' },
+          ...CLOSE('MC4', false),
+        ],
+        encore: [
+          { n:'EN1', t:'君ばかり' },
+          { n:'EN2', t:'他人のそら似', c:'一ノ瀬' },
+          { n:'EN3', t:'I see...', c:'賀喜' },
+          { n:'EN4', t:'告白したい病', c:'一ノ瀬' },
+          { mc:'MC5' },
+          { n:'EN5', t:'乃木坂の詩' },
+        ],
+        mission:'コール',
+      },
+    ],
+  },
+  {
+    id:'fukuoka', cls:'v-fukuoka', name:'福岡', en:'FUKUOKA', hall:'マリンメッセ福岡 A館',
+    shows: [
+      {
+        day:'DAY1', date:'2026.8.8（土）',
+        main: [
+          ...OPEN,
+          { mc:'MC2' },
+          { n:'M12', t:'ロマンスのスタート', c:'瀬戸口', tags:[TAG_CH] },
+          { n:'M13', t:'逃げ水', c:'岩本/筒井', tags:[TAG_SM] },
+          { n:'M14', t:'交感神経優位', c:'柴田' },
+          { n:'M15', t:'フォルテシモ', c:'小川' },
+          { n:'M16', t:'世界一のダイヤモンド', m:'池田,賀喜,菅原,大越,矢田' },
+          { n:'M17', t:'羊飼いよ', m:'林,奥田,中西' },
+          { n:'M18', t:'命の色', c:'長嶋', tags:[GEN6] },
+          { mc:'MC3' },
+          ...CLOSE('MC4', false),
+        ],
+        encore: [
+          { n:'EN1', t:'君ばかり' },
+          { n:'EN2', t:'全部 夢のまま', c:'一ノ瀬' },
+          { n:'EN3', t:'I see...', c:'賀喜' },
+          { n:'EN4', t:'告白したい病', c:'一ノ瀬' },
+          { mc:'MC5' },
+          { n:'EN5', t:'乃木坂の詩' },
+        ],
+        mission:'コール',
+      },
+      {
+        day:'DAY2', date:'2026.8.9（日）',
+        special:'吉田綾乃クリスティー 卒業セレモニー公演',
+        main: [
+          { n:'M00', t:'OVERTURE' },
+          { n:'M01', t:'光合成希望', c:'一ノ瀬' },
+          { n:'M02', t:'Monopoly', c:'遠藤/賀喜' },
+          { n:'M03', t:'ビリヤニ', c:'瀬戸口/矢田' },
+          { n:'M04', t:'空扉', c:'一ノ瀬' },
+          { mc:'MC1' },
+          { n:'M05', t:'あらかじめ語られるロマンス', hl:true },
+          { n:'M06', t:'君に叱られた', c:'賀喜', hl:true },
+          { n:'M07', t:'ジャンピングジョーカーフラッシュ', c:'筒井' },
+          { n:'M08', t:'不眠症', c:'瀬戸口' },
+          { n:'M09', t:'夜明けまで強がらなくてもいい', c:'遠藤' },
+          { n:'M10', t:'絶望の一秒前', c:'井上' },
+          { vtr:'VTR' },
+          { n:'M11', t:'もうすぐ〜ザンビ伝説〜', c:'一ノ瀬' },
+          { vtr:'茶番劇' },
+          { n:'M12', t:'左胸の勇気', c:'遠藤/大越', tags:[{text:'課題曲', cls:'red'}, TAG_CH] },
+          { mc:'MC2', note:'犯人発表→菅原咲月,賀喜遥香(共犯)' },
+          { n:'M13', t:'バンドエイド剥がすような別れ方', c:'菅原' },
+          { n:'M14', t:'ガールズルール', c:'一ノ瀬', tags:[{text:'取り戻した曲', cls:'red'}, TAG_SM] },
+          { mc:'MC3' },
+          { n:'M15', t:'愛って羨ましい', c:'岡本' },
+          { n:'M16', t:'フォルテシモ', c:'小川', tags:[{text:'フル', cls:'red'}] },
+          { n:'M17', t:'パシフィック・リーグに連れてって' },
+          { n:'M18', t:'Kissのタイミング', m:'井上,菅原', tags:[{text:'フル', cls:'red'}] },
+          { vtr:'VTR' },
+          { n:'M19', t:'命の色', c:'長嶋', tags:[GEN6] },
+          { n:'M20', t:'My respect' },
+          { n:'M21', t:'最後に階段を駆け上がったのはいつだ？', c:'池田' },
+          { n:'M22', t:'ごめんねFingers crossed', c:'遠藤' },
+          { n:'M23', t:'好きというのはロックだぜ！', c:'賀喜', hl:true },
+          { n:'M24', t:'おひとりさま天国', c:'井上' },
+          { mc:'MC4' },
+          { n:'M25', t:'是非に及ばず', c:'一ノ瀬' },
+        ],
+        encore: [
+          { vtr:'吉田綾乃クリスティー 卒業セレモニー／スピーチ' },
+          { n:'EN1', t:'きっかけ', m:'あやてぃソロ', tags:[{text:'フル', cls:'red'}] },
+          { n:'EN2', t:'ハルジオンが咲く頃' },
+          { mc:'MC5' },
+          { n:'EN3', t:'思い出ファースト' },
+        ],
+        mission:'合唱チャレンジ',
+        notes:['影アナあり／オレンジ色 トロッコ'],
+      },
+    ],
+  },
+];
+
+const JIKENBO = [
+  ['1',  '2026.06.13（土）', 'fukui',    '福井',   'チャンスは平等', '池田瑛紗', '裸足でSummer', '川﨑桜', 'ペンライト'],
+  ['2',  '2026.06.14（日）', 'fukui',    '福井',   'ハウス！', '田村真佑', 'ロマンティックいか焼き', '森平麗心、大越ひなの', 'コール'],
+  ['3',  '2026.06.24（水）', 'kanagawa', '神奈川', '好きになってみた', '川﨑桜', 'オフショアガール', '田村真佑', 'メンバーが観客をキュンキュンさせる'],
+  ['4',  '2026.06.25（木）', 'kanagawa', '神奈川', 'シャキイズム', '井上和', 'ひと夏の長さより…', '林瑠奈、中西アルノ', 'シンクロジェスチャー'],
+  ['5',  '2026.07.04（土）', 'hokkaido', '北海道', 'トキトキメキメキ', '岩本蓮加', 'ジコチューで行こう！', '瀬戸口心月', 'コール'],
+  ['6',  '2026.07.05（日）', 'hokkaido', '北海道', '13日の金曜日', '筒井あやめ', '不道徳な夏', '金川紗耶', 'シンクロジェスチャー'],
+  ['7',  '2026.07.11（土）', 'hiroshima','広島',   'サイコキネシスの可能性', '賀喜遥香、森平麗心', 'スカイダイビング', '弓木奈於、五百城茉央', 'シンクロジェスチャー'],
+  ['8',  '2026.07.12（日）', 'hiroshima','広島',   'シークレットグラフィティー', '中西アルノ', '真夏日よ', '賀喜遥香', 'クラップ'],
+  ['9',  '2026.07.15（水）', 'osaka',    '大阪',   '無表情', '弓木奈於', '夏のFree&Easy', '池田瑛紗', 'コール'],
+  ['10', '2026.07.16（木）', 'osaka',    '大阪',   'Am I loving?', '五百城茉央', 'チートデイ', '井上和', 'ペンライト'],
+  ['11', '2026.07.25（土）', 'miyagi',   '宮城',   'ごめんね、スムージー', '矢田萌華', '自惚れビーチ', '遠藤さくら', 'シンクロジェスチャー'],
+  ['12', '2026.07.26（日）', 'miyagi',   '宮城',   'ダンケシェーン', '林瑠奈', '太陽ノック', '矢田萌華', 'コール'],
+  ['13', '2026.08.08（土）', 'fukuoka',  '福岡',   'ロマンスのスタート', '瀬戸口心月', '逃げ水', '岩本蓮加、筒井あやめ', 'コール'],
+  ['14', '2026.08.09（日）', 'fukuoka',  '福岡',   '左胸の勇気', '遠藤さくら、大越ひなの', 'ガールズルール', '一ノ瀬美空', '合唱チャレンジ'],
+];
+
+const SCHEDULE = [
+  ['1',  '2026.06.13（土）', 'fukui',    '福井',   'サンドーム福井', '開場 15:00 / 開演 16:30', true],
+  ['2',  '2026.06.14（日）', 'fukui',    '福井',   'サンドーム福井', '開場 15:00 / 開演 16:30', true],
+  ['3',  '2026.06.24（水）', 'kanagawa', '神奈川', '横浜アリーナ', '開場 17:00 / 開演 18:30', true],
+  ['4',  '2026.06.25（木）', 'kanagawa', '神奈川', '横浜アリーナ', '開場 17:00 / 開演 18:30', true],
+  ['5',  '2026.07.04（土）', 'hokkaido', '北海道', '真駒内セキスイハイムアイスアリーナ', '開場 16:00 / 開演 17:30', true],
+  ['6',  '2026.07.05（日）', 'hokkaido', '北海道', '真駒内セキスイハイムアイスアリーナ', '開場 15:00 / 開演 16:30', true],
+  ['7',  '2026.07.11（土）', 'hiroshima','広島',   '広島グリーンアリーナ', '開場 16:00 / 開演 17:30', true],
+  ['8',  '2026.07.12（日）', 'hiroshima','広島',   '広島グリーンアリーナ', '開場 15:00 / 開演 16:30', true],
+  ['9',  '2026.07.15（水）', 'osaka',    '大阪',   '大阪城ホール', '開場 16:30 / 開演 18:00', true],
+  ['10', '2026.07.16（木）', 'osaka',    '大阪',   '大阪城ホール', '開場 16:30 / 開演 18:00', true],
+  ['11', '2026.07.25（土）', 'miyagi',   '宮城',   'セキスイハイムスーパーアリーナ', '開場 16:00 / 開演 17:30', true],
+  ['12', '2026.07.26（日）', 'miyagi',   '宮城',   'セキスイハイムスーパーアリーナ', '開場 15:00 / 開演 16:30', true],
+  ['13', '2026.08.08（土）', 'fukuoka',  '福岡',   'マリンメッセ福岡 A館', '開場 16:00 / 開演 17:30', true],
+  ['14', '2026.08.09（日）', 'fukuoka',  '福岡',   'マリンメッセ福岡 A館', '開場 15:00 / 開演 16:30', true],
+  ['15', '2026.08.20（木）', 'tokyo',    '東京',   '明治神宮野球場', '開場 15:30 / 開演 18:00', false],
+  ['16', '2026.08.21（金）', 'tokyo',    '東京',   '明治神宮野球場', '開場 15:30 / 開演 18:00', false],
+  ['17', '2026.08.22（土）', 'tokyo',    '東京',   '明治神宮野球場', '開場 15:30 / 開演 18:00', false],
+  ['18', '2026.08.23（日）', 'tokyo',    '東京',   '明治神宮野球場', '開場 15:30 / 開演 18:00', false],
+];
+
+// ---------- 描画 ----------
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+}
+
+function renderItem(it) {
+  if (it.mc) {
+    return `<li class="mc"><span class="c"></span><span class="n"></span><span class="t">${esc(it.mc)}${it.note ? ` <span class="mcnote">${esc(it.note)}</span>` : ''}</span></li>`;
+  }
+  if (it.vtr) {
+    return `<li class="vtr"><span class="c"></span><span class="n"></span><span class="t">${esc(it.vtr)}</span></li>`;
+  }
+  const tags = (it.tags || []).map(tg => `<span class="tag ${tg.cls}">${esc(tg.text)}</span>`).join('');
+  const members = it.m ? ` <span class="members">(${esc(it.m)})</span>` : '';
+  return `<li${it.hl ? ' class="hl"' : ''}><span class="c">${esc(it.c || '')}</span><span class="n">${esc(it.n)}</span><span class="t">${esc(it.t)}${members}${tags}</span></li>`;
+}
+
+function renderShow(show) {
+  const notes = (show.notes || []).map(n => `<li>${esc(n)}</li>`).join('');
+  return `
+  <article class="show">
+    <div class="show-head">
+      <span class="day">${esc(show.day)}</span>
+      <span class="date">${esc(show.date)}</span>
+      ${show.special ? `<span class="special">${esc(show.special)}</span>` : ''}
+    </div>
+    <div class="body">
+      <ul class="setlist">${show.main.map(renderItem).join('')}</ul>
+      <p class="enc-head">ENCORE</p>
+      <ul class="setlist">${show.encore.map(renderItem).join('')}</ul>
+      <p class="mission">課題ミッション：<b>${esc(show.mission)}</b></p>
+      ${notes ? `<ul class="shownotes">${notes}</ul>` : ''}
+    </div>
+  </article>`;
+}
+
+const app = document.getElementById('app');
+app.innerHTML = VENUES.map(v => `
+  <section class="venue ${v.cls}" id="${v.id}">
+    <div class="venue-head">
+      <h2>${esc(v.name)}</h2>
+      <span class="en">${esc(v.en)}</span>
+      <span class="hall">@${esc(v.hall)}</span>
+    </div>
+    <div class="shows">${v.shows.map(renderShow).join('')}</div>
+  </section>`).join('');
+
+document.getElementById('jikenbo-body').innerHTML = JIKENBO.map(r => `
+  <tr>
+    <td class="num">${r[0]}</td>
+    <td>${esc(r[1])}</td>
+    <td class="v-${r[2]}"><span class="area-dot"></span>${esc(r[3])}</td>
+    <td>${esc(r[4])}<span class="cc">C:${esc(r[5])}</span></td>
+    <td>${esc(r[6])}<span class="cc">C:${esc(r[7])}</span></td>
+    <td>${esc(r[8])}</td>
+  </tr>`).join('');
+
+document.getElementById('schedule-body').innerHTML = SCHEDULE.map(r => `
+  <tr${r[6] ? ' class="done"' : ''}>
+    <td class="num">${r[0]}</td>
+    <td>${esc(r[1])}</td>
+    <td class="v-${r[2]}"><span class="area-dot"></span>${esc(r[3])}</td>
+    <td>${esc(r[4])}</td>
+    <td>${esc(r[5])}</td>
+    <td>${r[6] ? '<span class="status-done">公演終了</span>' : '<span class="status-next">これから</span>'}</td>
+  </tr>`).join('');
+</script>
+</body>
+</html>

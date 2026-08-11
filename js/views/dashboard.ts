@@ -61,6 +61,18 @@ export function renderDashboard() {
       </a>
     </div>
 
+    <!-- 真夏の全国ツアー2026 セトリまとめ -->
+    <div class="upcoming-section">
+      <a href="setlist-natsu-2026.html" target="_blank" rel="noopener" class="card" style="display:flex;align-items:center;gap:12px;text-decoration:none;background:linear-gradient(135deg,rgba(23,162,154,.18),rgba(232,119,34,.18));">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;color:var(--accent-amber);"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+        <div style="min-width:0;">
+          <div style="font-weight:700;font-size:14px;">真夏の全国ツアー2026 セトリまとめ</div>
+          <div style="font-size:12px;color:var(--text-secondary);">全7都市14公演のセットリスト・事件簿・日程表</div>
+        </div>
+        <span style="margin-left:auto;font-size:12px;color:var(--text-secondary);flex-shrink:0;">開く →</span>
+      </a>
+    </div>
+
     <!-- Date-based Schedule -->
     ${lives.length > 0 && members.length > 0 ? `
     <div class="upcoming-section">
