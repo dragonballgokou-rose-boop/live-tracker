@@ -137,6 +137,7 @@
   nav.venues a.extra { background: transparent; color: var(--ink-soft); border: 1px solid var(--line); }
 
   /* ---- 会場セクション ---- */
+  section.venue, section.extra { scroll-margin-top: 104px; }
   section.venue { margin-top: 44px; }
   section.venue > .venue-head {
     display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap;
@@ -184,26 +185,27 @@
   ul.setlist { list-style: none; }
   ul.setlist li {
     display: grid;
-    grid-template-columns: 3.4em 3.1em 1fr;
+    grid-template-columns: 4.4em 2.9em 1fr;
     gap: 6px;
     align-items: baseline;
     padding: 2.5px 0;
     font-size: .92rem;
   }
   ul.setlist li .c {
-    font-size: .68rem; color: var(--ink-soft);
-    text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    font-size: .64rem; color: var(--ink-soft);
+    text-align: right; white-space: nowrap;
   }
   ul.setlist li .n {
     font-weight: 800; color: var(--vc);
     font-variant-numeric: tabular-nums;
     letter-spacing: .02em;
+    white-space: nowrap;
   }
-  ul.setlist li .t { min-width: 0; }
-  ul.setlist li .t .members { font-size: .72rem; color: var(--ink-soft); }
-  ul.setlist li.mc .t { color: var(--ink-soft); font-weight: 700; font-size: .84rem; letter-spacing: .06em; }
+  ul.setlist li .t { min-width: 0; white-space: nowrap; overflow: hidden; }
+  ul.setlist li .t .members { font-size: .78em; color: var(--ink-soft); }
+  ul.setlist li.mc .t { color: var(--ink-soft); font-weight: 700; font-size: .84rem; letter-spacing: .06em; white-space: normal; }
   ul.setlist li.mc .t .mcnote { font-weight: 500; letter-spacing: 0; font-size: .78rem; }
-  ul.setlist li.vtr .t { color: var(--ink-soft); font-weight: 700; font-size: .84rem; letter-spacing: .12em; }
+  ul.setlist li.vtr .t { color: var(--ink-soft); font-weight: 700; font-size: .84rem; letter-spacing: .12em; white-space: normal; }
   ul.setlist li.hl { background: var(--hl-bg); border-radius: 4px; }
 
   .enc-head {
@@ -215,7 +217,7 @@
   }
 
   .tag {
-    display: inline-block; font-size: .66rem; font-weight: 700;
+    display: inline-block; font-size: .7em; font-weight: 700;
     border-radius: 3px; padding: 0 5px; margin-left: 5px;
     vertical-align: 1px; white-space: nowrap;
   }
@@ -244,7 +246,7 @@
   section.extra .lead { font-size: .86rem; color: var(--ink-soft); margin-bottom: 14px; }
   .tbl-scroll { overflow-x: auto; }
   table {
-    border-collapse: collapse; width: 100%; min-width: 640px;
+    border-collapse: collapse; width: 100%;
     background: var(--card);
     box-shadow: var(--shadow);
     font-size: .86rem;
@@ -277,6 +279,34 @@
   .v-miyagi   { --vc: var(--c-miyagi); }
   .v-fukuoka  { --vc: var(--c-fukuoka); }
   .v-tokyo    { --vc: var(--c-tokyo); }
+
+  /* ---- モバイル：表を縦積みカードに（横スクロール撤廃） ---- */
+  @media (max-width: 640px) {
+    table { background: transparent; box-shadow: none; }
+    table thead { display: none; }
+    table tr {
+      display: block;
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px 12px;
+      margin-bottom: 10px;
+      box-shadow: var(--shadow);
+    }
+    table th, table td { border: none; padding: 2px 0; }
+    table td { display: block; }
+    table td.num { display: none; }
+    table td.cell-inline { display: inline-block; margin-right: 10px; font-weight: 700; }
+    table td[data-label]::before {
+      content: attr(data-label);
+      display: inline-block;
+      font-size: .68rem;
+      color: var(--ink-soft);
+      min-width: 6.4em;
+      margin-right: 8px;
+    }
+    table td .cc { display: inline; margin-left: 6px; }
+  }
 
   /* ---- 印刷 ---- */
   @media print {
@@ -873,22 +903,38 @@ app.innerHTML = VENUES.map(v => `
 document.getElementById('jikenbo-body').innerHTML = JIKENBO.map(r => `
   <tr>
     <td class="num">${r[0]}</td>
-    <td>${esc(r[1])}</td>
-    <td class="v-${r[2]}"><span class="area-dot"></span>${esc(r[3])}</td>
-    <td>${esc(r[4])}<span class="cc">C:${esc(r[5])}</span></td>
-    <td>${esc(r[6])}<span class="cc">C:${esc(r[7])}</span></td>
-    <td>${esc(r[8])}</td>
+    <td class="cell-inline">${esc(r[1])}</td>
+    <td class="cell-inline v-${r[2]}"><span class="area-dot"></span>${esc(r[3])}</td>
+    <td data-label="チャレンジ曲">${esc(r[4])}<span class="cc">C:${esc(r[5])}</span></td>
+    <td data-label="夏曲">${esc(r[6])}<span class="cc">C:${esc(r[7])}</span></td>
+    <td data-label="ミッション">${esc(r[8])}</td>
   </tr>`).join('');
 
 document.getElementById('schedule-body').innerHTML = SCHEDULE.map(r => `
   <tr${r[6] ? ' class="done"' : ''}>
     <td class="num">${r[0]}</td>
-    <td>${esc(r[1])}</td>
-    <td class="v-${r[2]}"><span class="area-dot"></span>${esc(r[3])}</td>
-    <td>${esc(r[4])}</td>
-    <td>${esc(r[5])}</td>
-    <td>${r[6] ? '<span class="status-done">公演終了</span>' : '<span class="status-next">これから</span>'}</td>
+    <td class="cell-inline">${esc(r[1])}</td>
+    <td class="cell-inline v-${r[2]}"><span class="area-dot"></span>${esc(r[3])}</td>
+    <td data-label="会場">${esc(r[4])}</td>
+    <td data-label="時間">${esc(r[5])}</td>
+    <td data-label="状況">${r[6] ? '<span class="status-done">公演終了</span>' : '<span class="status-next">これから</span>'}</td>
   </tr>`).join('');
+
+// 曲名は折り返さず1行に収める（収まらない行だけ段階的に縮小、元画像と同じ方式）
+function fitTitles() {
+  document.querySelectorAll('ul.setlist li:not(.mc):not(.vtr) .t').forEach(el => {
+    el.style.fontSize = '';
+    let size = parseFloat(getComputedStyle(el).fontSize);
+    let guard = 24;
+    while (el.scrollWidth > el.clientWidth && size > 9 && guard-- > 0) {
+      size -= 0.5;
+      el.style.fontSize = size + 'px';
+    }
+  });
+}
+fitTitles();
+let fitTimer;
+window.addEventListener('resize', () => { clearTimeout(fitTimer); fitTimer = setTimeout(fitTitles, 150); });
 </script>
 </body>
 </html>
