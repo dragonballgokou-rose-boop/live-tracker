@@ -135,7 +135,27 @@
   }
   nav.venues a:focus-visible, .toc-extra a:focus-visible { outline: 3px solid var(--c-hokkaido); outline-offset: 2px; }
   nav.venues a.extra { background: transparent; color: var(--ink-soft); border: 1px solid var(--line); }
-  nav.venues a.back { background: transparent; color: var(--ink); border: 1px solid var(--ink-soft); font-weight: 700; }
+
+  /* アプリから開いたときだけ表示する戻るボタン（左下固定） */
+  a.back-fab {
+    position: fixed;
+    left: 16px;
+    bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+    z-index: 40;
+    display: none;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 18px;
+    border-radius: 999px;
+    background: var(--ink);
+    color: var(--paper);
+    font-size: .9rem;
+    font-weight: 700;
+    text-decoration: none;
+    box-shadow: 0 4px 14px rgba(0,0,0,.3);
+  }
+  a.back-fab.show { display: inline-flex; }
+  a.back-fab:focus-visible { outline: 3px solid var(--c-hokkaido); outline-offset: 2px; }
 
   /* ---- 会場セクション ---- */
   section.venue, section.extra { scroll-margin-top: 104px; }
@@ -312,6 +332,7 @@
   /* ---- 印刷 ---- */
   @media print {
     nav.venues { display: none; }
+    a.back-fab { display: none !important; }
     body { background: #fff; }
     article.show { break-inside: avoid; box-shadow: none; }
     section.venue { margin-top: 24px; }
@@ -321,6 +342,8 @@
 </head>
 <body>
 
+<a class="back-fab" id="back-link" href="./">← アプリに戻る</a>
+
 <header class="site">
   <p class="kicker">NOGIZAKA46 SUMMER TOUR 2026</p>
   <h1>乃木坂46 真夏の全国ツアー2026<br>セットリストまとめ</h1>
@@ -329,7 +352,6 @@
 
 <nav class="venues" aria-label="会場ナビゲーション">
   <div class="inner">
-    <a class="back" id="back-link" href="./" style="display:none">← 戻る</a>
     <a class="v-fukui" href="#fukui">福井</a>
     <a class="v-kanagawa" href="#kanagawa">神奈川</a>
     <a class="v-hokkaido" href="#hokkaido">北海道</a>
@@ -941,7 +963,7 @@ window.addEventListener('resize', () => { clearTimeout(fitTimer); fitTimer = set
 // アプリ（LIVE TRACKER）から ?app=1 付きで開かれたときだけ「戻る」ボタンを表示
 if (new URLSearchParams(location.search).has('app')) {
   const back = document.getElementById('back-link');
-  back.style.display = '';
+  back.classList.add('show');
   back.addEventListener('click', e => {
     if (history.length > 1) { e.preventDefault(); history.back(); }
   });
