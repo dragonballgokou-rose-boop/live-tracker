@@ -135,6 +135,7 @@
   }
   nav.venues a:focus-visible, .toc-extra a:focus-visible { outline: 3px solid var(--c-hokkaido); outline-offset: 2px; }
   nav.venues a.extra { background: transparent; color: var(--ink-soft); border: 1px solid var(--line); }
+  nav.venues a.back { background: transparent; color: var(--ink); border: 1px solid var(--ink-soft); font-weight: 700; }
 
   /* ---- 会場セクション ---- */
   section.venue, section.extra { scroll-margin-top: 104px; }
@@ -328,6 +329,7 @@
 
 <nav class="venues" aria-label="会場ナビゲーション">
   <div class="inner">
+    <a class="back" id="back-link" href="./" style="display:none">← 戻る</a>
     <a class="v-fukui" href="#fukui">福井</a>
     <a class="v-kanagawa" href="#kanagawa">神奈川</a>
     <a class="v-hokkaido" href="#hokkaido">北海道</a>
@@ -935,6 +937,15 @@ function fitTitles() {
 fitTitles();
 let fitTimer;
 window.addEventListener('resize', () => { clearTimeout(fitTimer); fitTimer = setTimeout(fitTitles, 150); });
+
+// アプリ（LIVE TRACKER）から ?app=1 付きで開かれたときだけ「戻る」ボタンを表示
+if (new URLSearchParams(location.search).has('app')) {
+  const back = document.getElementById('back-link');
+  back.style.display = '';
+  back.addEventListener('click', e => {
+    if (history.length > 1) { e.preventDefault(); history.back(); }
+  });
+}
 </script>
 </body>
 </html>
