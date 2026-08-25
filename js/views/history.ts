@@ -3,7 +3,7 @@
 // History View - 参戦記録一覧
 // ============================================
 import { getLives, getMembers, getDayAttendanceStatus, getDatesForLive, addLive, setDayAttendance } from '../store.js';
-import { showModal, closeModal, showToast } from '../utils.js';
+import { showModal, closeModal, showToast, DEFAULT_ARTIST } from '../utils.js';
 import { showLiveDetailsModal, showMemberDetailsModal } from './details.js';
 import { extractPrefecture } from './lives.js';
 
@@ -253,7 +253,7 @@ function openQuickRecordModal(members) {
       </div>
       <div class="form-group">
         <label class="form-label" for="qr-artist">アーティスト</label>
-        <input type="text" id="qr-artist" class="form-input" placeholder="例: 乃木坂46" />
+        <input type="text" id="qr-artist" class="form-input" placeholder="例: 乃木坂46" value="${escHtml(DEFAULT_ARTIST)}" />
       </div>
       <div class="form-group">
         <label class="form-label" for="qr-date-start">日付 <span style="color:var(--accent-red)">*</span></label>

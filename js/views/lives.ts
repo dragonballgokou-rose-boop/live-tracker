@@ -3,7 +3,7 @@
 // Lives Management View
 // ============================================
 import { getLives, addLive, updateLive, deleteLive, getMembers, getDayAttendanceStatus, setDayAttendance, getDatesForLive } from '../store.js';
-import { showModal, closeModal, showToast, showConfirm, isJapaneseHoliday, resizeImageToBase64 } from '../utils.js';
+import { showModal, closeModal, showToast, showConfirm, isJapaneseHoliday, resizeImageToBase64, DEFAULT_ARTIST } from '../utils.js';
 import { showLiveDetailsModal, showMemberDetailsModal } from './details.js';
 
 const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
@@ -969,7 +969,7 @@ function openTourModal(tour = null) {
       </div>
       <div class="form-group">
         <label class="form-label" for="live-artist">アーティスト</label>
-        <input type="text" id="live-artist" class="form-input" placeholder="例: ONE OK ROCK" value="${isEdit ? escapeAttr(tour.artist || '') : ''}" />
+        <input type="text" id="live-artist" class="form-input" placeholder="例: 乃木坂46" value="${isEdit ? escapeAttr(tour.artist || '') : escapeAttr(DEFAULT_ARTIST)}" />
       </div>
       <div class="form-group">
         <label class="form-label" for="live-memo">メモ</label>
@@ -1230,7 +1230,7 @@ function openLiveModal(live = null, defaultParentId = null, parentTour = null) {
       <!-- アーティスト -->
       <div class="form-group">
         <label class="form-label" for="live-artist">アーティスト</label>
-        <input type="text" id="live-artist" class="form-input" placeholder="例: ONE OK ROCK" value="${isEdit ? escapeAttr(live.artist || '') : ''}" />
+        <input type="text" id="live-artist" class="form-input" placeholder="例: 乃木坂46" value="${isEdit ? escapeAttr(live.artist || '') : escapeAttr(DEFAULT_ARTIST)}" />
       </div>
       <!-- 日付 -->
       <div class="form-group">
@@ -1562,7 +1562,7 @@ function openQuickRecordModal(members) {
       </div>
       <div class="form-group">
         <label class="form-label" for="qr-artist">アーティスト</label>
-        <input type="text" id="qr-artist" class="form-input" placeholder="例: 乃木坂46" />
+        <input type="text" id="qr-artist" class="form-input" placeholder="例: 乃木坂46" value="${escapeAttr(DEFAULT_ARTIST)}" />
       </div>
       <div class="form-group">
         <label class="form-label" for="qr-date-start">日付 <span style="color:var(--accent-red)">*</span></label>

@@ -3,7 +3,7 @@
 // ============================================
 
 import { getLives, flushSyncNow } from '../store.js';
-import { showModal, closeModal, showToast } from '../utils.js';
+import { showModal, closeModal, showToast, DEFAULT_ARTIST } from '../utils.js';
 import {
   fetchOfficialLives,
   computeDiff,
@@ -160,7 +160,11 @@ export async function showOfficialSyncModal(): Promise<void> {
   const localLives = getLives();
   const diff = computeDiff(data.lives || [], localLives);
 
-  _state = { data, diff, filter: 'all', activeTab: 'add' };
+  // グループ絞り込みは既定で乃木坂46。該当データが無い場合のみ「すべて」に落とす。
+  const hasDefaultArtist = [...diff.toAdd, ...diff.toUpdate, ...diff.toSkip]
+    .some(it => (it.official?.artist || '') === DEFAULT_ARTIST);
+
+  _state = { data, diff, filter: hasDefaultArtist ? DEFAULT_ARTIST : 'all', activeTab: 'add' };
   renderModal();
 }
 

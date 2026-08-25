@@ -6,6 +6,13 @@ import type { Member } from './types.js';
 
 export type ToastType = 'success' | 'error' | 'info';
 
+// ---------- Defaults ----------
+/**
+ * 既定のアーティスト。ライブ／ツアー新規作成時のアーティスト欄や
+ * 公式同期モーダルのグループ絞り込みの初期値として使う。
+ */
+export const DEFAULT_ARTIST = '乃木坂46';
+
 // ---------- Modal ----------
 export function showModal(title: string, bodyHtml: string): void {
   const container = document.getElementById('modal-container');
