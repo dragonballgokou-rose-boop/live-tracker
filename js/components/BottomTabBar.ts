@@ -153,8 +153,10 @@ export default class BottomTabBar {
 
     if (!animate) this._indicator.classList.add('no-transition');
 
-    this._indicator.style.left  = el.offsetLeft + 'px';
-    this._indicator.style.width = el.offsetWidth + 'px';
+    // タブ枠いっぱいだと隣と接して見えるため、左右を少し詰めて独立したチップにする
+    const INSET = 5;
+    this._indicator.style.left  = (el.offsetLeft + INSET) + 'px';
+    this._indicator.style.width = Math.max(0, el.offsetWidth - INSET * 2) + 'px';
 
     if (!animate) {
       void this._indicator.getBoundingClientRect();
