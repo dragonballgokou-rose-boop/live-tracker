@@ -3,7 +3,7 @@
 // Tally View (集計表) - 日程別参戦対応
 // ============================================
 import { getLives, getMembers, getDatesForLive, setDayAttendance, getDayAttendanceStatus, buildAttendanceLookup, lookupDayAttendance } from '../store.js';
-import { showToast } from '../utils.js';
+import { showToast, resolveDefaultArtistFilter } from '../utils.js';
 import { formatDateRange, extractPrefecture, getLiveIconHtml, getEventTypeBadgeExport } from './lives.js';
 
 let tallyStatusFilter = 'upcoming'; // デフォルトは予定。大量ライブ時の負荷軽減
@@ -65,6 +65,9 @@ export function renderTally() {
   // URL params から初期フィルター状態を復元
   const urlParams = getTallyUrlParams();
   if (urlParams.status) tallyStatusFilter = urlParams.status;
+
+  // アーティスト絞り込みは URL 指定が最優先、無ければ既定（乃木坂46）
+  const selectedArtist = urlParams.artist || resolveDefaultArtistFilter(lives);
 
   if (lives.length === 0 || members.length === 0) {
     content.innerHTML = `
@@ -136,7 +139,7 @@ export function renderTally() {
       ${artists.length > 1 ? `
         <select id="tally-filter-artist" class="form-input" style="min-width:120px;">
           <option value="">全アーティスト</option>
-          ${artists.map(a => `<option value="${escapeAttr(a)}" ${urlParams.artist === a ? 'selected' : ''}>${escapeHtml(a)}</option>`).join('')}
+          ${artists.map(a => `<option value="${escapeAttr(a)}" ${selectedArtist === a ? 'selected' : ''}>${escapeHtml(a)}</option>`).join('')}
         </select>
       ` : '<input type="hidden" id="tally-filter-artist" value="" />'}
       <input type="month" id="tally-filter-month" class="form-input" value="${urlParams.month || ''}" />
@@ -177,8 +180,8 @@ export function renderTally() {
 
   setupTallyEvents(members, filteredLives);
 
-  // URL paramsがある場合は初期フィルターを適用
-  if (urlParams.search || urlParams.month) applyFilters();
+  // URL params / 既定アーティストがある場合は初期フィルターを適用
+  if (urlParams.search || urlParams.month || selectedArtist) applyFilters();
 }
 
 // ---- Desktop: Table layout ----

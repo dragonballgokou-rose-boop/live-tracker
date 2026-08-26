@@ -8,11 +8,19 @@ import { showLiveDetailsModal, showMemberDetailsModal } from './details.js';
 import { extractPrefecture } from './lives.js';
 
 let activeFilterMemberId = null;
+let activeArtistFilter = '';         // '' = 全て、文字列 = アーティスト名で絞り込み
+let artistFilterInitialized = false; // 初回描画で既定アーティストを適用したか
 
 export function renderHistory() {
   const members = getMembers();
   const lives = getLives();
   const content = document.getElementById('page-content');
+
+  // 初回のみ既定アーティスト（乃木坂46）で絞り込む。以降はユーザーの選択を尊重する。
+  if (!artistFilterInitialized) {
+    activeArtistFilter = resolveDefaultArtistFilter(lives);
+    artistFilterInitialized = true;
+  }
 
   // 各ライブの参戦メンバーを計算
   const livesWithGoing = lives.map(live => {
@@ -25,10 +33,15 @@ export function renderHistory() {
     return { ...live, goingIds: [...goingIds] };
   }).sort((a, b) => new Date(b.dateStart || b.date) - new Date(a.dateStart || a.date));
 
+  // アーティストフィルター適用後のリスト
+  const artistScoped = activeArtistFilter
+    ? livesWithGoing.filter(l => (l.artist || '').trim() === activeArtistFilter)
+    : livesWithGoing;
+
   // メンバーフィルター適用後のリスト
   const filtered = activeFilterMemberId
-    ? livesWithGoing.filter(l => l.goingIds.includes(activeFilterMemberId))
-    : livesWithGoing.filter(l => l.goingIds.length > 0);
+    ? artistScoped.filter(l => l.goingIds.includes(activeFilterMemberId))
+    : artistScoped.filter(l => l.goingIds.length > 0);
 
   // 年月グループ
   const groups = {};
@@ -45,6 +58,29 @@ export function renderHistory() {
   const weekdays = ['日', '月', '火', '水', '木', '金', '土'];
 
   // ---- HTML生成 ----
+
+  // アーティストフィルターチップ（参戦記録のあるライブから集計）
+  const artistCounts = new Map();
+  livesWithGoing.forEach(l => {
+    if (l.goingIds.length === 0) return;
+    const a = (l.artist || '').trim();
+    if (!a) return;
+    artistCounts.set(a, (artistCounts.get(a) || 0) + 1);
+  });
+  const artists = [...artistCounts.entries()].sort((a, b) => b[1] - a[1]);
+  // 絞り込み中は必ずチップを出す（既定で絞られた状態から「すべて」に戻せるように）
+  const showArtistChips = artists.length > 1 || (activeArtistFilter !== '' && artists.length >= 1);
+  const artistFilterHtml = showArtistChips ? `
+    <div class="history-filter" style="gap:6px;margin-bottom:4px;">
+      <span style="font-size:11px;color:var(--text-tertiary);align-self:center;flex-shrink:0;">アーティスト:</span>
+      <button class="history-chip ${!activeArtistFilter ? 'history-chip-active' : ''}" data-artist-filter="">すべて</button>
+      ${artists.map(([name, count]) => `
+        <button class="history-chip ${activeArtistFilter === name ? 'history-chip-active' : ''}" data-artist-filter="${escAttr(name)}">
+          ${escHtml(name)} <span style="opacity:0.6;font-size:10px;">${count}</span>
+        </button>
+      `).join('')}
+    </div>
+  ` : '';
 
   const filterHtml = members.length > 0 ? `
     <div class="history-filter">
@@ -135,6 +171,7 @@ export function renderHistory() {
       </button>
     </div>
 
+    ${artistFilterHtml}
     ${filterHtml}
 
     ${filtered.length === 0 ? `
@@ -144,7 +181,7 @@ export function renderHistory() {
             <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
           </svg>
         </div>
-        <p class="empty-state-text">${activeFilterMemberId ? 'このメンバーの参戦記録がありません' : 'まだ参戦記録がありません'}</p>
+        <p class="empty-state-text">${activeFilterMemberId ? 'このメンバーの参戦記録がありません' : activeArtistFilter ? `${escHtml(activeArtistFilter)}の参戦記録がありません` : 'まだ参戦記録がありません'}</p>
         <button id="add-record-btn-2" class="btn btn-primary">参戦記録を追加する</button>
       </div>
     ` : `<div class="history-timeline">${timelineHtml}</div>`}
@@ -153,9 +190,16 @@ export function renderHistory() {
   document.getElementById('add-record-btn')?.addEventListener('click', () => openQuickRecordModal(members));
   document.getElementById('add-record-btn-2')?.addEventListener('click', () => openQuickRecordModal(members));
 
-  content.querySelectorAll('.history-chip').forEach(chip => {
+  content.querySelectorAll('.history-chip[data-member]').forEach(chip => {
     chip.addEventListener('click', () => {
       activeFilterMemberId = chip.dataset.member || null;
+      renderHistory();
+    });
+  });
+
+  content.querySelectorAll('.history-chip[data-artist-filter]').forEach(chip => {
+    chip.addEventListener('click', () => {
+      activeArtistFilter = chip.dataset.artistFilter || '';
       renderHistory();
     });
   });
@@ -345,6 +389,11 @@ function escHtml(text) {
   const div = document.createElement('div');
   div.textContent = text ?? '';
   return div.innerHTML;
+}
+
+/** 属性値用エスケープ。escHtml は引用符を変換しないため属性にはこちらを使う。 */
+function escAttr(text) {
+  return escHtml(text).replace(/"/g, '&quot;');
 }
 
 function liveIconHtml(live, size = 16) {

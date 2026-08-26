@@ -13,6 +13,20 @@ export type ToastType = 'success' | 'error' | 'info';
  */
 export const DEFAULT_ARTIST = '乃木坂46';
 
+/**
+ * 一覧表示のアーティスト絞り込みの初期値を決める。
+ * DEFAULT_ARTIST のライブが 1 件でもあればそれを既定にし、
+ * 1 件も無ければ「すべて」を表す emptyValue にフォールバックする
+ * (既定で絞った結果、一覧が空になるのを防ぐため)。
+ */
+export function resolveDefaultArtistFilter(
+  lives: { artist?: string | null }[],
+  emptyValue: string = '',
+): string {
+  const hasDefault = lives.some(l => (l.artist || '').trim() === DEFAULT_ARTIST);
+  return hasDefault ? DEFAULT_ARTIST : emptyValue;
+}
+
 // ---------- Modal ----------
 export function showModal(title: string, bodyHtml: string): void {
   const container = document.getElementById('modal-container');

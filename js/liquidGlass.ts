@@ -234,8 +234,7 @@ function buildFilter(filterId: string, w: number, h: number, opts: FilterOptions
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
-let _rebuildTimer:   ReturnType<typeof setTimeout> | null = null;
-let _indicatorTimer: ReturnType<typeof setTimeout> | null = null;
+let _rebuildTimer: ReturnType<typeof setTimeout> | null = null;
 
 function buildNavFilter(): void {
   const nav = document.getElementById('bottom-nav');
@@ -257,30 +256,9 @@ function buildNavFilter(): void {
   });
 }
 
-function buildIndicatorFilter(): void {
-  const indicator = document.querySelector<HTMLElement>('.tab-indicator');
-  if (!indicator) return;
-  const w = Math.max(indicator.offsetWidth, 60);
-  const h = indicator.offsetHeight || 56;
-  if (w < 4 || h < 4) return;
-  buildFilter('liquid-glass-indicator', w, h, {
-    radius:          28,
-    bezelWidth:      28,
-    glassThickness:  42,
-    ior:             2.8,       // より強い屈折でピル感
-    scaleRatio:      1.5,
-    blurAmount:      14,        // ピルはやや透過感を残す
-    specularOpacity: 0.95,      // ほぼ最大スペキュラー
-    specularSat:     7,
-    saturation:      1.8,
-    brightness:      1.4,
-  });
-}
-
 export function initLiquidGlass(): void {
   function rebuild(): void {
     buildNavFilter();
-    buildIndicatorFilter();
     document.body.classList.add('liquid-glass-ready');
   }
 
@@ -289,29 +267,9 @@ export function initLiquidGlass(): void {
     _rebuildTimer = setTimeout(rebuild, 40);
   }
 
-  function scheduleIndicatorRebuild(): void {
-    if (_indicatorTimer) clearTimeout(_indicatorTimer);
-    _indicatorTimer = setTimeout(buildIndicatorFilter, 40);
-  }
-
   // Build after first two animation frames (layout is stable)
   requestAnimationFrame(() => requestAnimationFrame(rebuild));
 
   // Rebuild on window resize
   window.addEventListener('resize', scheduleRebuild);
-
-  // Observe tab indicator size changes (tab switches change its width)
-  const ro = new ResizeObserver(scheduleIndicatorRebuild);
-
-  // Indicator may not exist yet; poll briefly
-  let attempts = 0;
-  const poll = setInterval(() => {
-    const indicator = document.querySelector('.tab-indicator');
-    if (indicator) {
-      ro.observe(indicator);
-      clearInterval(poll);
-    } else if (++attempts > 50) {
-      clearInterval(poll);
-    }
-  }, 100);
 }

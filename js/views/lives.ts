@@ -3,7 +3,7 @@
 // Lives Management View
 // ============================================
 import { getLives, addLive, updateLive, deleteLive, getMembers, getDayAttendanceStatus, setDayAttendance, getDatesForLive } from '../store.js';
-import { showModal, closeModal, showToast, showConfirm, isJapaneseHoliday, resizeImageToBase64, DEFAULT_ARTIST } from '../utils.js';
+import { showModal, closeModal, showToast, showConfirm, isJapaneseHoliday, resizeImageToBase64, DEFAULT_ARTIST, resolveDefaultArtistFilter } from '../utils.js';
 import { showLiveDetailsModal, showMemberDetailsModal } from './details.js';
 
 const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
@@ -122,6 +122,7 @@ let livesCalendarDate = new Date();
 let activeFilterMemberIds = new Set();
 let activeTourFilterId = null;     // null = 全て、string = ツアーIDで絞り込み
 let activeArtistFilter = '';       // '' = 全て、文字列 = アーティスト名で絞り込み
+let artistFilterInitialized = false; // 初回描画で既定アーティストを適用したか
 
 // 折りたたみ状態（ツアーID→展開中かどうか）
 const tourExpandState = new Map();
@@ -129,6 +130,12 @@ const tourExpandState = new Map();
 export function renderLives() {
   const content = document.getElementById('page-content');
   const allLives = getLives();
+
+  // 初回のみ既定アーティスト（乃木坂46）で絞り込む。以降はユーザーの選択を尊重する。
+  if (!artistFilterInitialized) {
+    activeArtistFilter = resolveDefaultArtistFilter(allLives);
+    artistFilterInitialized = true;
+  }
   const members = getMembers();
   const now = new Date();
   now.setHours(0, 0, 0, 0);
@@ -229,9 +236,13 @@ export function renderLives() {
   }
 
   // カウント（ツアー自体は除いて子livesを数える）
+  // アーティストで絞り込み中は、表示中の一覧と数が食い違わないよう同じ条件で数える
+  const countScopedLives = activeArtistFilter
+    ? allLives.filter(l => (l.artist || '') === activeArtistFilter)
+    : allLives;
   const countLives = l => l.eventType !== 'tour';
-  const upcomingCount = allLives.filter(l => countLives(l) && (() => { const e = new Date(l.dateEnd || l.dateStart || l.date || 0); e.setHours(0,0,0,0); return e >= now; })()).length;
-  const pastCount    = allLives.filter(l => countLives(l) && (() => { const e = new Date(l.dateEnd || l.dateStart || l.date || 0); e.setHours(0,0,0,0); return e < now; })()).length;
+  const upcomingCount = countScopedLives.filter(l => countLives(l) && (() => { const e = new Date(l.dateEnd || l.dateStart || l.date || 0); e.setHours(0,0,0,0); return e >= now; })()).length;
+  const pastCount    = countScopedLives.filter(l => countLives(l) && (() => { const e = new Date(l.dateEnd || l.dateStart || l.date || 0); e.setHours(0,0,0,0); return e < now; })()).length;
 
   // ---- エントリHTMLビルダー ----
   function buildEntryHtml(live, isChild = false) {
@@ -557,7 +568,9 @@ export function renderLives() {
     artistCounts.set(a, (artistCounts.get(a) || 0) + 1);
   });
   const artists = [...artistCounts.entries()].sort((a, b) => b[1] - a[1]);
-  const artistFilterHtml = artists.length > 1 ? `
+  // 絞り込み中は必ずチップを出す（既定で絞られた状態から「すべて」に戻せるように）
+  const showArtistChips = artists.length > 1 || (activeArtistFilter !== '' && artists.length >= 1);
+  const artistFilterHtml = showArtistChips ? `
     <div class="history-filter" style="gap:6px;margin-bottom:4px;">
       <span style="font-size:11px;color:var(--text-tertiary);align-self:center;flex-shrink:0;">アーティスト:</span>
       <button class="history-chip${!activeArtistFilter ? ' history-chip-active' : ''}" data-artist-filter="">すべて</button>
@@ -596,7 +609,7 @@ export function renderLives() {
     </div>
   `;
 
-  const allNonTourCount = allLives.filter(l => l.eventType !== 'tour').length;
+  const allNonTourCount = countScopedLives.filter(l => l.eventType !== 'tour').length;
 
   // 「誤ってツアー化されて子公演が無い」tours を検知して復旧バナーを出す
   const orphanTours = allLives.filter(l =>
