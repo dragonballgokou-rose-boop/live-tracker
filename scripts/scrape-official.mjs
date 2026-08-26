@@ -17,8 +17,20 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import {
+  htmlToText,
+  looksLikeTourAnnouncement,
+  extractPerformances,
+  buildProvisionalLive,
+  dropSupersededProvisionals,
+  parseNewsList,
+} from './lib/news-tours.mjs';
+
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const OUT_PATH  = resolve(__dirname, '..', 'public', 'official-lives.json');
+
+// ニュース詳細を取りに行く最大件数（公式サイトへの負荷と実行時間の上限）
+const NEWS_MAX_DETAILS = 12;
 
 const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0 Safari/537.36';
 
@@ -37,6 +49,17 @@ const SOURCES = [
       'https://www.nogizaka46.com/s/n46/live',
       'https://www.nogizaka46.com/s/n46/live?ima=0000',
     ],
+    // ライブ API 未登録の「発表済みツアー」を拾うためのニュース欄
+    news: {
+      candidates: [
+        'https://www.nogizaka46.com/s/n46/api/list/news',
+        'https://www.nogizaka46.com/s/n46/api/list/news?ima=0000',
+        'https://www.nogizaka46.com/s/n46/news/list',
+        'https://www.nogizaka46.com/s/n46/news/list?ima=0000',
+      ],
+      detail: id => `https://www.nogizaka46.com/s/n46/news/detail/${id}?ima=0000`,
+      detailPathRe: /\/s\/n46\/news\/detail\/(\d+)/g,
+    },
   },
   {
     artist: '櫻坂46',
@@ -57,6 +80,15 @@ const SOURCES = [
       'https://sakurazaka46.com/s/s46/diary/live_page/list?ima=0000',
       'https://sakurazaka46.com/s/s46/diary/event_page/list?ima=0000',
     ],
+    news: {
+      candidates: [
+        'https://sakurazaka46.com/s/s46/api/list/news',
+        'https://sakurazaka46.com/s/s46/api/list/news?ima=0000',
+        'https://sakurazaka46.com/s/s46/news/list?ima=0000',
+      ],
+      detail: id => `https://sakurazaka46.com/s/s46/news/detail/${id}?ima=0000`,
+      detailPathRe: /\/s\/s46\/news\/detail\/(\d+)/g,
+    },
   },
 ];
 
@@ -740,11 +772,80 @@ function mapCategory(raw) {
   return 'live';
 }
 
+// ---------- ニュース欄からの暫定ツアー抽出 ----------
+
+/**
+ * ニュース欄を走査して「発表済みだがライブ API 未登録」のツアーを暫定エントリ化する。
+ * 失敗しても例外は投げず、空配列 + diag を返す（本体のライブ取得を壊さないため）。
+ */
+async function scrapeNewsTours(src, scrapedAt) {
+  const diag = { artist: src.artist, listUrl: null, candidates: 0, matched: 0, built: 0, notes: [] };
+  if (!src.news) return { lives: [], diag };
+
+  let listBody, listCt;
+  try {
+    const r = await fetchAnyCandidate(src.news.candidates, { referer: src.referer });
+    listBody = r.body; listCt = r.contentType; diag.listUrl = r.url;
+  } catch (e) {
+    diag.notes.push(`news list fetch failed: ${e.message}`);
+    return { lives: [], diag };
+  }
+
+  let items = [];
+  try {
+    items = parseNewsList(listBody, listCt, src.news.detailPathRe);
+  } catch (e) {
+    diag.notes.push(`news list parse failed: ${e.message}`);
+    return { lives: [], diag };
+  }
+  diag.candidates = items.length;
+
+  const targets = items.filter(it => looksLikeTourAnnouncement(it.title)).slice(0, NEWS_MAX_DETAILS);
+  diag.matched = targets.length;
+  if (targets.length === 0) {
+    diag.notes.push('no tour-announcement titles matched');
+    return { lives: [], diag };
+  }
+
+  const lives = [];
+  for (const it of targets) {
+    const url = src.news.detail(it.id);
+    try {
+      const { body } = await fetchResource(url, { referer: src.referer });
+      const perfs = extractPerformances(htmlToText(body)).filter(p => p.venue);
+      if (perfs.length === 0) {
+        diag.notes.push(`${it.id}: no dated performances with venue`);
+        continue;
+      }
+      const live = buildProvisionalLive({
+        artist: src.artist,
+        idPrefix: src.idPrefix,
+        newsId: it.id,
+        title: it.title,
+        url,
+        performances: perfs,
+        scrapedAt,
+      });
+      if (live) {
+        lives.push(live);
+        console.log(`  ↳ [news] provisional: ${live.name} (${live.dateStart}〜${live.dateEnd}, ${perfs.length} perfs)`);
+      }
+    } catch (e) {
+      diag.notes.push(`${it.id}: detail fetch failed: ${e.message}`);
+    }
+  }
+  diag.built = lives.length;
+  return { lives, diag };
+}
+
 // ---------- main ----------
 
 async function main() {
   const allLives = [];
   const errors = [];
+  const provisionalRaw = [];
+  const newsDiag = [];
+  const scrapedAt = new Date().toISOString();
 
   for (const src of SOURCES) {
     console.log(`[${src.artist}] trying ${src.candidates.length} URL candidates...`);
@@ -772,16 +873,38 @@ async function main() {
       if (e.details) e.details.forEach(d => console.error(`  - ${d.url} → ${d.error}`));
       errors.push({ artist: src.artist, error: e.message });
     }
+
+    // ニュース欄からの暫定ツアー（失敗しても本体は壊さない）
+    try {
+      const { lives: newsLives, diag } = await scrapeNewsTours(src, scrapedAt);
+      provisionalRaw.push(...newsLives);
+      newsDiag.push(diag);
+      console.log(`[${src.artist}] news: ${diag.candidates} items, ${diag.matched} matched, ${diag.built} provisional`);
+    } catch (e) {
+      console.warn(`[${src.artist}] news scan failed: ${e.message}`);
+      newsDiag.push({ artist: src.artist, notes: [`unexpected: ${e.message}`] });
+    }
   }
 
   // パースが完全失敗した場合は既存の JSON を維持（空配列で上書きしない）
+  // ニュース由来の暫定データだけでは上書きしない — 正式データが 0 件なら中断。
   if (allLives.length === 0) {
     console.warn('No lives parsed from any source. Keeping existing JSON.');
     return;
   }
 
-  // 同じ officialId の重複を除去
+  // 正式データに同名の公演があれば暫定エントリは捨てる（重複防止）
+  const provisional = dropSupersededProvisionals(allLives, provisionalRaw);
+  const dropped = provisionalRaw.length - provisional.length;
+  if (dropped > 0) console.log(`Dropped ${dropped} provisional entries superseded by official data.`);
+  if (provisional.length > 0) {
+    console.log(`Adding ${provisional.length} provisional (news-derived) entries.`);
+  }
+
+  // 同じ officialId の重複を除去。
+  // 暫定エントリを先に入れ、正式エントリで上書きする（正式データを優先）。
   const byId = new Map();
+  for (const l of provisional) byId.set(l.officialId, l);
   for (const l of allLives) byId.set(l.officialId, l);
   const deduped = [...byId.values()]
     .sort((a, b) => (a.dateStart || '').localeCompare(b.dateStart || ''));
@@ -800,12 +923,14 @@ async function main() {
       s.candidates[0],
     ])),
     errors: errors.length ? errors : undefined,
+    // ニュース走査の診断。CI ログが読めなくても差分から状況が追える。
+    newsScan: newsDiag.length ? newsDiag : undefined,
     lives: deduped,
   };
 
   // 中身が変わってなければ updatedAt だけ更新しない（不要コミット回避）
-  const existingBody = existing && JSON.stringify({ ...existing, updatedAt: null, errors: null });
-  const newBody      = JSON.stringify({ ...out, updatedAt: null, errors: null });
+  const existingBody = existing && JSON.stringify({ ...existing, updatedAt: null, errors: null, newsScan: null });
+  const newBody      = JSON.stringify({ ...out, updatedAt: null, errors: null, newsScan: null });
   if (existingBody === newBody) {
     console.log('No changes — skipping write.');
     return;

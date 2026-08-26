@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "build:cap": "BUILD_TARGET=capacitor vite build",
     "cap:sync": "npm run build:cap && npx cap sync",
-    "cap:ios": "npm run build:cap && npx cap sync && npx cap open ios"
+    "cap:ios": "npm run build:cap && npx cap sync && npx cap open ios",
+    "test:news": "node scripts/test-news-tours.mjs"
   },
   "devDependencies": {
     "typescript": "^6.0.3",

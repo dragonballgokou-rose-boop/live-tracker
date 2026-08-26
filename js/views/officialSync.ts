@@ -691,7 +691,19 @@ function renderSourceLine(official: OfficialLive): string {
   const scrapedAt = official.scrapedAt
     ? `<span class="os-source-meta">${escapeHtml(new Date(official.scrapedAt).toLocaleDateString('ja-JP'))} 取得</span>`
     : '';
-  return `<div class="os-source-line">${src} ${scrapedAt}</div>`;
+  // ニュース欄からの推定データは正確性が落ちるため明示する
+  const provisionalNote = official.provisional
+    ? `<div class="os-provisional-note">
+         公式のライブ一覧にはまだ掲載されていない告知（ニュース欄）から推定した日程です。
+         会場・日付が不正確な場合があります。正式掲載後は自動で置き換わります。
+       </div>`
+    : '';
+  return `${provisionalNote}<div class="os-source-line">${src} ${scrapedAt}</div>`;
+}
+
+/** 暫定エントリを示すタグ */
+function provisionalTag(official: OfficialLive): string {
+  return official.provisional ? ' <span class="os-provisional-tag">暫定</span>' : '';
 }
 
 function renderAddItem(item: DiffAddItem, i: number): string {
@@ -765,7 +777,7 @@ function renderAddItem(item: DiffAddItem, i: number): string {
         </label>
         ${logoHtml}
         <div class="os-item-title">
-          <span class="os-artist">${escapeHtml(o.artist || '')}${isTour ? ' <span class="os-tour-tag">ツアー</span>' : ''}</span>
+          <span class="os-artist">${escapeHtml(o.artist || '')}${isTour ? ' <span class="os-tour-tag">ツアー</span>' : ''}${provisionalTag(o)}</span>
           <span class="os-name">${escapeHtml(o.name || '')}</span>
         </div>
         <button type="button" class="btn btn-primary btn-sm"
@@ -949,7 +961,7 @@ function renderUpdateItem(item: DiffUpdateItem, i: number): string {
     <div class="os-item">
       <div class="os-item-header">
         <div class="os-item-title">
-          <span class="os-artist">${escapeHtml(o.artist || '')}${badgeHtml}</span>
+          <span class="os-artist">${escapeHtml(o.artist || '')}${badgeHtml}${provisionalTag(o)}</span>
           <span class="os-name">${escapeHtml(o.name || '')}</span>
         </div>
         ${applyBtnHtml}
@@ -978,7 +990,7 @@ function renderSkipItem(item: DiffSkipItem): string {
     <div class="os-item os-skip">
       <div class="os-item-header">
         <div class="os-item-title">
-          <span class="os-artist">${escapeHtml(o.artist || '')}</span>
+          <span class="os-artist">${escapeHtml(o.artist || '')}${provisionalTag(o)}</span>
           <span class="os-name">${escapeHtml(o.name || '')}</span>
         </div>
         <span class="os-badge-ok">一致</span>

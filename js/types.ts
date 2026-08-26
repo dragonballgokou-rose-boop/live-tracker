@@ -171,6 +171,14 @@ export interface OfficialLive {
   startTime?: string | null;
   /** multi-day 単独ライブでの日別時刻 */
   dayTimes?: { date: string; openTime?: string; startTime?: string }[];
+  /**
+   * true の場合、公式のライブ一覧 API ではなくニュース欄の告知から
+   * スクレイパが推定した「暫定」データ。日程・会場が不正確なことがある。
+   * 後日ライブ API に正式登録されると自動的に置き換わる。
+   */
+  provisional?: boolean;
+  /** 取得元の種別。'news' はニュース欄由来（= provisional） */
+  sourceType?: 'live' | 'news';
 }
 
 export interface OfficialLivesFile {

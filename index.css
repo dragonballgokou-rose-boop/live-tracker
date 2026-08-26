@@ -4515,6 +4515,32 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
   vertical-align: middle;
 }
 
+/* ニュース欄由来の暫定エントリ — 正式データと見分けがつくよう琥珀色で */
+.os-provisional-tag {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 6px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  background: rgba(251, 191, 36, 0.18);
+  color: var(--accent-amber);
+  border: 1px solid rgba(251, 191, 36, 0.40);
+  border-radius: var(--radius-full);
+  vertical-align: middle;
+}
+
+.os-provisional-note {
+  margin-bottom: 8px;
+  padding: 8px 10px;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--accent-amber);
+  background: rgba(251, 191, 36, 0.08);
+  border: 1px solid rgba(251, 191, 36, 0.28);
+  border-radius: var(--radius-md);
+}
+
 .os-item-tour {
   border-left: 3px solid rgba(99, 102, 241, 0.55);
 }
