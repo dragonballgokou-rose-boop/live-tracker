@@ -5,16 +5,30 @@
 import { getLives, getMembers, getStats, getDayAttendanceStatus, getDatesForLive, buildAttendanceLookup, lookupDayAttendance } from '../store.js';
 import { formatDateRange, getLiveIconHtml, getEventTypeBadgeExport } from './lives.js';
 import { showLiveDetailsModal, showMemberDetailsModal } from './details.js';
-import { isJapaneseHoliday, memberAvatarHtml } from '../utils.js';
+import { isJapaneseHoliday, memberAvatarHtml, resolveDefaultArtistFilter } from '../utils.js';
 import { fetchPhotoRates, getMemberRateHistory, rankClass as photoRankClass } from '../photoRates.js';
 
 let dashboardViewMode = 'tl';      // 'tl' | 'calendar'
 let dashboardCalendarDate = null;  // null = use current month on first load
+let activeArtistFilter = '';       // '' = 全て、文字列 = アーティスト名で絞り込み
+let artistFilterInitialized = false;
 
 export function renderDashboard() {
   const stats = getStats();
-  const lives = getLives();
+  const allLives = getLives();
   const members = getMembers();
+
+  // 初回のみ既定アーティスト（乃木坂46）で絞り込む。以降はユーザーの選択を尊重する。
+  if (!artistFilterInitialized) {
+    activeArtistFilter = resolveDefaultArtistFilter(allLives);
+    artistFilterInitialized = true;
+  }
+
+  // 日程まわりの表示（直近のライブ / カレンダー / 月別スケジュール）は絞り込み後を使う。
+  // 上部の統計カードは「総ライブ数」等の全体値なので絞り込まない。
+  const lives = activeArtistFilter
+    ? allLives.filter(l => (l.artist || '').trim() === activeArtistFilter)
+    : allLives;
   const now = new Date();
   now.setHours(0, 0, 0, 0);
 
@@ -26,6 +40,27 @@ export function renderDashboard() {
   const upcomingLives = lives
     .filter(l => new Date(l.dateEnd || l.dateStart || l.date) >= now)
     .slice(0, 5);
+
+  // アーティストフィルターチップ（絞り込み中は必ず出して「すべて」に戻せるようにする）
+  const artistCounts = new Map();
+  allLives.forEach(l => {
+    const a = (l.artist || '').trim();
+    if (!a) return;
+    artistCounts.set(a, (artistCounts.get(a) || 0) + 1);
+  });
+  const artists = [...artistCounts.entries()].sort((a, b) => b[1] - a[1]);
+  const showArtistChips = artists.length > 1 || (activeArtistFilter !== '' && artists.length >= 1);
+  const artistFilterHtml = showArtistChips ? `
+    <div class="history-filter" style="gap:6px;margin-bottom:4px;">
+      <span style="font-size:11px;color:var(--text-tertiary);align-self:center;flex-shrink:0;">アーティスト:</span>
+      <button class="history-chip${!activeArtistFilter ? ' history-chip-active' : ''}" data-artist-filter="">すべて</button>
+      ${artists.map(([name, count]) => `
+        <button class="history-chip${activeArtistFilter === name ? ' history-chip-active' : ''}" data-artist-filter="${escapeAttr(name)}">
+          ${escapeHtml(name)} <span style="opacity:0.6;font-size:10px;">${count}</span>
+        </button>
+      `).join('')}
+    </div>
+  ` : '';
 
   const viewToggleHtml = `
     <div class="view-mode-toggle">
@@ -109,6 +144,7 @@ export function renderDashboard() {
 
     <!-- Upcoming Lives -->
     <div class="upcoming-section">
+      ${artistFilterHtml}
       <div class="section-header">
         <h2 class="section-title"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-4px;margin-right:6px;"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>直近のライブ</h2>
         ${upcomingLives.length > 0 ? `<a href="#/lives" class="btn btn-secondary btn-sm">すべて見る →</a>` : ''}
@@ -120,12 +156,19 @@ export function renderDashboard() {
       ` : `
         <div class="card empty-state">
           <div class="empty-state-icon"><svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div>
-          <p class="empty-state-text">まだライブが登録されていません</p>
+          <p class="empty-state-text">${activeArtistFilter ? `${escapeHtml(activeArtistFilter)}のライブがありません` : 'まだライブが登録されていません'}</p>
           <a href="#/lives" class="btn btn-primary">ライブを追加する</a>
         </div>
       `}
     </div>
   `;
+
+  content.querySelectorAll('.history-chip[data-artist-filter]').forEach(chip => {
+    chip.addEventListener('click', () => {
+      activeArtistFilter = chip.dataset.artistFilter || '';
+      renderDashboard();
+    });
+  });
 
   if (lives.length > 0 && members.length > 0) {
     // View toggle

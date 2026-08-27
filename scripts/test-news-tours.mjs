@@ -17,6 +17,8 @@ import {
   inferPrefecture,
   looksLikeVenue,
   parseNewsList,
+  dedupeProvisionals,
+  buildFailureDiagnostic,
 } from './lib/news-tours.mjs';
 
 let pass = 0;
@@ -79,6 +81,68 @@ console.log('looksLikeTourAnnouncement');
   falsy('グッズ情報は除外', looksLikeTourAnnouncement('全国ツアーグッズ販売のお知らせ'));
   falsy('中止告知は除外', looksLikeTourAnnouncement('全国ツアー公演中止のお知らせ'));
   falsy('無関係なニュース', looksLikeTourAnnouncement('新シングル発売決定'));
+
+  // --- 実際の CI 実行で誤検出したタイトルの回帰テスト ---
+  falsy('Mobileの会場チャレンジ（「開催記念」「開催中」に反応していた）',
+    looksLikeTourAnnouncement(
+      '【乃木坂46 Mobile】真夏の全国ツアー2026 宮城公演開催記念! 会場チャレンジ 開催中'));
+  falsy('裸の「開催」だけでは通さない',
+    looksLikeTourAnnouncement('ライブ開催にあたってのお願い'));
+  falsy('キャンペーン告知', looksLikeTourAnnouncement('ライブ記念キャンペーン開催中'));
+  falsy('チケット受付中のみ', looksLikeTourAnnouncement('全国ツアー チケット受付中'));
+  truthy('追加公演は拾う', looksLikeTourAnnouncement('全国ツアー2026 追加公演のお知らせ'));
+}
+
+console.log('dedupeProvisionals');
+{
+  const mk = (name, children, dateStart, dateEnd) => ({
+    artist: '乃木坂46', name, children, dateStart, dateEnd,
+  });
+
+  // 実データで起きた重複: 同じ Spicy Sessions が別ニュース2件から生成された
+  const dup = [
+    mk('乃木坂46 Spicy Sessions -THE LIVE- 2026', undefined, '2026-10-20', '2026-10-20'),
+    mk('乃木坂46 Spicy Sessions -THE LIVE- 2026', [{}, {}], '2026-10-20', '2026-10-22'),
+  ];
+  const merged = dedupeProvisionals(dup);
+  check('重複が1件に畳まれる', merged.length, 1);
+  check('公演情報が多い方が残る', merged[0].children.length, 2);
+
+  check('別アーティストは畳まない',
+    dedupeProvisionals([
+      mk('同名ツアー', undefined, '2026-01-01', '2026-01-01'),
+      { ...mk('同名ツアー', undefined, '2026-01-01', '2026-01-01'), artist: '櫻坂46' },
+    ]).length, 2);
+
+  check('表記ゆれも同一視して畳む',
+    dedupeProvisionals([
+      mk('乃木坂46 全国ツアー 2026', undefined, '2026-01-01', '2026-01-01'),
+      mk('乃木坂46　全国ツアー2026', undefined, '2026-01-01', '2026-01-01'),
+    ]).length, 1);
+
+  check('別のツアーは残す',
+    dedupeProvisionals([
+      mk('真夏の全国ツアー2026', undefined, '2026-01-01', '2026-01-01'),
+      mk('6期生全国ツアー2026', undefined, '2026-01-01', '2026-01-01'),
+    ]).length, 2);
+}
+
+console.log('buildFailureDiagnostic');
+{
+  const d = buildFailureDiagnostic(
+    'お知らせ本文です。\n2026年10月26日(月)\nKT Zepp Yokohama\n以上です。');
+  check('日付の検出数', d.dateHits, 1);
+  check('会場らしい行の検出数', d.venueHits, 1);
+  truthy('抜粋に日付周辺が含まれる', d.excerpt.includes('2026年10月26日'));
+  truthy('抜粋は改行を潰して1行になる', !d.excerpt.includes('\n'));
+
+  const empty = buildFailureDiagnostic('日付も会場も無いお知らせです。');
+  check('日付ゼロ', empty.dateHits, 0);
+  check('会場ゼロ', empty.venueHits, 0);
+  truthy('本文が無くても抜粋は文字列', typeof empty.excerpt === 'string');
+
+  const long = buildFailureDiagnostic('あ'.repeat(2000), 120);
+  truthy('maxLen で切り詰められる', long.excerpt.length <= 120);
 }
 
 console.log('extractDatesFromLine');

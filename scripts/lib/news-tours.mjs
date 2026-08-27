@@ -26,11 +26,16 @@ const VENUE_KEYWORDS =
   /(Zepp|ゼップ|アリーナ|ARENA|ドーム|DOME|ホール|HALL|会館|スタジアム|STADIUM|劇場|シアター|THEATER|THEATRE|フォーラム|メッセ|コロシアム|体育館|武道館|プラザ|文化センター|市民会館|県民|サンドーム|ガーデン|Garden|グランド|パーク)/i;
 
 /** ツアー/ライブ告知っぽいニュースかの判定に使う語 */
-const LIVE_WORDS   = /(ツアー|TOUR|LIVE|ライブ|コンサート|CONCERT|公演)/i;
-const DECIDE_WORDS = /(開催決定|開催が決定|公演決定|開催determined|開催)/;
-/** 明らかに日程告知ではないニュース */
+const LIVE_WORDS = /(ツアー|TOUR|LIVE|ライブ|コンサート|CONCERT|公演)/i;
+
+/** 「日程が決まった」ことを示す語。
+ *  裸の「開催」は「開催記念」「開催中」まで拾ってしまうため入れないこと。 */
+const DECIDE_WORDS = /(開催決定|開催が決定|開催することが決定|公演決定|追加公演|開催いたします|開催します)/;
+
+/** 明らかに日程告知ではないニュース。
+ *  Mobile/モバイル等の会員サービス告知、キャンペーン系をここで落とす。 */
 const EXCLUDE_WORDS =
-  /(グッズ|物販|配信決定|放送|生配信|中止|延期|払い戻し|払戻|再販|アーカイブ|ダイジェスト|レポート|写真集|CD|シングル発売|アルバム発売)/;
+  /(グッズ|物販|配信決定|放送|生配信|中止|延期|払い戻し|払戻|再販|アーカイブ|ダイジェスト|レポート|写真集|CD|シングル発売|アルバム発売|Mobile|モバイル|チャレンジ|キャンペーン|抽選|応募|開催記念|開催中|受付中|プレゼント|スタンプ|壁紙)/i;
 
 /**
  * HTML をプレーンテキストへ。改行構造は保持する（告知は行単位で意味を持つため）。
@@ -343,4 +348,46 @@ export function parseNewsList(body, contentType = '', detailPathRe = null) {
     if (title) out.push({ id, title });
   }
   return out;
+}
+
+/**
+ * 暫定エントリ同士の重複を除去する。
+ * 同じツアーが複数のニュース（開催決定 / 先行受付 など）で告知されると
+ * 別々の officialId で二重に入ってしまうため、名前で畳む。
+ * 公演情報が多い方（children が多い / 期間が長い方）を残す。
+ */
+export function dedupeProvisionals(lives) {
+  const byKey = new Map();
+  for (const l of lives) {
+    const key = `${l.artist}::${normalizeName(l.name)}`;
+    const prev = byKey.get(key);
+    if (!prev) { byKey.set(key, l); continue; }
+    if (richness(l) > richness(prev)) byKey.set(key, l);
+  }
+  return [...byKey.values()];
+}
+
+function richness(l) {
+  const childCount = Array.isArray(l.children) ? l.children.length : 0;
+  const span = l.dateStart && l.dateEnd
+    ? (Date.parse(l.dateEnd) - Date.parse(l.dateStart)) / 86400000
+    : 0;
+  return childCount * 1000 + (Number.isFinite(span) ? span : 0);
+}
+
+/**
+ * 抽出に失敗したニュース本文から、診断用の短い抜粋を作る。
+ * 実ページの構造が想定と違う場合に、CI の出力から原因を追えるようにするためのもの。
+ */
+export function buildFailureDiagnostic(text, maxLen = 400) {
+  const t = String(text || '');
+  const dateHits  = (t.match(/(\d{4})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日/g) || []).length;
+  const venueHits = t.split('\n').filter(l => looksLikeVenue(l)).length;
+
+  // 最初の日付の周辺を優先的に抜き出す（無ければ先頭から）
+  const at = t.search(/\d{4}\s*年\s*\d{1,2}\s*月/);
+  const from = at >= 0 ? Math.max(0, at - 80) : 0;
+  const excerpt = t.slice(from, from + maxLen).replace(/\n+/g, ' / ').trim();
+
+  return { dateHits, venueHits, excerpt };
 }

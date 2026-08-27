@@ -23,6 +23,8 @@ import {
   extractPerformances,
   buildProvisionalLive,
   dropSupersededProvisionals,
+  dedupeProvisionals,
+  buildFailureDiagnostic,
   parseNewsList,
 } from './lib/news-tours.mjs';
 
@@ -812,9 +814,15 @@ async function scrapeNewsTours(src, scrapedAt) {
     const url = src.news.detail(it.id);
     try {
       const { body } = await fetchResource(url, { referer: src.referer });
-      const perfs = extractPerformances(htmlToText(body)).filter(p => p.venue);
+      const text  = htmlToText(body);
+      const perfs = extractPerformances(text).filter(p => p.venue);
       if (perfs.length === 0) {
-        diag.notes.push(`${it.id}: no dated performances with venue`);
+        // 実ページの構造が想定と違う可能性が高いので、原因追跡用に抜粋を残す
+        const d = buildFailureDiagnostic(text);
+        diag.notes.push(
+          `${it.id}: no dated performances with venue ` +
+          `(dates=${d.dateHits}, venues=${d.venueHits}) | title="${it.title.slice(0, 60)}" | ${d.excerpt}`,
+        );
         continue;
       }
       const live = buildProvisionalLive({
@@ -893,9 +901,13 @@ async function main() {
     return;
   }
 
-  // 正式データに同名の公演があれば暫定エントリは捨てる（重複防止）
-  const provisional = dropSupersededProvisionals(allLives, provisionalRaw);
-  const dropped = provisionalRaw.length - provisional.length;
+  // まず暫定同士の重複を畳み、その後に正式データと重複するものを捨てる
+  const provisionalUnique = dedupeProvisionals(provisionalRaw);
+  const dupDropped = provisionalRaw.length - provisionalUnique.length;
+  if (dupDropped > 0) console.log(`Merged ${dupDropped} duplicate provisional entries.`);
+
+  const provisional = dropSupersededProvisionals(allLives, provisionalUnique);
+  const dropped = provisionalUnique.length - provisional.length;
   if (dropped > 0) console.log(`Dropped ${dropped} provisional entries superseded by official data.`);
   if (provisional.length > 0) {
     console.log(`Adding ${provisional.length} provisional (news-derived) entries.`);
