@@ -496,7 +496,7 @@ textarea {
 .page-content {
   flex: 1;
   padding: var(--space-xl);
-  padding-bottom: calc(var(--space-xl) + 56px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(var(--space-xl) + 92px + env(safe-area-inset-bottom, 0px));
   animation: fadeIn var(--transition-base) ease-out;
   max-width: 100%;
   overflow-x: hidden;
@@ -2247,7 +2247,7 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
 
   .page-content {
     padding: var(--space-md);
-    padding-bottom: calc(var(--space-md) + 56px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(var(--space-md) + 92px + env(safe-area-inset-bottom, 0px));
   }
 
   /* iOS zoom prevention: inputs below 16px trigger auto-zoom on focus */
@@ -2308,7 +2308,7 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
   .toast-container {
     left: var(--space-md);
     right: var(--space-md);
-    bottom: calc(var(--space-md) + 56px + env(safe-area-inset-bottom, 0px));
+    bottom: calc(var(--space-md) + 92px + env(safe-area-inset-bottom, 0px));
   }
 
   /* Allow live-meta to wrap on narrow screens */
@@ -2445,7 +2445,7 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
 /* タブバーの色。アクセントを変えたい時はここ 1 行だけ差し替える。
    例: Apple Music と同じ赤にするなら #FA2D48 */
 :root {
-  --tabbar-bg: rgba(22, 22, 26, 0.82);
+  --tabbar-bg: rgba(30, 30, 33, 0.93);   /* LINE 実測 rgb(33,33,33) 相当 */
   --tabbar-accent: #a78bfa;             /* アプリのブランド紫 */
   --tabbar-inactive: rgba(255, 255, 255, 0.72);
 }
@@ -2458,12 +2458,16 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
 .bottom-nav {
   position: fixed;
   /* 画面下にしっかり寄せつつ home indicator と被らない位置 */
-  bottom: calc(10px + env(safe-area-inset-bottom, 8px));
-  left: 10px;
-  right: 10px;
+  /* iOS 26 のシステムタブバー実測値に合わせる
+     (GitHub / LINE を実機スクショから計測: 左右20pt / 高さ60pt / 下端から20pt)
+     セーフエリアを足すと実機で 44pt も浮いてしまい別物に見えるため足さない。
+     ホームインジケータはこの 20pt の帯に収まる。 */
+  bottom: 20px;
+  left: 20px;
+  right: 20px;
   max-width: 480px;
   margin: 0 auto;
-  height: 64px;
+  height: 60px;
 
   display: flex;
   align-items: center;
@@ -2484,7 +2488,7 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
   backdrop-filter: blur(30px) saturate(180%);
   -webkit-backdrop-filter: blur(30px) saturate(180%);
 
-  border-radius: 34px;
+  border-radius: 30px;   /* 高さ60pt のカプセル */
   border: none;
 
   /* 上端に光を乗せ、縁を薄く光らせてガラスの厚みを出す */
@@ -2514,9 +2518,9 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
   top: 50%;
   left: 0;
   width: 0;
-  height: 52px;
+  height: 53px;          /* バー60pt の 88% */
   transform: translateY(-50%);
-  border-radius: 20px;
+  border-radius: 18px;
   /* iOS 26 のタブバー同様、選択中のチップははっきり明るく見せる */
   background: rgba(255, 255, 255, 0.16);
   box-shadow:
@@ -2542,7 +2546,7 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 62px;
+  height: 58px;
   color: var(--tabbar-inactive);
   text-decoration: none;
   position: relative;
@@ -2561,16 +2565,35 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
   justify-content: center;
   gap: 3px;
   padding: 0 8px;
-  height: 52px;
+  height: 53px;
   width: 100%;
-  border-radius: 22px;
+  border-radius: 18px;
   border: none;
   background: transparent;
 }
 
+.tab-icon {
+  display: block;
+  position: relative;
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+}
+
+.tab-icon svg {
+  position: absolute;
+  inset: 0;
+  display: block;
+  transition: opacity 0.18s ease;
+}
+
+/* 非選択はアウトライン、選択中は塗りつぶし（LINE / GitHub と同じ挙動） */
+.tab-icon-filled { opacity: 0; }
+.bottom-nav-item.active .tab-icon-outline { opacity: 0; }
+.bottom-nav-item.active .tab-icon-filled  { opacity: 1; }
+
 .bottom-nav-item svg {
   flex-shrink: 0;
-  transition: color 0.18s ease, filter 0.18s ease, transform 0.12s ease;
 }
 
 /* タップ中のシャキッとした押し込み感（Apple Music ライク） */
@@ -2626,16 +2649,16 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
 
 /* content padding adjustment because nav is fixed at bottom */
 .page-content {
-  padding-bottom: calc(var(--space-xl) + 80px + env(safe-area-inset-bottom, 0px)) !important;
+  padding-bottom: calc(var(--space-xl) + 92px + env(safe-area-inset-bottom, 0px)) !important;
 }
 
 @media (max-width: 768px) {
   .page-content {
-    padding-bottom: calc(var(--space-md) + 80px + env(safe-area-inset-bottom, 0px)) !important;
+    padding-bottom: calc(var(--space-md) + 92px + env(safe-area-inset-bottom, 0px)) !important;
   }
 
   .toast-container {
-    bottom: calc(var(--space-md) + 80px + env(safe-area-inset-bottom, 0px));
+    bottom: calc(var(--space-md) + 92px + env(safe-area-inset-bottom, 0px));
   }
 }
 
