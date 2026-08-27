@@ -25,6 +25,9 @@ const PREFECTURES = [
 const VENUE_KEYWORDS =
   /(Zepp|ゼップ|アリーナ|ARENA|ドーム|DOME|ホール|HALL|会館|スタジアム|STADIUM|劇場|シアター|THEATER|THEATRE|フォーラム|メッセ|コロシアム|体育館|武道館|プラザ|文化センター|市民会館|県民|サンドーム|ガーデン|Garden|グランド|パーク)/i;
 
+/** 公演日ではなく販売・受付の日付が書かれている行。公演として拾わない。 */
+const TICKET_LINE = /(チケット|受付|発売|先行|抽選|申込|申し込み|一般販売|予約)/;
+
 /** ツアー/ライブ告知っぽいニュースかの判定に使う語 */
 const LIVE_WORDS = /(ツアー|TOUR|LIVE|ライブ|コンサート|CONCERT|公演)/i;
 
@@ -109,6 +112,17 @@ export function extractDatesFromLine(line, carry = {}) {
   let year = carry.year || null;
   let month = carry.month || null;
 
+  // 「2026年10月から12月にかけて」のように日を伴わない年月表記でも
+  // 年/月を確定させておく。これをしないと後続の「10月26日」「26日」が
+  // 年月未確定として全て捨てられる（6期生ツアーの告知がこの形式だった）。
+  const ym = s.match(/(\d{4})\s*年/);
+  if (ym) year = parseInt(ym[1], 10);
+  const mo = s.match(/(\d{1,2})\s*月/);
+  if (mo) {
+    const m2 = parseInt(mo[1], 10);
+    if (m2 >= 1 && m2 <= 12) month = m2;
+  }
+
   const re = /(?:(\d{4})\s*年\s*)?(?:(\d{1,2})\s*月\s*)?(\d{1,2})\s*日/g;
   let m;
   while ((m = re.exec(s)) !== null) {
@@ -141,6 +155,8 @@ export function extractPerformances(text) {
   const out = [];
   let carry = {};
   let pendingPref = null;
+  // 既に別の公演の会場として使った行。前方探索で横取りしないよう記録する。
+  const usedVenueLines = new Set();
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
@@ -152,16 +168,34 @@ export function extractPerformances(text) {
     const { dates, carry: nextCarry } = extractDatesFromLine(line, carry);
     carry = nextCarry;
     if (dates.length === 0) continue;
+    // 「チケット先行は8月30日(日)より」等は公演日ではない
+    if (TICKET_LINE.test(line)) continue;
 
-    // 会場は同じ行、無ければ後続数行から探す
+    // 会場は同じ行 → 後続数行 → 直前数行 の順に探す。
+    // 「会場:東京体育館 / 日程:2026年9月29日」のように会場が先に来る
+    // 告知フォーマットがあるため、前方も見る必要がある。
     let venue = looksLikeVenue(line) ? line.trim() : null;
     if (!venue) {
       for (let j = i + 1; j < Math.min(i + 4, lines.length); j++) {
         const cand = lines[j];
         if (!cand.trim()) continue;
-        // 次の日付行に達したら打ち切り
         if (extractDatesFromLine(cand, carry).dates.length > 0) break;
-        if (looksLikeVenue(cand)) { venue = cand.trim(); break; }
+        if (looksLikeVenue(cand) && !usedVenueLines.has(j)) {
+          venue = cand.trim(); usedVenueLines.add(j); break;
+        }
+      }
+    }
+    if (!venue) {
+      for (let j = i - 1; j >= Math.max(0, i - 3); j--) {
+        const cand = lines[j];
+        if (!cand.trim()) continue;
+        // 別の日付行に達したら、そこから上は別公演なので打ち切り
+        if (extractDatesFromLine(cand, {}).dates.length > 0) break;
+        // 既に他の公演の会場として使われた行は横取りしない
+        if (usedVenueLines.has(j)) break;
+        if (looksLikeVenue(cand)) {
+          venue = cand.trim(); usedVenueLines.add(j); break;
+        }
       }
     }
 
@@ -379,14 +413,19 @@ function richness(l) {
  * 抽出に失敗したニュース本文から、診断用の短い抜粋を作る。
  * 実ページの構造が想定と違う場合に、CI の出力から原因を追えるようにするためのもの。
  */
-export function buildFailureDiagnostic(text, maxLen = 400) {
+export function buildFailureDiagnostic(text, maxLen = 900) {
   const t = String(text || '');
   const dateHits  = (t.match(/(\d{4})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日/g) || []).length;
   const venueHits = t.split('\n').filter(l => looksLikeVenue(l)).length;
 
-  // 最初の日付の周辺を優先的に抜き出す（無ければ先頭から）
-  const at = t.search(/\d{4}\s*年\s*\d{1,2}\s*月/);
-  const from = at >= 0 ? Math.max(0, at - 80) : 0;
+  // 日付があればその周辺、無ければ最初の会場らしい行の周辺を抜き出す。
+  // 日程ブロックは会場名の近くにあるため、原因調査にはそちらが有用。
+  let at = t.search(/\d{4}\s*年\s*\d{1,2}\s*月/);
+  if (at < 0) {
+    const vLine = t.split('\n').find(l => looksLikeVenue(l));
+    if (vLine) at = t.indexOf(vLine);
+  }
+  const from = at >= 0 ? Math.max(0, at - 120) : 0;
   const excerpt = t.slice(from, from + maxLen).replace(/\n+/g, ' / ').trim();
 
   return { dateHits, venueHits, excerpt };

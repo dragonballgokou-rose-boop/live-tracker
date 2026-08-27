@@ -189,6 +189,44 @@ console.log('extractPerformances (6期生ツアー fixture)');
   check('福岡公演の会場', withVenue[4].venue, 'Zepp Fukuoka');
 }
 
+console.log('実データ由来のフォーマット (CI診断で判明した本文)');
+{
+  // --- 42ndSGアンダーライブ: 会場が日付より「前」に来る形式 ---
+  const under = [
+    '▼乃木坂46 42ndSGアンダーライブ',
+    '会場:東京体育館',
+    '日程:2026年9月29日(火)、9月30日(水)',
+    'チケット:8月9日(日)より先行受付予定',
+  ].join('\n');
+  const p1 = extractPerformances(under).filter(p => p.venue);
+  check('会場が先に来ても拾える', p1.length, 1);
+  check('会場（接頭辞「会場:」は除去される）', p1[0].venue, '東京体育館');
+  check('2日程とも取れる', p1[0].dates, ['2026-09-29', '2026-09-30']);
+
+  // --- 6期生ツアー: 年月だけの前置き → 以降は「10月26日」形式 ---
+  const gen6 = [
+    '乃木坂46の6期生11名によるライブツアー「6期生全国ツアー2026」の開催が決定いたしました!',
+    '2026年10月から12月にかけて、神奈川・北海道・大阪・愛知・福岡の全国5か所を巡ります!',
+    '■6期生全国ツアー2026',
+    '【神奈川公演】',
+    '10月26日(月)・27日(火)',
+    'KT Zepp Yokohama',
+    '【北海道公演】',
+    '11月10日(火)・11日(水)',
+    'Zepp Sapporo',
+    '【福岡公演】',
+    '12月1日(火)・2日(水)',
+    'Zepp Fukuoka',
+  ].join('\n');
+  const p2 = extractPerformances(gen6).filter(p => p.venue);
+  check('年月だけの前置きから年を引き継いで拾える', p2.length, 3);
+  check('神奈川の日程', p2[0].dates, ['2026-10-26', '2026-10-27']);
+  check('神奈川の会場', p2[0].venue, 'KT Zepp Yokohama');
+  check('北海道は11月に繰り上がる', p2[1].dates, ['2026-11-10', '2026-11-11']);
+  check('福岡は12月', p2[2].dates, ['2026-12-01', '2026-12-02']);
+  check('都道府県も取れる', p2[2].prefecture, '福岡県');
+}
+
 console.log('extractLiveName');
 {
   check('「」内を取り出し告知語尾を除去',
