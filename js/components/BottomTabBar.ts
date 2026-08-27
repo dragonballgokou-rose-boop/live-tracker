@@ -5,7 +5,7 @@
 //   - 画面下端から浮いた角丸ピル（ガラス）
 //   - アクティブタブの背後を白いピルが滑って移動する (.tab-indicator)
 //   - アイコンは選択/非選択とも塗りつぶし。区別は色だけで付ける
-//   - 下スクロールでバーが縮み、上スクロールで元に戻る (iOS 26 の minimize)
+//   - スクロールしても常に表示したままにする（消えない）
 //   - 見た目は index.css 側で定義
 // ============================================
 
@@ -68,10 +68,6 @@ export default class BottomTabBar {
   private _indicator: HTMLElement | null = null;
   private _items: Map<string, HTMLAnchorElement> = new Map();
 
-  /** スクロール追従 (minimize) 用 */
-  private _lastScrollY = 0;
-  private _minimized = false;
-  private _scrollTicking = false;
 
   constructor({ container, activeTab = 'top', onTabChange }: BottomTabBarOptions) {
     this.container   = container;
@@ -137,46 +133,6 @@ export default class BottomTabBar {
 
     requestAnimationFrame(() => this._placeIndicator(false));
     window.addEventListener('resize', () => this._placeIndicator(false));
-    this._initScrollMinimize();
-  }
-
-  /**
-   * iOS 26 のタブバー同様、下スクロールで縮めて上スクロールで戻す。
-   * rAF で間引きして scroll ハンドラを軽く保つ。
-   */
-  private _initScrollMinimize(): void {
-    const THRESHOLD = 6;   // これ未満の揺れは無視（慣性スクロールのブレ対策）
-    const TOP_ZONE  = 40;  // 最上部付近では常に開く
-
-    const onScroll = () => {
-      if (this._scrollTicking) return;
-      this._scrollTicking = true;
-      requestAnimationFrame(() => {
-        this._scrollTicking = false;
-        const y = window.scrollY || document.documentElement.scrollTop || 0;
-        const dy = y - this._lastScrollY;
-
-        if (y <= TOP_ZONE) {
-          this._setMinimized(false);
-        } else if (dy > THRESHOLD) {
-          this._setMinimized(true);   // 下スクロール → 縮める
-        } else if (dy < -THRESHOLD) {
-          this._setMinimized(false);  // 上スクロール → 戻す
-        }
-        // ラバーバンドで負値になっても基準がずれないようクランプ
-        this._lastScrollY = Math.max(0, y);
-      });
-    };
-
-    window.addEventListener('scroll', onScroll, { passive: true });
-  }
-
-  private _setMinimized(next: boolean): void {
-    if (this._minimized === next || !this._nav) return;
-    this._minimized = next;
-    this._nav.classList.toggle('is-minimized', next);
-    // 高さが変わるとチップの位置もずれるため貼り直す
-    requestAnimationFrame(() => this._placeIndicator(true));
   }
 
   private _updateActive(): void {

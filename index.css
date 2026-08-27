@@ -129,6 +129,10 @@ html {
   overflow-x: hidden;
   max-width: 100vw;
   background-color: var(--bg-primary);
+  /* iOS で画面を持ち上げた時のラバーバンドを抑える。
+     オーバースクロール中に position:fixed のタブバーがページと一緒に
+     流れて画面外に消えてしまうのを防ぐ。 */
+  overscroll-behavior-y: none;
 }
 
 body {
@@ -138,6 +142,7 @@ body {
   min-height: 100vh;
   line-height: 1.6;
   overflow-x: hidden;
+  overscroll-behavior-y: none;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -2465,7 +2470,9 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
   gap: 6px;
   padding: 0 8px;
 
-  /* GPU 層に固定して rubber-band でも安定 */
+  /* GPU 層に固定して rubber-band でも安定させる。
+     iOS で画面を持ち上げた（オーバースクロールした）時に position:fixed が
+     ページと一緒に流れてタブバーが見えなくなるのを防ぐ。 */
   transform: translateZ(0);
   -webkit-transform: translate3d(0, 0, 0);
   will-change: transform;
@@ -2492,43 +2499,12 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
   overflow: hidden;
   isolation: isolate;
 
-  /* minimize（下スクロールで縮む）用 */
-  transition:
-    height 0.32s cubic-bezier(0.32, 0.72, 0.26, 1),
-    box-shadow 0.32s ease;
 }
 
 /* 物理ベースの Liquid Glass (#liquid-glass-nav) はここでは使わない。
    backdrop-filter のチェーンに url() を混ぜると Chrome では blur() が無効化され、
    バーの背後のテキストがぼけずに読めてしまい可読性が壊れる（実測で確認）。
    ガラス感は上の blur(30px) + saturate(180%) と、下のエッジハイライトで出す。 */
-
-/* ── minimize 状態 ── 下スクロール中はバーを縮めてコンテンツを広く見せる */
-.bottom-nav.is-minimized {
-  height: 46px;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.05),
-    0 4px 14px rgba(0, 0, 0, 0.34);
-}
-
-.bottom-nav.is-minimized .nav-label {
-  opacity: 0;
-  max-height: 0;
-  margin-top: -3px;
-}
-
-.bottom-nav.is-minimized .bottom-nav-item svg {
-  transform: scale(0.88);
-}
-
-.bottom-nav.is-minimized .tab-indicator {
-  height: 36px;
-  border-radius: 15px;
-}
-
-.bottom-nav::after { content: none; }
-
-/* Apple Music 風の flat nav では SVG liquid-glass を適用しない */
 
 /* Apple Music 風スライドインジケーター
    アクティブタブの後ろに柔らかいピル背景がスプリング移動する。
@@ -2609,12 +2585,6 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
   letter-spacing: 0.02em;
   line-height: 1;
   white-space: nowrap;
-  overflow: hidden;
-  max-height: 12px;
-  transition:
-    opacity 0.22s ease,
-    max-height 0.32s cubic-bezier(0.32, 0.72, 0.26, 1),
-    margin-top 0.32s cubic-bezier(0.32, 0.72, 0.26, 1);
 }
 
 /* 選択時にアイコンを一度だけ弾ませる */
@@ -2630,9 +2600,7 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
 
 /* 動きを減らす設定の端末では、縮小・ポップともアニメーションしない */
 @media (prefers-reduced-motion: reduce) {
-  .bottom-nav,
   .tab-indicator,
-  .nav-label,
   .bottom-nav-item svg { transition: none; }
   .tab-icon-pop { animation: none; }
 }
