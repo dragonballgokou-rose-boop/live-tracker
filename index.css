@@ -2480,14 +2480,50 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
   border-radius: 34px;
   border: none;
 
+  /* 上端に光を乗せ、縁を薄く光らせてガラスの厚みを出す */
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.10),
+    inset 0 0 0 0.5px rgba(255, 255, 255, 0.07),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.22),
     0 6px 22px rgba(0, 0, 0, 0.40),
     0 1px 3px rgba(0, 0, 0, 0.22);
 
   z-index: 101;
   overflow: hidden;
   isolation: isolate;
+
+  /* minimize（下スクロールで縮む）用 */
+  transition:
+    height 0.32s cubic-bezier(0.32, 0.72, 0.26, 1),
+    box-shadow 0.32s ease;
+}
+
+/* 物理ベースの Liquid Glass (#liquid-glass-nav) はここでは使わない。
+   backdrop-filter のチェーンに url() を混ぜると Chrome では blur() が無効化され、
+   バーの背後のテキストがぼけずに読めてしまい可読性が壊れる（実測で確認）。
+   ガラス感は上の blur(30px) + saturate(180%) と、下のエッジハイライトで出す。 */
+
+/* ── minimize 状態 ── 下スクロール中はバーを縮めてコンテンツを広く見せる */
+.bottom-nav.is-minimized {
+  height: 46px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 4px 14px rgba(0, 0, 0, 0.34);
+}
+
+.bottom-nav.is-minimized .nav-label {
+  opacity: 0;
+  max-height: 0;
+  margin-top: -3px;
+}
+
+.bottom-nav.is-minimized .bottom-nav-item svg {
+  transform: scale(0.88);
+}
+
+.bottom-nav.is-minimized .tab-indicator {
+  height: 36px;
+  border-radius: 15px;
 }
 
 .bottom-nav::after { content: none; }
@@ -2512,10 +2548,12 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
     inset 0 1px 0 rgba(255, 255, 255, 0.14);
   pointer-events: none;
   z-index: 0;
-  /* 選択チップのスプリング移動 */
+  /* 選択チップのスプリング移動（わずかにオーバーシュートさせる） */
   transition:
-    left  0.42s cubic-bezier(0.32, 0.72, 0.26, 1),
-    width 0.42s cubic-bezier(0.32, 0.72, 0.26, 1);
+    left   0.44s cubic-bezier(0.34, 1.28, 0.42, 1),
+    width  0.44s cubic-bezier(0.34, 1.28, 0.42, 1),
+    height 0.32s cubic-bezier(0.32, 0.72, 0.26, 1),
+    border-radius 0.32s ease;
 }
 
 .tab-indicator.no-transition {
@@ -2571,6 +2609,32 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
   letter-spacing: 0.02em;
   line-height: 1;
   white-space: nowrap;
+  overflow: hidden;
+  max-height: 12px;
+  transition:
+    opacity 0.22s ease,
+    max-height 0.32s cubic-bezier(0.32, 0.72, 0.26, 1),
+    margin-top 0.32s cubic-bezier(0.32, 0.72, 0.26, 1);
+}
+
+/* 選択時にアイコンを一度だけ弾ませる */
+@keyframes tab-icon-pop {
+  0%   { transform: scale(1); }
+  38%  { transform: scale(1.22); }
+  100% { transform: scale(1); }
+}
+
+.tab-icon-pop {
+  animation: tab-icon-pop 0.34s cubic-bezier(0.34, 1.36, 0.32, 1);
+}
+
+/* 動きを減らす設定の端末では、縮小・ポップともアニメーションしない */
+@media (prefers-reduced-motion: reduce) {
+  .bottom-nav,
+  .tab-indicator,
+  .nav-label,
+  .bottom-nav-item svg { transition: none; }
+  .tab-icon-pop { animation: none; }
 }
 
 .bottom-nav-item:hover {
