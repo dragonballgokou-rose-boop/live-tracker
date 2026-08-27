@@ -2520,7 +2520,10 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
   width: 0;
   height: 53px;          /* バー60pt の 88% */
   transform: translateY(-50%);
-  border-radius: 18px;
+  /* 角丸ではなくカプセル（楕円）。Apple Music の実測でも
+     上端6%の位置での角の食い込みが高さの24%＝半径が高さの半分だった。
+     バー自体もカプセルなので、端のタブを選んだ時に形が馴染む。 */
+  border-radius: 999px;
   /* iOS 26 のタブバー同様、選択中のチップははっきり明るく見せる */
   background: rgba(255, 255, 255, 0.16);
   box-shadow:
@@ -2567,7 +2570,7 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
   padding: 0 8px;
   height: 53px;
   width: 100%;
-  border-radius: 18px;
+  border-radius: 999px;
   border: none;
   background: transparent;
 }
