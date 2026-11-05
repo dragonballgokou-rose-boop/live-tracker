@@ -1,9 +1,9 @@
 {
   "version": "1",
-  "updatedAt": "2026-11-04T01:16:40.138Z",
+  "updatedAt": "2026-11-05T01:26:06.193Z",
   "sources": {
-    "nogi": "https://www.nogizaka46.com/s/n46/api/list/member?callback=res&ima=0000 (via api)",
-    "saku": "https://sakurazaka46.com/s/s46/search/artist?ima=0000 (via html)"
+    "saku": "https://sakurazaka46.com/s/s46/search/artist?ima=0000 (via html)",
+    "nogi": "https://www.nogizaka46.com/s/n46/api/list/member?callback=res&ima=0000 (via api)"
   },
   "members": [
     {
@@ -1682,6 +1682,13 @@
       "graduated": false,
       "detailUrl": "https://sakurazaka46.com/s/s46/artist/78",
       "blogUrl": "https://sakurazaka46.com/s/s46/diary/MEMBER/list?ima=0000&ct=78"
+    }
+  ],
+  "errors": [
+    {
+      "group": "nogi",
+      "artist": "乃木坂46",
+      "error": "failed to scrape nogi"
     }
   ]
 }
