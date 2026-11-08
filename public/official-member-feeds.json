@@ -1,6 +1,6 @@
 {
   "version": "1",
-  "updatedAt": "2026-11-08T05:00:52.607Z",
+  "updatedAt": "2026-11-08T11:52:56.824Z",
   "feeds": {
     "nogi:36749": {
       "blog": [],
@@ -1075,7 +1075,7 @@
       ],
       "schedule": [],
       "errors": [
-        "schedule: /s/s46/api/list/schedule: HTTP 404 | /s/s46/api/list/schedule: HTTP 404 | /s/s46/artist/54: 0 items (sched-html, 35458b) | /s/s46/api/list/schedule: HTTP 404"
+        "schedule: /s/s46/api/list/schedule: HTTP 404 | /s/s46/api/list/schedule: HTTP 404 | /s/s46/artist/54: 0 items (sched-html, 35428b) | /s/s46/api/list/schedule: HTTP 404"
       ],
       "profile": {
         "birthday": "2000-04-18",
