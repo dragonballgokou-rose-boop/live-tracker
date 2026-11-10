@@ -1,6 +1,6 @@
 {
   "version": "1",
-  "updatedAt": "2026-11-09T00:23:33.381Z",
+  "updatedAt": "2026-11-10T03:04:55.949Z",
   "sources": {
     "nogizaka46": "https://www.nogizaka46.com/s/n46/api/list/live",
     "sakurazaka46": "https://sakurazaka46.com/s/s46/api/list/live"
@@ -38,7 +38,7 @@
       "dateEnd": "2020-12-08",
       "eventType": "live",
       "sourceUrl": "https://sakurazaka46.com/s/s46/diary/live_page/list?ima=0000",
-      "scrapedAt": "2026-11-09T00:23:31.945Z"
+      "scrapedAt": "2026-11-10T03:04:54.520Z"
     },
     {
       "officialId": "saku-2021-06-16-BACKS-LIVE",
@@ -50,7 +50,7 @@
       "dateEnd": "2021-06-16",
       "eventType": "live",
       "sourceUrl": "https://sakurazaka46.com/s/s46/diary/live_page/list?ima=0000",
-      "scrapedAt": "2026-11-09T00:23:31.945Z"
+      "scrapedAt": "2026-11-10T03:04:54.520Z"
     },
     {
       "officialId": "saku-2021-07-09-1st-TOUR-2021",
@@ -62,7 +62,7 @@
       "dateEnd": "2021-10-31",
       "eventType": "live",
       "sourceUrl": "https://sakurazaka46.com/s/s46/diary/live_page/list?ima=0000",
-      "scrapedAt": "2026-11-09T00:23:31.945Z"
+      "scrapedAt": "2026-11-10T03:04:54.520Z"
     },
     {
       "officialId": "saku-2021-12-09-1st-YEAR-ANNIVERSARY-LIVE",
@@ -74,7 +74,7 @@
       "dateEnd": "2021-12-10",
       "eventType": "live",
       "sourceUrl": "https://sakurazaka46.com/s/s46/diary/live_page/list?ima=0000",
-      "scrapedAt": "2026-11-09T00:23:31.945Z"
+      "scrapedAt": "2026-11-10T03:04:54.520Z"
     },
     {
       "officialId": "saku-2022-01-08-3rd-Single-BACKS-LIVE",
@@ -86,7 +86,7 @@
       "dateEnd": "2022-01-09",
       "eventType": "live",
       "sourceUrl": "https://sakurazaka46.com/s/s46/diary/live_page/list?ima=0000",
-      "scrapedAt": "2026-11-09T00:23:31.945Z"
+      "scrapedAt": "2026-11-10T03:04:54.520Z"
     },
     {
       "officialId": "saku-2022-05-21-渡邉理佐-卒業コンサート",
@@ -98,7 +98,7 @@
       "dateEnd": "2022-05-22",
       "eventType": "live",
       "sourceUrl": "https://sakurazaka46.com/s/s46/diary/live_page/list?ima=0000",
-      "scrapedAt": "2026-11-09T00:23:31.945Z"
+      "scrapedAt": "2026-11-10T03:04:54.520Z"
     },
     {
       "officialId": "saku-2022-08-19-2nd-TOUR-2022As-you-know",
@@ -110,7 +110,7 @@
       "dateEnd": "2022-11-09",
       "eventType": "live",
       "sourceUrl": "https://sakurazaka46.com/s/s46/diary/live_page/list?ima=0000",
-      "scrapedAt": "2026-11-09T00:23:31.945Z"
+      "scrapedAt": "2026-11-10T03:04:54.520Z"
     },
     {
       "officialId": "saku-2022-12-08-2nd-YEAR-ANNIVERSARY-Buddies感謝祭",
@@ -122,7 +122,7 @@
       "dateEnd": "2022-12-09",
       "eventType": "event",
       "sourceUrl": "https://sakurazaka46.com/s/s46/diary/live_page/list?ima=0000",
-      "scrapedAt": "2026-11-09T00:23:31.945Z"
+      "scrapedAt": "2026-11-10T03:04:54.520Z"
     },
     {
       "officialId": "saku-2023-03-04-おもてなし会",
@@ -134,7 +134,7 @@
       "dateEnd": "2023-03-05",
       "eventType": "live",
       "sourceUrl": "https://sakurazaka46.com/s/s46/diary/live_page/list?ima=0000",
-      "scrapedAt": "2026-11-09T00:23:31.945Z"
+      "scrapedAt": "2026-11-10T03:04:54.520Z"
     },
     {
       "officialId": "saku-2023-04-12-3rd-TOUR-2023",
@@ -146,7 +146,7 @@
       "dateEnd": "2023-06-01",
       "eventType": "live",
       "sourceUrl": "https://sakurazaka46.com/s/s46/diary/live_page/list?ima=0000",
-      "scrapedAt": "2026-11-09T00:23:31.945Z"
+      "scrapedAt": "2026-11-10T03:04:54.520Z"
     },
     {
       "officialId": "saku-2023-11-06-新参者-LIVE-at-THEATER-MILANO-Za",
@@ -158,7 +158,7 @@
       "dateEnd": "2023-12-02",
       "eventType": "live",
       "sourceUrl": "https://sakurazaka46.com/s/s46/diary/live_page/list?ima=0000",
-      "scrapedAt": "2026-11-09T00:23:31.945Z"
+      "scrapedAt": "2026-11-10T03:04:54.520Z"
     },
     {
       "officialId": "saku-2023-11-25-3rd-YEAR-ANNIVERSARY-LIVE",
@@ -170,7 +170,7 @@
       "dateEnd": "2023-11-26",
       "eventType": "live",
       "sourceUrl": "https://sakurazaka46.com/s/s46/diary/live_page/list?ima=0000",
-      "scrapedAt": "2026-11-09T00:23:31.945Z"
+      "scrapedAt": "2026-11-10T03:04:54.520Z"
     },
     {
       "officialId": "saku-2024-01-15-7th-Single-BACKS-LIVE",
@@ -182,7 +182,7 @@
       "dateEnd": "2024-01-23",
       "eventType": "live",
       "sourceUrl": "https://sakurazaka46.com/s/s46/diary/live_page/list?ima=0000",
-      "scrapedAt": "2026-11-09T00:23:31.945Z"
+      "scrapedAt": "2026-11-10T03:04:54.520Z"
     },
     {
       "officialId": "saku-2024-01-31-小林由依-卒業コンサート",
@@ -194,7 +194,7 @@
       "dateEnd": "2024-02-01",
       "eventType": "live",
       "sourceUrl": "https://sakurazaka46.com/s/s46/diary/live_page/list?ima=0000",
-      "scrapedAt": "2026-11-09T00:23:31.945Z"
+      "scrapedAt": "2026-11-10T03:04:54.520Z"
     },
     {
       "officialId": "saku-2024-03-02-4th-ARENA-TOUR-2024-新櫻前線--Go-on-back-",
@@ -206,7 +206,7 @@
       "dateEnd": "2024-06-16",
       "eventType": "live",
       "sourceUrl": "https://sakurazaka46.com/s/s46/diary/live_page/list?ima=0000",
-      "scrapedAt": "2026-11-09T00:23:31.945Z"
+      "scrapedAt": "2026-11-10T03:04:54.520Z"
     },
     {
       "officialId": "saku-2024-05-09-8th-Single-BACKS-LIVE",
@@ -218,7 +218,7 @@
       "dateEnd": "2024-05-10",
       "eventType": "live",
       "sourceUrl": "https://sakurazaka46.com/s/s46/diary/live_page/list?ima=0000",
-      "scrapedAt": "2026-11-09T00:23:31.945Z"
+      "scrapedAt": "2026-11-10T03:04:54.520Z"
     },
     {
       "officialId": "saku-2024-08-23-9th-Single-BACKS-LIVE",
@@ -230,7 +230,7 @@
       "dateEnd": "2024-08-25",
       "eventType": "live",
       "sourceUrl": "https://sakurazaka46.com/s/s46/diary/live_page/list?ima=0000",
-      "scrapedAt": "2026-11-09T00:23:31.945Z"
+      "scrapedAt": "2026-11-10T03:04:54.520Z"
     },
     {
       "officialId": "saku-2024-09-12-三期生ライブ",
@@ -242,7 +242,7 @@
       "dateEnd": "2024-09-13",
       "eventType": "live",
       "sourceUrl": "https://sakurazaka46.com/s/s46/diary/live_page/list?ima=0000",
-      "scrapedAt": "2026-11-09T00:23:31.945Z"
+      "scrapedAt": "2026-11-10T03:04:54.520Z"
     },
     {
       "officialId": "saku-2024-11-23-4th-YEAR-ANNIVERSARY-LIVE",
@@ -254,7 +254,7 @@
       "dateEnd": "2024-11-24",
       "eventType": "live",
       "sourceUrl": "https://sakurazaka46.com/s/s46/diary/live_page/list?ima=0000",
-      "scrapedAt": "2026-11-09T00:23:31.945Z"
+      "scrapedAt": "2026-11-10T03:04:54.520Z"
     },
     {
       "officialId": "saku-2024-12-03-10th-Single-BACKS-LIVE",
@@ -266,7 +266,7 @@
       "dateEnd": "2024-12-05",
       "eventType": "live",
       "sourceUrl": "https://sakurazaka46.com/s/s46/diary/live_page/list?ima=0000",
-      "scrapedAt": "2026-11-09T00:23:31.945Z"
+      "scrapedAt": "2026-11-10T03:04:54.520Z"
     },
     {
       "officialId": "saku-2025-03-06-11th-Single-BACKS-LIVE",
@@ -278,7 +278,7 @@
       "dateEnd": "2025-03-07",
       "eventType": "live",
       "sourceUrl": "https://sakurazaka46.com/s/s46/diary/live_page/list?ima=0000",
-      "scrapedAt": "2026-11-09T00:23:31.945Z"
+      "scrapedAt": "2026-11-10T03:04:54.520Z"
     },
     {
       "officialId": "saku-2025-03-20-Buddies感謝祭-2025",
@@ -290,7 +290,7 @@
       "dateEnd": "2025-03-20",
       "eventType": "event",
       "sourceUrl": "https://sakurazaka46.com/s/s46/diary/live_page/list?ima=0000",
-      "scrapedAt": "2026-11-09T00:23:31.945Z"
+      "scrapedAt": "2026-11-10T03:04:54.520Z"
     },
     {
       "officialId": "saku-2025-04-26-5th-TOUR-2025-Addiction",
@@ -302,7 +302,7 @@
       "dateEnd": "2025-08-24",
       "eventType": "live",
       "sourceUrl": "https://sakurazaka46.com/s/s46/diary/live_page/list?ima=0000",
-      "scrapedAt": "2026-11-09T00:23:31.945Z"
+      "scrapedAt": "2026-11-10T03:04:54.520Z"
     },
     {
       "officialId": "saku-2025-06-12-First-Showcase",
@@ -314,7 +314,7 @@
       "dateEnd": "2025-06-12",
       "eventType": "live",
       "sourceUrl": "https://sakurazaka46.com/s/s46/diary/live_page/list?ima=0000",
-      "scrapedAt": "2026-11-09T00:23:31.945Z"
+      "scrapedAt": "2026-11-10T03:04:54.520Z"
     },
     {
       "officialId": "saku-2025-07-09-12th-Single-BACKS-LIVE",
@@ -326,7 +326,7 @@
       "dateEnd": "2025-07-10",
       "eventType": "live",
       "sourceUrl": "https://sakurazaka46.com/s/s46/diary/live_page/list?ima=0000",
-      "scrapedAt": "2026-11-09T00:23:31.945Z"
+      "scrapedAt": "2026-11-10T03:04:54.520Z"
     },
     {
       "officialId": "saku-2025-11-14-新参者-二〇二五-in-TOKYU-KABUKICHO-TOWER",
@@ -338,7 +338,7 @@
       "dateEnd": "2025-11-29",
       "eventType": "live",
       "sourceUrl": "https://sakurazaka46.com/s/s46/diary/live_page/list?ima=0000",
-      "scrapedAt": "2026-11-09T00:23:31.945Z"
+      "scrapedAt": "2026-11-10T03:04:54.520Z"
     },
     {
       "officialId": "saku-2025-12-09-13th-Single-BACKS-LIVE",
@@ -350,7 +350,7 @@
       "dateEnd": "2025-12-10",
       "eventType": "live",
       "sourceUrl": "https://sakurazaka46.com/s/s46/diary/live_page/list?ima=0000",
-      "scrapedAt": "2026-11-09T00:23:31.945Z"
+      "scrapedAt": "2026-11-10T03:04:54.520Z"
     },
     {
       "officialId": "saku-2025-12-16-Buddies感謝祭-2025-EX",
@@ -362,7 +362,7 @@
       "dateEnd": "2025-12-17",
       "eventType": "event",
       "sourceUrl": "https://sakurazaka46.com/s/s46/diary/live_page/list?ima=0000",
-      "scrapedAt": "2026-11-09T00:23:31.945Z"
+      "scrapedAt": "2026-11-10T03:04:54.520Z"
     },
     {
       "officialId": "saku-2026-04-11-5th-YEAR-ANNIVERSARY-LIVE",
@@ -374,7 +374,7 @@
       "dateEnd": "2026-04-12",
       "eventType": "live",
       "sourceUrl": "https://sakurazaka46.com/s/s46/diary/live_page/list?ima=0000",
-      "scrapedAt": "2026-11-09T00:23:31.945Z"
+      "scrapedAt": "2026-11-10T03:04:54.520Z"
     },
     {
       "officialId": "saku-2026-05-12-14th-Single-BACKS-LIVE",
@@ -386,7 +386,7 @@
       "dateEnd": "2026-05-13",
       "eventType": "live",
       "sourceUrl": "https://sakurazaka46.com/s/s46/diary/live_page/list?ima=0000",
-      "scrapedAt": "2026-11-09T00:23:31.945Z"
+      "scrapedAt": "2026-11-10T03:04:54.520Z"
     },
     {
       "officialId": "saku-2026-06-02-四期生LIVE",
@@ -398,7 +398,7 @@
       "dateEnd": "2026-06-03",
       "eventType": "live",
       "sourceUrl": "https://sakurazaka46.com/s/s46/diary/live_page/list?ima=0000",
-      "scrapedAt": "2026-11-09T00:23:31.945Z"
+      "scrapedAt": "2026-11-10T03:04:54.519Z"
     },
     {
       "officialId": "saku-2026-07-23-Sakurazaka46-ARENA-TOUR-2026--Whats-lone",
@@ -410,7 +410,7 @@
       "dateEnd": "2026-08-30",
       "eventType": "live",
       "sourceUrl": "https://sakurazaka46.com/s/s46/diary/live_page/list?ima=0000",
-      "scrapedAt": "2026-11-09T00:23:31.945Z"
+      "scrapedAt": "2026-11-10T03:04:54.519Z"
     },
     {
       "officialId": "saku-2026-09-29-15th-Single-BACKS-LIVE",
@@ -422,7 +422,7 @@
       "dateEnd": "2026-09-30",
       "eventType": "live",
       "sourceUrl": "https://sakurazaka46.com/s/s46/diary/live_page/list?ima=0000",
-      "scrapedAt": "2026-11-09T00:23:31.945Z"
+      "scrapedAt": "2026-11-10T03:04:54.519Z"
     },
     {
       "officialId": "saku-2026-11-14-6th-YEAR-ANNIVERSARY-LIVE",
@@ -434,7 +434,7 @@
       "dateEnd": "2026-11-15",
       "eventType": "live",
       "sourceUrl": "https://sakurazaka46.com/s/s46/diary/live_page/list?ima=0000",
-      "scrapedAt": "2026-11-09T00:23:31.945Z"
+      "scrapedAt": "2026-11-10T03:04:54.519Z"
     },
     {
       "officialId": "saku-2026-12-15-16th-Single-BACKS-LIVE",
@@ -446,7 +446,7 @@
       "dateEnd": "2026-12-16",
       "eventType": "live",
       "sourceUrl": "https://sakurazaka46.com/s/s46/diary/live_page/list?ima=0000",
-      "scrapedAt": "2026-11-09T00:23:31.945Z"
+      "scrapedAt": "2026-11-10T03:04:54.519Z"
     }
   ]
 }
